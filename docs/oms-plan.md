@@ -36,6 +36,10 @@ Sheets: Order Tracker, Production Plan, RM/PM Shortages, FG Ageing File, FG SLOB
 - In-Transit Plan adds dispatch date, mode and arrival ETA to the order timeline.
 - Sales Forecast feeds the forecast vs orders table on the dashboard, by country, brand, FG code and month, with ordered minus forecast, ordered as a percentage of forecast, and a read of Under, On or Over forecast (80 to 120 percent band).
 
+## Branding
+
+The Dabur logo is embedded in the page (source: `src/oms/assets/dabur-logo.svg`, the public SVG of the corporate mark) and shown in the left rail and beside the title of every view. On the Supply Chain Inputs tab the admin can replace it with an official artwork file (SVG, PNG, JPG or WebP under 200 KB), which is stored in the admin-only area of the shared store and shown to everyone; a Default logo button restores the built-in mark.
+
 ## Values
 
 Logistics adds an ACR column (average case rate, USD per case) to the order tracker. The platform calculates order value (qty x ACR), dispatch value (supplied x ACR) and balance value ((qty - supplied) x ACR) per order, with totals, and shows them in the order summary too. All values are entered in USD and displayed in AED by default at a USD to AED rate the admin can set on the Supply Chain Inputs tab (3.6725 to start); a toggle in the filter bar switches the display to USD. The dashboard has value tiles (order, dispatched, balance, average ACR) and a Country vs Value chart. The SLOB sheet accepts an optional Case Rate (USD) and shows SLOB value; when the rate is blank the average ACR for that FG from the order tracker is used.
