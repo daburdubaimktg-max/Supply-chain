@@ -8,8 +8,8 @@ All data is country wise, brand wise, FG code wise.
 | # | Sheet | Owner | Input | Output |
 |---|-------|-------|-------|--------|
 | 1 | Order Tracker | Logistics | Distributor orders as they arrive (Excel upload or manual entry). Reserved qty, supplied qty, supplied date, invoice ref. | Order placed date and supplied date per order |
-| 2 | Order Summary | Planning | Computed. Reads tracker, FG stock, country priority, production plan, RMPM sheet. | Pending to produce per country / brand / FG, timeline, owner of next step. Shared with Production and all stakeholders |
-| 3 | Production and RMPM | Production, RM planner (Saurav Nagrale), PM planner (Maslekar Purushottam Parth) | Production plan with start and finish. RM or PM shortages with short qty. Procurement ETA per material. | Production timeline back to Planning; connectivity date per shortage |
+| 2 | Order Summary | Planning | Computed. Reads tracker, FG stock, country priority, production plan, RMPM sheet. | Pending to produce per country / brand / FG, planned quantity, gap, owner of next step. Shared with Production and all stakeholders |
+| 3 | Production and RMPM | Production, RM planner (Saurav Nagrale), PM planner (Maslekar Purushottam Parth) | Total quantity planned in production per FG. RM or PM shortages with short qty. Procurement ETA per material. | Planned quantity back to Planning; connectivity date per shortage |
 
 ## Allocation algorithm
 
@@ -20,7 +20,7 @@ All data is country wise, brand wise, FG code wise.
 5. Pending to produce = open qty minus reserved.
 6. Planned production per FG covers pending qty in the same priority order. Gap = pending minus planned.
 7. Order status: Supplied, Reserved ready, Production planned or In production, Partly planned, RMPM shortage (with ETA or awaiting ETA), Not planned.
-8. Expected date: supplied date, or "ready to dispatch", or production finish date, or "after" the latest procurement ETA.
+8. Next step: supplied date, or "ready to dispatch", or the quantity planned in production, or "after" the latest procurement ETA.
 
 ## Dashboard
 
@@ -31,7 +31,7 @@ All data is country wise, brand wise, FG code wise.
 
 ## Inputs required from the supply end
 
-Required: FG stock on hand (daily), country priority list, FG shortage list (weekly), production plan (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
+Required: FG stock on hand (daily), country priority list, FG shortage list (weekly), production plan as total planned quantity per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
 
 Recommended: FG master, production lead time per FG, bill of materials, in-transit plan, batch and expiry, sales forecast.
 
