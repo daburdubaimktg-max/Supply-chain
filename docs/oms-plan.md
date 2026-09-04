@@ -13,14 +13,16 @@ All data is country wise, brand wise, FG code wise.
 
 ## Allocation algorithm
 
-1. Country priority (1, 2, 3) comes from the priority list uploaded by supply.
+1. Country priority (1, 2, 3), allowed storage locations and the ageing norm (maximum inventory age in days) come from the priority and norms sheet.
 2. Open qty per order = order qty minus supplied qty.
 3. Stock still reserved = tracker reserved qty minus supplied qty (reserved is cumulative).
-4. Remaining free FG stock is allocated to open orders in priority order, then order date.
-5. Pending to produce = open qty minus reserved.
-6. Quantity still to come from production (production planned minus produced) covers pending qty in the same priority order. Gap = pending minus that remainder. Produced goods reach the dashboard as FG stock through the stock upload, so they are not counted twice.
-7. Order status: Supplied, Reserved ready, Production planned or In production, Partly planned, FG short on RMPM (driven by the FG shortage list from supply, since the RMPM sheet is material level), Not planned.
-8. Next step: supplied date, or "ready to dispatch", or planned and produced quantities, or "after" the latest procurement ETA. An order reads "In production" when produced is above zero but below planned.
+4. FG stock is held as lots (FG code, storage location, batch, quantity, manufacturing date). Batch and location are shared by the FG Planner, Arun Muthian. Age is stock date minus manufacturing date, or the Age Days column when supplied.
+5. A lot is eligible for a country only if it sits in one of that country's allowed locations (blank = any) and its age is within the country's maximum (blank = any).
+6. Reservations already made by logistics consume eligible lots first. Then remaining eligible stock is allocated to open orders in priority order, then order date, taking the oldest eligible lot first so older inventory goes to the countries whose norms accept it.
+7. Pending to produce = open qty minus reserved. If stock exists but is outside the country's location or age norm, the order shows that quantity as ineligible.
+8. Quantity still to come from production (production planned minus produced) covers pending qty in the same priority order. Gap = pending minus that remainder. Produced goods reach the dashboard as FG stock through the stock upload, so they are not counted twice.
+9. Order status: Supplied, Reserved ready, Production planned or In production, Partly planned, FG short on RMPM (driven by the FG shortage list from supply, since the RMPM sheet is material level), Not planned.
+10. Next step: supplied date, or "ready to dispatch", or planned and produced quantities, or "after" the latest procurement ETA. An order reads "In production" when produced is above zero but below planned.
 
 ## Dashboard
 
@@ -31,11 +33,15 @@ All data is country wise, brand wise, FG code wise.
 
 ## Inputs required from the supply end
 
-Required: FG stock on hand (daily), country priority list, FG shortage list (weekly; this is what flags an order as short on RMPM), production plan as production planned and produced per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
+Required: FG stock on hand by batch and storage location from the FG Planner Arun Muthian (daily), country priority and norms (allowed locations, max age), FG shortage list (weekly; this is what flags an order as short on RMPM), production plan as production planned and produced per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
 
 Recommended: FG master, production lead time per FG, bill of materials, in-transit plan, batch and expiry, sales forecast.
 
 Blank column templates are in `docs/templates/`. Column headers are matched loosely on upload, so existing files with similar headings work without renaming.
+
+## Access
+
+The published artifact stores data with a rule that only people it is shared with as "Can edit" (and the owner) can write. Everyone shared as "Can view" gets a view-only page: forms, uploads and delete buttons are hidden, cells are locked, and the store refuses writes regardless. The page checks access on open with a probe write and shows "View only" or "you can edit" in the left rail.
 
 ## Storage
 

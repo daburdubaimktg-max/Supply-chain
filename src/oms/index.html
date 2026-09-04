@@ -171,6 +171,8 @@ td input.n{text-align:right}
 .form .field select,.form .field input{min-width:0;width:100%;height:34px}
 .form .actions{display:flex;align-items:flex-end;gap:8px}
 details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);margin-bottom:8px}
+body.readonly .form,body.readonly .filelabel,body.readonly [data-del],body.readonly #resetData,body.readonly details,body.readonly .note{display:none!important}
+body.readonly td input,body.readonly td select{border-color:transparent;background:transparent;color:inherit;opacity:1;appearance:none;-webkit-appearance:none;pointer-events:none}
 </style>
 
 <div class="app">
@@ -218,7 +220,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
         </div>
       </div>
       <div class="panel" style="margin-top:16px">
-        <div class="panel-h"><h2>Country · Brand · FG position</h2><p>Available = central FG stock for the code, not country-specific</p></div>
+        <div class="panel-h"><h2>Country · Brand · FG position</h2><p>Eligible stock = lots in the country's allowed locations and within its age norm</p></div>
         <div class="tablewrap"><table id="tblPosition"></table></div>
       </div>
       <div class="panel" style="margin-top:16px">
@@ -255,7 +257,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
 
     <!-- ================= ORDER SUMMARY ================= -->
     <section class="view" id="view-summary">
-      <div class="note"><b>Planning team.</b> This sheet is computed from the tracker, FG stock, the country priority list and the production plan. Stock is allocated to orders by priority 1 → 2 → 3, then by order date. Share the pending rows with Production; share the production plan back to all stakeholders.</div>
+      <div class="note"><b>Planning team.</b> This sheet is computed from the tracker, FG stock, the country priority list and the production plan. Stock is allocated to orders by priority 1 → 2 → 3, then by order date, only from the country's allowed locations and within its ageing norm, oldest eligible lot first. Share the pending rows with Production; share the production plan back to all stakeholders.</div>
       <div class="toolbar">
         <button class="btn" id="exportSummary">Export summary</button>
         <span class="spacer"></span>
@@ -315,9 +317,9 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
         <div class="panel-h"><h2>How the platform runs</h2><p>Each team owns one sheet; the dashboard reads all of them</p></div>
         <div class="flow">
           <div class="step"><div class="who">1 · Logistics</div><div class="what">Order Tracker</div><div class="how">Log each distributor order: country, brand, FG code, quantity, date. Update reserved and supplied when stock moves.</div></div>
-          <div class="step alt"><div class="who">2 · Planning</div><div class="what">Order Summary</div><div class="how">Allocation runs by country priority. Pending quantities go to Production; the planned quantities come back and are shared with all stakeholders.</div></div>
+          <div class="step alt"><div class="who">2 · Planning</div><div class="what">Order Summary</div><div class="how">Allocation runs by country priority, only from each country's allowed locations and within its age norm, oldest lot first. Pending quantities go to Production; the planned quantities come back and are shared with all stakeholders.</div></div>
           <div class="step"><div class="who">3 · Production</div><div class="what">Plan or flag shortage</div><div class="how">If RM and PM are available, enter production planned and produced. Otherwise log the RMPM shortage.</div></div>
-          <div class="step alt"><div class="who">4 · RM / PM planners</div><div class="what">Connectivity ETA</div><div class="how">Saurav Nagrale (RM) and Maslekar Purushottam Parth (PM) enter the procurement ETA against each shortage.</div></div>
+          <div class="step alt"><div class="who">4 · RM / PM planners</div><div class="what">Connectivity ETA</div><div class="how">Saurav Nagrale (RM) and Maslekar Purushottam Parth (PM) enter the procurement ETA against each shortage. Arun Muthian (FG) keeps batch and storage location stock current so allocation runs on real lots.</div></div>
           <div class="step"><div class="who">5 · Production</div><div class="what">Plan to connectivity</div><div class="how">Once materials are connected, the planned quantity is entered against the FG and the order summary updates automatically.</div></div>
         </div>
       </div>
@@ -325,11 +327,11 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
       <div class="panel" style="margin-bottom:16px">
         <div class="panel-h"><h2>Supply-side inputs</h2><p>Upload these to keep the dashboard current. Refresh cadence in brackets.</p></div>
         <div class="toolbar">
-          <label class="btn filelabel sm">Upload FG stock<input type="file" id="upStock" accept=".xlsx,.xls,.csv"></label>
+          <label class="btn filelabel sm">Upload FG stock (batch &amp; location)<input type="file" id="upStock" accept=".xlsx,.xls,.csv"></label>
           <button class="btn sm" data-template="stock">Stock template</button>
           <button class="btn sm" data-download="stock">Download stock</button>
           <label class="btn filelabel sm">Upload country priority<input type="file" id="upPriority" accept=".xlsx,.xls,.csv"></label>
-          <button class="btn sm" data-template="priority">Priority template</button>
+          <button class="btn sm" data-template="priority">Priority &amp; norms template</button>
           <button class="btn sm" data-download="priority">Download priority</button>
           <label class="btn filelabel sm">Upload FG shortage list<input type="file" id="upShortage" accept=".xlsx,.xls,.csv"></label>
           <button class="btn sm" data-template="shortage">Shortage template</button>
@@ -338,17 +340,26 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
           <button class="btn sm danger" id="resetData">Reset to example data</button>
         </div>
         <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:16px">
-          <div><h3>FG stock on hand <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="stock"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
-          <div><h3>Country priority <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="priority"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblPriority"></table></div></div>
+          <div><h3>FG stock on hand · Arun Muthian, FG Planner <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="stock"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
+          <div><h3>Country priority &amp; norms <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="priority"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblPriority"></table></div></div>
           <div><h3>FG shortage list <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="shortage"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblShortage"></table></div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-h"><h2>Who can update the files</h2><span id="accessBadge"></span></div>
+        <div class="flow">
+          <div class="step alt"><div class="who">Editors</div><div class="what">Logistics, Planning, Production, FG planner (Arun Muthian), RM and PM planners</div><div class="how">Share the tracker with these people as <b>Can edit</b>. They can upload files, add rows, change cells and download sheets.</div></div>
+          <div class="step"><div class="who">Viewers</div><div class="what">Country managers, brand managers, other stakeholders</div><div class="how">Share as <b>Can view</b>. They see the live dashboard and every sheet and can download, but cannot change anything. The shared store refuses their writes.</div></div>
+          <div class="step"><div class="who">Owner</div><div class="what">Sharing is managed from the share menu on this page</div><div class="how">Only the owner and editors can update. Access is checked when the page opens; a viewer sees "View only" in the left rail.</div></div>
         </div>
       </div>
 
       <div class="spec">
         <div class="panel req"><h2>Required from the supply end</h2>
           <ul>
-            <li><b>FG stock on hand</b> by FG code, warehouse or plant, free vs reserved, with stock date <span class="muted">[daily]</span>. Columns: <code>FG Code</code>, <code>Warehouse</code>, <code>Available Qty</code>, <code>Stock Date</code>.</li>
-            <li><b>Country priority list</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3).</li>
+            <li><b>FG stock on hand</b> by FG code, storage location and batch number, with manufacturing date so age can be worked out. Shared by the FG Planner, Arun Muthian <span class="muted">[daily]</span>. Columns: <code>FG Code</code>, <code>Location</code>, <code>Batch</code>, <code>Available Qty</code>, <code>Mfg Date</code> (or <code>Age Days</code>), <code>Stock Date</code>.</li>
+            <li><b>Country priority and norms</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3), <code>Allocate From</code> (location names, comma separated; blank = any), <code>Max Age Days</code> (oldest inventory the country accepts; blank = any).</li>
             <li><b>FG shortage list</b>: what FG will be short and by how much <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>Short Qty</code>, <code>Reason</code>.</li>
             <li><b>Production plan</b>: production planned and produced per FG code <span class="muted">[weekly, and on every change]</span>. Columns: <code>FG Code</code>, <code>Description</code>, <code>Production Planned</code>, <code>Produced</code>.</li>
             <li><b>RM and PM shortage list</b> by material <span class="muted">[weekly]</span>. Columns: <code>Material Code</code>, <code>Material Description</code>, <code>Type</code> (RM or PM), <code>Shortage Qty</code>, <code>UOM</code>, <code>ETA</code>.</li>
@@ -362,7 +373,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
             <li><b>Production lead time</b> per FG or line, in days, to estimate a supply date when only an RMPM ETA exists.</li>
             <li><b>Bill of materials</b> mapping FG to RM and PM codes, so a material ETA automatically flags every FG it blocks.</li>
             <li><b>In-transit and dispatch plan</b>: vessel or truck date, ETA at destination, so country managers see arrival, not just dispatch.</li>
-            <li><b>Batch and expiry</b> on FG stock, for markets with minimum remaining shelf-life rules.</li>
+            <li><b>Expiry date</b> on FG stock, so the age norm can also be expressed as minimum remaining shelf life.</li>
             <li><b>Sales forecast or open purchase orders</b> by country to show pending against plan, not only against orders received.</li>
           </ul>
           <h2 style="margin-top:14px">Refresh routine</h2>
@@ -392,8 +403,8 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
 const SHEETS = ['orders','production','rmpm','stock','priority','shortage'];
 const DATA = {orders:[],production:[],rmpm:[],stock:[],priority:[],shortage:[]};
 const SOURCE = {}; // per sheet: {fileName, uploadedAt}
-let db = null, downloads = null, storeMode = 'local';
-const PLANNER = {RM:'Saurav Nagrale', PM:'Maslekar Purushottam Parth'};
+let db = null, downloads = null, storeMode = 'local', CAN_EDIT = true;
+const PLANNER = {RM:'Saurav Nagrale', PM:'Maslekar Purushottam Parth', FG:'Arun Muthian'};
 const $ = s => document.querySelector(s);
 const fmt = n => (n==null||isNaN(n)) ? '–' : Math.round(n).toLocaleString('en-US');
 const uid = () => Math.random().toString(36).slice(2,9);
@@ -403,8 +414,8 @@ const todayStr = () => new Date().toISOString().slice(0,10);
 function exampleData(){
   const d = (m,day) => `2026-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   return {
-    priority:[{country:'UAE',priority:1},{country:'KSA',priority:1},{country:'Kuwait',priority:2},{country:'Oman',priority:2},{country:'Qatar',priority:3},{country:'Bahrain',priority:3}],
-    stock:[{fgCode:'FG-VAT-200',warehouse:'Jebel Ali',available:1800,stockDate:d(9,3)},{fgCode:'FG-VAT-300',warehouse:'Jebel Ali',available:400,stockDate:d(9,3)},{fgCode:'FG-AML-200',warehouse:'Jebel Ali',available:2600,stockDate:d(9,3)},{fgCode:'FG-HRB-100',warehouse:'Jebel Ali',available:0,stockDate:d(9,3)},{fgCode:'FG-RED-150',warehouse:'Jebel Ali',available:950,stockDate:d(9,3)},{fgCode:'FG-MSW-100',warehouse:'Jebel Ali',available:300,stockDate:d(9,3)}],
+    priority:[{country:'UAE',priority:1,locations:'Jebel Ali',maxAge:90},{country:'KSA',priority:1,locations:'Jeddah',maxAge:60},{country:'Kuwait',priority:2,locations:'Jebel Ali',maxAge:120},{country:'Oman',priority:2,locations:'Jebel Ali',maxAge:180},{country:'Qatar',priority:3,locations:'',maxAge:''},{country:'Bahrain',priority:3,locations:'Jebel Ali',maxAge:180}],
+    stock:[{fgCode:'FG-VAT-200',warehouse:'Jebel Ali',batch:'B2406',available:1200,mfgDate:d(6,20),stockDate:d(9,3)},{fgCode:'FG-VAT-200',warehouse:'Jebel Ali',batch:'B2401',available:300,mfgDate:d(3,10),stockDate:d(9,3)},{fgCode:'FG-VAT-200',warehouse:'Jeddah',batch:'B2407',available:600,mfgDate:d(7,28),stockDate:d(9,3)},{fgCode:'FG-VAT-300',warehouse:'Jebel Ali',batch:'B2405',available:400,mfgDate:d(5,25),stockDate:d(9,3)},{fgCode:'FG-VAT-300',warehouse:'Jeddah',batch:'B2408',available:300,mfgDate:d(8,10),stockDate:d(9,3)},{fgCode:'FG-AML-200',warehouse:'Jebel Ali',batch:'B2407',available:2600,mfgDate:d(7,5),stockDate:d(9,3)},{fgCode:'FG-HRB-100',warehouse:'Jebel Ali',batch:'',available:0,mfgDate:'',stockDate:d(9,3)},{fgCode:'FG-RED-150',warehouse:'Jebel Ali',batch:'B2406',available:950,mfgDate:d(6,28),stockDate:d(9,3)},{fgCode:'FG-MSW-100',warehouse:'Jebel Ali',batch:'B2404',available:300,mfgDate:d(4,15),stockDate:d(9,3)},{fgCode:'FG-MSW-100',warehouse:'Jeddah',batch:'B2408',available:200,mfgDate:d(8,5),stockDate:d(9,3)}],
     orders:[
       {id:uid(),orderNo:'PO-UAE-1041',orderDate:d(7,6),country:'UAE',distributor:'Al Seer',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1200,reserved:1200,supplied:1200,suppliedDate:d(7,18),ref:'INV-77021'},
       {id:uid(),orderNo:'PO-KSA-2210',orderDate:d(7,9),country:'KSA',distributor:'Binzagr',brand:'Vatika',fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',qty:900,reserved:900,supplied:900,suppliedDate:d(7,29),ref:'INV-77104'},
@@ -448,6 +459,7 @@ function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({...DATA,
 function setExample(){ const ex = exampleData(); SHEETS.forEach(s=>{ DATA[s]=ex[s]; delete SOURCE[s]; }); }
 
 async function persist(sheet){
+  if(!CAN_EDIT){ toast('View only: you do not have edit access to this tracker'); recompute(); return; }
   DATA[sheet] = DATA[sheet].map(r => ({...r, id: r.id || uid()}));
   if(db){
     try{ await db.doc('oms/'+sheet).set({rows: DATA[sheet], updatedAt: new Date().toISOString(), source: SOURCE[sheet]||null}); }
@@ -458,7 +470,9 @@ async function persist(sheet){
 
 function setStoreLabel(){
   const el = $('#storeState');
-  el.textContent = storeMode==='db' ? 'Shared live data · all viewers' : storeMode==='local' ? 'Saved in this browser only' : 'Example data';
+  el.textContent = storeMode==='db' ? (CAN_EDIT ? 'Shared live data · you can edit' : 'Shared live data · view only') : storeMode==='local' ? 'Saved in this browser only' : 'Example data';
+  document.body.classList.toggle('readonly', !CAN_EDIT);
+  const ab=$('#accessBadge'); if(ab) ab.innerHTML = storeMode!=='db' ? '<span class="pill neutral">Local copy · not shared</span>' : CAN_EDIT ? '<span class="pill good">Editor · your changes are saved for everyone</span>' : '<span class="pill info">View only</span>';
   $('#lastRefresh').textContent = 'Refreshed '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
@@ -472,6 +486,9 @@ async function initStore(){
   try{ db = await window.claude?.use?.('db'); }catch(e){ db=null; }
   if(!db) return;
   storeMode='db';
+  // Access probe: the store only accepts writes from people the artifact is shared with as editors.
+  try{ await db.doc('oms/access').set({checkedAt:new Date().toISOString()}); CAN_EDIT=true; }catch(e){ CAN_EDIT=false; }
+  setStoreLabel();
   let firstLoad = SHEETS.map(()=>false);
   SHEETS.forEach((s,i)=>{
     db.doc('oms/'+s).onSnapshot(snap=>{
@@ -490,24 +507,36 @@ let CALC = null;
 function computeAll(){
   const prioOf = {}; DATA.priority.forEach(p=>{ if(p.country) prioOf[String(p.country).trim().toLowerCase()] = Number(p.priority)||3; });
   const getPrio = c => prioOf[String(c||'').trim().toLowerCase()] || 3;
-  const stockOf = {}; DATA.stock.forEach(s=>{ const k=key(s.fgCode); stockOf[k]=(stockOf[k]||0)+(Number(s.available)||0); });
+  // ---- stock lots with age, and country norms (allowed locations, max age) ----
+  const today = todayStr();
+  const daysBetween = (a,b)=> Math.round((new Date(b)-new Date(a))/864e5);
+  const lots = DATA.stock.map(st=>{ const hasAge = st.ageDays!==''&&st.ageDays!=null&&!isNaN(Number(st.ageDays)); const age = hasAge? Number(st.ageDays) : (st.mfgDate? daysBetween(st.mfgDate, st.stockDate||today) : null); const qty=Math.max(0,Number(st.available)||0); return {k:key(st.fgCode), wh:String(st.warehouse||'').trim(), whKey:String(st.warehouse||'').trim().toLowerCase(), batch:st.batch||'', age, qty, free:qty}; }).filter(l=>l.k);
+  const stockOf = {}; lots.forEach(l=>{ stockOf[l.k]=(stockOf[l.k]||0)+l.qty; });
+  const normOf = {}; DATA.priority.forEach(pr=>{ if(!pr.country) return; const locs=String(pr.locations||'').split(/[,;/|]/).map(x=>x.trim().toLowerCase()).filter(Boolean); const ma=Number(pr.maxAge); const maxAge = (pr.maxAge===''||pr.maxAge==null||isNaN(ma)||ma<=0)? null : ma; normOf[String(pr.country).trim().toLowerCase()]={locs, maxAge, locNames:String(pr.locations||'').trim()}; });
+  const normFor = c => normOf[String(c||'').trim().toLowerCase()] || {locs:[], maxAge:null, locNames:''};
+  const eligible = (lot, norm) => (!norm.locs.length || norm.locs.includes(lot.whKey)) && (norm.maxAge==null || lot.age==null || lot.age<=norm.maxAge);
+  // oldest eligible lot first, so the oldest inventory a country accepts leaves first
+  const takeFrom = (o, need) => { const norm=normFor(o.country); const cands=lots.filter(l=>l.k===o.k && l.free>0 && eligible(l,norm)).sort((a,b)=>((b.age==null?-1:b.age)-(a.age==null?-1:a.age))); let got=0; for(const l of cands){ if(need<=0) break; const q=Math.min(need,l.free); l.free-=q; need-=q; got+=q; o.alloc.push({wh:l.wh,batch:l.batch,age:l.age,qty:q}); } return got; };
   // plannedOf = quantity still to come from production (planned minus produced); produced goods enter FG stock via the stock upload
   const plannedOf = {}, plannedGross = {}, producedOf = {}, planRows = {};
   DATA.production.forEach(p=>{ const k=key(p.fgCode); if(!k) return; const pl=Number(p.plannedQty)||0, pr=Math.min(Number(p.produced)||0, pl); plannedGross[k]=(plannedGross[k]||0)+pl; producedOf[k]=(producedOf[k]||0)+pr; plannedOf[k]=(plannedOf[k]||0)+(pl-pr); (planRows[k]=planRows[k]||[]).push(p); });
-  const shortOf = {}, shortReason = {}; DATA.shortage.forEach(s=>{ const k=key(s.fgCode); if(k){ shortOf[k]=(shortOf[k]||0)+(Number(s.shortQty)||0); if(s.reason) shortReason[k]=[...(shortReason[k]||[]),s.reason]; } });
+  const shortOf = {}, shortReason = {}; DATA.shortage.forEach(sh=>{ const k=key(sh.fgCode); if(k){ shortOf[k]=(shortOf[k]||0)+(Number(sh.shortQty)||0); if(sh.reason) shortReason[k]=[...(shortReason[k]||[]),sh.reason]; } });
   const openMaterials = DATA.rmpm.filter(r=>r.status!=='Connected'); const materialEta = openMaterials.map(r=>r.eta).filter(Boolean).sort().pop()||''; const materialsAwaiting = openMaterials.filter(r=>!r.eta).length;
 
-  // Sort open orders by priority then order date, allocate free stock.
-  const orders = DATA.orders.map(o=>({...o, qty:Number(o.qty)||0, reservedIn:Number(o.reserved)||0, supplied:Number(o.supplied)||0, prio:getPrio(o.country), month:(o.orderDate||'').slice(0,7), k:key(o.fgCode)}));
-  const manualReserved = {};
-  orders.forEach(o=>{ const open=Math.max(0,o.qty-o.supplied); o.reservedNet=Math.min(Math.max(0,o.reservedIn-o.supplied),open); if(o.reservedNet>0) manualReserved[o.k]=(manualReserved[o.k]||0)+o.reservedNet; });
-  const free = {}; Object.keys(stockOf).forEach(k=>free[k]=Math.max(0,stockOf[k]-(manualReserved[k]||0)));
+  // ---- orders: priority 1 -> 2 -> 3, then order date ----
+  const orders = DATA.orders.map(o=>({...o, qty:Number(o.qty)||0, reservedIn:Number(o.reserved)||0, supplied:Number(o.supplied)||0, prio:getPrio(o.country), month:(o.orderDate||'').slice(0,7), k:key(o.fgCode), alloc:[]}));
+  orders.forEach(o=>{ const open=Math.max(0,o.qty-o.supplied); o.reservedNet=Math.min(Math.max(0,o.reservedIn-o.supplied),open); });
   const sorted = [...orders].sort((a,b)=> a.prio-b.prio || (a.orderDate||'').localeCompare(b.orderDate||'') || a.orderNo.localeCompare(b.orderNo));
+  // pass 1: reservations already made by logistics consume eligible lots first
+  sorted.forEach(o=>{ o.reservedUnlocated = o.reservedNet>0 ? o.reservedNet - takeFrom(o,o.reservedNet) : 0; });
+  // pass 2: the algorithm allocates what is still free, within each country's location and age norm
   sorted.forEach(o=>{
     const open = Math.max(0,o.qty-o.supplied);
     let reserved = o.reservedNet;
-    if(reserved<open){ const need=open-reserved; const take=Math.min(need, free[o.k]||0); reserved+=take; free[o.k]=(free[o.k]||0)-take; }
+    if(reserved<open) reserved += takeFrom(o, open-reserved);
     o.open=open; o.reserved=reserved; o.pending=open-reserved; o.autoReserved = reserved - o.reservedNet;
+    const norm=normFor(o.country); o.norm=norm;
+    o.ineligible = o.pending>0 ? lots.filter(l=>l.k===o.k && l.free>0 && !eligible(l,norm)).reduce((t,l)=>t+l.free,0) : 0;
   });
   // Per FG roll-up: pending vs planned; coverage assigned in the same priority order.
   const fg = {};
@@ -527,9 +556,13 @@ function computeAll(){
     else { o.status='Not planned'; o.level='crit'; o.expected='Needs production plan'; }
   });
   Object.values(fg).forEach(f=>{ f.gap=Math.max(0,f.pending-f.planned); f.blocked=f.shortage>0; });
-  return {orders:sorted, fg, getPrio, stockOf, openMaterials, materialEta, materialsAwaiting};
+  sorted.forEach(o=>{ if(o.pending>0 && o.ineligible>0) o.expected += ' · '+fmt(o.ineligible)+' in stock but outside location/age norm'; });
+  const eligibleStock = (country, k) => { const norm=normFor(country); return lots.filter(l=>l.k===k && eligible(l,norm)).reduce((t,l)=>t+l.qty,0); };
+  return {orders:sorted, fg, getPrio, stockOf, lots, normFor, eligibleStock, openMaterials, materialEta, materialsAwaiting};
 }
 function key(s){ return String(s||'').trim().toUpperCase(); }
+function allocText(alloc){ const by={}; alloc.forEach(a=>{ const id=(a.wh||'Unnamed location')+(a.batch?' '+a.batch:'')+(a.age!=null?' · '+a.age+'d':''); by[id]=(by[id]||0)+a.qty; }); return Object.entries(by).map(([n,q])=>`${esc(n)} ${fmt(q)}`).join(' · '); }
+function normText(norm){ return (norm.locNames||'Any location')+(norm.maxAge!=null?' · ≤'+norm.maxAge+'d':''); }
 
 /* =====================================================================
    FILTERS
@@ -564,7 +597,7 @@ $('#clearFilters').addEventListener('click',()=>{ F.month=F.country=F.brand=F.fg
    RENDER
    ===================================================================== */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); renderSources(); }
+function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); renderSources(); if(!CAN_EDIT) document.querySelectorAll('td input, td select').forEach(i=>i.disabled=true); }
 function renderSources(){ document.querySelectorAll('[data-src]').forEach(el=>{ const m=SOURCE[el.dataset.src]; el.textContent = m ? `Last upload: ${m.fileName} · ${new Date(m.uploadedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}` : ''; }); }
 
 function renderDash(){
@@ -604,9 +637,9 @@ function renderDash(){
   const pos = {};
   rows.forEach(o=>{ const id=o.country+'|'+o.brand+'|'+o.k; const p=pos[id]=pos[id]||{country:o.country,prio:o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,ordered:0,supplied:0,reserved:0,pending:0,covered:0,f:CALC.fg[o.k]}; p.ordered+=o.qty;p.supplied+=o.supplied;p.reserved+=o.reserved;p.pending+=o.pending;p.covered+=o.covered; });
   const pr = Object.values(pos).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country)||a.brand.localeCompare(b.brand)||a.fgCode.localeCompare(b.fgCode));
-  $('#tblPosition').innerHTML = `<thead><tr><th>Country</th><th>Pr.</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending</th><th class="r">FG available</th><th class="r">Planned</th><th class="r">Produced</th><th>Coverage</th><th>Position</th></tr></thead><tbody>`+
+  $('#tblPosition').innerHTML = `<thead><tr><th>Country</th><th>Pr.</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending</th><th>Allocate from</th><th class="r">Eligible stock</th><th class="r">Planned</th><th class="r">Produced</th><th>Coverage</th><th>Position</th></tr></thead><tbody>`+
     (pr.length? pr.map(p=>{ const st = p.pending===0?['good','Fulfilled or reserved']: p.f.blocked&&p.covered<p.pending?['serious','FG short · RMPM']: p.covered>=p.pending?['warn','In production plan']: p.covered>0?['warn','Partly planned']:['crit','Not planned']; const pct=p.pending? Math.round(100*p.covered/p.pending):100;
-      return `<tr><td>${esc(p.country)}</td><td><span class="prio p${p.prio}">P${p.prio}</span></td><td>${esc(p.brand)}</td><td class="mono">${esc(p.fgCode)}</td><td class="muted">${esc(p.fgName||'')}</td><td class="r num">${fmt(p.ordered)}</td><td class="r num">${fmt(p.supplied)}</td><td class="r num">${fmt(p.reserved)}</td><td class="r num"><b>${fmt(p.pending)}</b></td><td class="r num">${fmt(p.f.stock)}</td><td class="r num">${fmt(p.f.plannedGross)}</td><td class="r num">${fmt(p.f.produced)}</td><td><div class="bar" title="${pct}% of pending covered"><i style="width:${pct}%"></i></div></td><td><span class="pill ${st[0]}">${st[1]}</span></td></tr>`; }).join('') : `<tr><td colspan="14" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
+      return `<tr><td>${esc(p.country)}</td><td><span class="prio p${p.prio}">P${p.prio}</span></td><td>${esc(p.brand)}</td><td class="mono">${esc(p.fgCode)}</td><td class="muted">${esc(p.fgName||'')}</td><td class="r num">${fmt(p.ordered)}</td><td class="r num">${fmt(p.supplied)}</td><td class="r num">${fmt(p.reserved)}</td><td class="r num"><b>${fmt(p.pending)}</b></td><td class="small">${esc(normText(CALC.normFor(p.country)))}</td><td class="r num" title="Total stock of this FG in all locations: ${fmt(p.f.stock)}">${fmt(CALC.eligibleStock(p.country,key(p.fgCode)))}</td><td class="r num">${fmt(p.f.plannedGross)}</td><td class="r num">${fmt(p.f.produced)}</td><td><div class="bar" title="${pct}% of pending covered"><i style="width:${pct}%"></i></div></td><td><span class="pill ${st[0]}">${st[1]}</span></td></tr>`; }).join('') : `<tr><td colspan="15" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
 
   // timeline table
   const tl = [...rows].sort((a,b)=>(b.orderDate||'').localeCompare(a.orderDate||''));
@@ -663,7 +696,7 @@ function renderOrders(){
   const rows=[...CALC.orders].filter(passes).sort((a,b)=>(b.orderDate||'').localeCompare(a.orderDate||''));
   $('#ordersCount').textContent = `${rows.length} of ${DATA.orders.length} orders shown`;
   $('#tblOrders').innerHTML = `<thead><tr><th>Order no</th><th>Order date</th><th>Country</th><th>Distributor</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Order qty</th><th class="r" title="Total stock reserved against the order, including what has since been supplied">Stock reserved</th><th class="r">Supplied qty</th><th>Supplied date</th><th>Invoice / ref</th><th>Status</th><th></th></tr></thead><tbody>`+
-    (rows.length? rows.map(o=>`<tr data-id="${o.id}"><td><input data-f="orderNo" value="${esc(o.orderNo)}"></td><td><input type="date" data-f="orderDate" value="${esc(o.orderDate)}"></td><td><input data-f="country" list="dlCountry" value="${esc(o.country)}"></td><td><input data-f="distributor" value="${esc(o.distributor||'')}"></td><td><input data-f="brand" list="dlBrand" value="${esc(o.brand)}"></td><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(o.fgCode)}"></td><td><input data-f="fgName" value="${esc(o.fgName||'')}"></td><td><input class="n num" type="number" data-f="qty" value="${o.qty}"></td><td><input class="n num" type="number" data-f="reserved" value="${o.reservedIn}" title="${o.autoReserved>0?'Algorithm allocated a further '+fmt(o.autoReserved)+' from free stock':''}">${o.autoReserved>0?`<div class="small muted" style="text-align:right">+${fmt(o.autoReserved)} auto</div>`:''}</td><td><input class="n num" type="number" data-f="supplied" value="${o.supplied}"></td><td><input type="date" data-f="suppliedDate" value="${esc(o.suppliedDate||'')}"></td><td><input data-f="ref" value="${esc(o.ref||'')}"></td><td><span class="pill ${o.level}">${esc(o.status)}</span></td><td><button class="btn sm danger" data-del="orders" data-id="${o.id}" title="Delete order">✕</button></td></tr>`).join('') : `<tr><td colspan="14" class="empty">No orders yet. Add one above or upload the Excel tracker.</td></tr>`)+`</tbody>`;
+    (rows.length? rows.map(o=>`<tr data-id="${o.id}"><td><input data-f="orderNo" value="${esc(o.orderNo)}"></td><td><input type="date" data-f="orderDate" value="${esc(o.orderDate)}"></td><td><input data-f="country" list="dlCountry" value="${esc(o.country)}"></td><td><input data-f="distributor" value="${esc(o.distributor||'')}"></td><td><input data-f="brand" list="dlBrand" value="${esc(o.brand)}"></td><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(o.fgCode)}"></td><td><input data-f="fgName" value="${esc(o.fgName||'')}"></td><td><input class="n num" type="number" data-f="qty" value="${o.qty}"></td><td><input class="n num" type="number" data-f="reserved" value="${o.reservedIn}" title="${o.autoReserved>0?'Algorithm allocated a further '+fmt(o.autoReserved)+' from free stock':''}">${o.autoReserved>0?`<div class="small muted" style="text-align:right">+${fmt(o.autoReserved)} auto</div>`:''}${o.alloc.length?`<div class="small muted" style="text-align:right;white-space:normal;max-width:220px">${allocText(o.alloc)}</div>`:''}${o.reservedUnlocated>0?`<div class="small" style="text-align:right;color:var(--warn-text)">${fmt(o.reservedUnlocated)} reserved with no eligible lot</div>`:''}</td><td><input class="n num" type="number" data-f="supplied" value="${o.supplied}"></td><td><input type="date" data-f="suppliedDate" value="${esc(o.suppliedDate||'')}"></td><td><input data-f="ref" value="${esc(o.ref||'')}"></td><td><span class="pill ${o.level}">${esc(o.status)}</span></td><td><button class="btn sm danger" data-del="orders" data-id="${o.id}" title="Delete order">✕</button></td></tr>`).join('') : `<tr><td colspan="14" class="empty">No orders yet. Add one above or upload the Excel tracker.</td></tr>`)+`</tbody>`;
 }
 function bindInlineEdits(tableSel, sheet){
   $(tableSel).addEventListener('change',e=>{ const inp=e.target.closest('[data-f]'); if(!inp) return; const tr=inp.closest('tr'); const row=DATA[sheet].find(r=>r.id===tr.dataset.id); if(!row) return; const f=inp.dataset.f; row[f]= inp.type==='number'? Number(inp.value)||0 : inp.value; if(sheet==='rmpm' && f==='type') row.planner=PLANNER[row.type]||''; if(sheet==='rmpm' && f==='eta' && row.eta && row.status==='Awaiting ETA') row.status='ETA received'; persist(sheet); });
@@ -684,7 +717,7 @@ function renderSummary(){
     html+=`<tr class="group"><td>${esc(g.country)} <span class="prio p${g.prio}">P${g.prio}</span></td><td colspan="2" class="muted">${its.length} FG codes</td><td class="r num">${fmt(t('ordered'))}</td><td class="r num">${fmt(t('supplied'))}</td><td class="r num">${fmt(t('reserved'))}</td><td class="r num">${fmt(t('pending'))}</td><td colspan="6"></td></tr>`;
     its.sort((a,b)=>b.pending-a.pending).forEach(it=>{ const f=it.f; const inProgress=f.plans.some(p=>(Number(p.produced)||0)>0 && (Number(p.produced)||0)<(Number(p.plannedQty)||0));
       let st,next,owner;
-      if(it.pending===0){ st=['good', it.supplied>=it.ordered?'Supplied':'Reserved, ready']; next= it.supplied>=it.ordered? 'Done' : 'Dispatch from stock'; owner='Logistics'; }
+      if(it.pending===0){ st=['good', it.supplied>=it.ordered?'Supplied':'Reserved, ready']; const al=it.orders.flatMap(o=>o.alloc); next= it.supplied>=it.ordered? 'Done' : (al.length? 'Dispatch from '+allocText(al) : 'Dispatch from reserved stock'); owner='Logistics'; }
       else if(f.blocked && it.covered<it.pending){ st=['serious','FG short · RMPM']; next = esc(f.shortReason||'On FG shortage list')+(CALC.materialEta?` · latest material ETA ${CALC.materialEta}`:''); owner=PLANNER.RM+' / '+PLANNER.PM; }
       else if(it.covered>=it.pending){ st=['warn', inProgress?'In production':'Production planned']; next= `${fmt(f.plannedGross)} planned · ${fmt(f.produced)} produced`; owner='Production'; }
       else if(it.covered>0){ st=['warn','Partly planned']; next=`${fmt(it.covered)} planned, ${fmt(it.pending-it.covered)} not yet`; owner='Production'; }
@@ -712,8 +745,8 @@ $('#formRmpm').addEventListener('submit',e=>{ e.preventDefault(); const o=Object
 
 /* ---------- Supply inputs ---------- */
 function renderInputs(){
-  $('#tblStock').innerHTML=`<thead><tr><th>FG code</th><th>Warehouse</th><th class="r">Available</th><th>Stock date</th></tr></thead><tbody>`+(DATA.stock.length? DATA.stock.map(s=>`<tr><td class="mono">${esc(s.fgCode)}</td><td>${esc(s.warehouse||'')}</td><td class="r num">${fmt(s.available)}</td><td class="muted">${esc(s.stockDate||'')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Upload FG stock</td></tr>`)+'</tbody>';
-  $('#tblPriority').innerHTML=`<thead><tr><th>Country</th><th>Priority</th></tr></thead><tbody>`+(DATA.priority.length? [...DATA.priority].sort((a,b)=>a.priority-b.priority).map(p=>`<tr><td>${esc(p.country)}</td><td><span class="prio p${p.priority}">P${p.priority}</span></td></tr>`).join(''):`<tr><td colspan="2" class="empty">Upload the priority list</td></tr>`)+'</tbody>';
+  $('#tblStock').innerHTML=`<thead><tr><th>FG code</th><th>Location</th><th>Batch</th><th class="r">Available</th><th>Mfg date</th><th class="r">Age (d)</th></tr></thead><tbody>`+(DATA.stock.length? DATA.stock.map(st=>{ const l=CALC.lots.find(x=>x.k===key(st.fgCode)&&x.batch===(st.batch||'')&&x.wh===String(st.warehouse||'').trim()); return `<tr><td class="mono">${esc(st.fgCode)}</td><td>${esc(st.warehouse||'')}</td><td class="mono">${esc(st.batch||'')}</td><td class="r num">${fmt(st.available)}</td><td class="muted">${esc(st.mfgDate||'')}</td><td class="r num">${l&&l.age!=null?l.age:'–'}</td></tr>`; }).join(''):`<tr><td colspan="6" class="empty">Upload FG stock</td></tr>`)+'</tbody>';
+  $('#tblPriority').innerHTML=`<thead><tr><th>Country</th><th>Priority</th><th>Allocate from</th><th class="r">Max age (d)</th></tr></thead><tbody>`+(DATA.priority.length? [...DATA.priority].sort((a,b)=>a.priority-b.priority).map(p=>`<tr><td>${esc(p.country)}</td><td><span class="prio p${p.priority}">P${p.priority}</span></td><td>${esc(p.locations||'')||'<span class="muted">Any</span>'}</td><td class="r num">${p.maxAge?p.maxAge:'<span class="muted">Any</span>'}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Upload the priority list</td></tr>`)+'</tbody>';
   $('#tblShortage').innerHTML=`<thead><tr><th>FG code</th><th class="r">Short qty</th><th>Reason</th></tr></thead><tbody>`+(DATA.shortage.length? DATA.shortage.map(s=>`<tr><td class="mono">${esc(s.fgCode)}</td><td class="r num">${fmt(s.shortQty)}</td><td class="muted">${esc(s.reason||'')}</td></tr>`).join(''):`<tr><td colspan="3" class="empty">Upload the FG shortage list</td></tr>`)+'</tbody>';
 }
 
@@ -724,15 +757,15 @@ const COLS = {
   orders:[['orderNo','Order No'],['orderDate','Order Date'],['country','Country'],['distributor','Distributor'],['brand','Brand'],['fgCode','FG Code'],['fgName','FG Description'],['qty','Order Qty (cases)'],['reserved','Stock Reserved Qty'],['supplied','Supplied Qty'],['suppliedDate','Supplied Date'],['ref','Invoice / Ref']],
   production:[['fgCode','FG Code'],['fgName','Description'],['plannedQty','Production Planned'],['produced','Produced']],
   rmpm:[['matCode','Material Code'],['matName','Material Description'],['type','Type'],['shortQty','Shortage Qty'],['uom','UOM'],['eta','ETA']],
-  stock:[['fgCode','FG Code'],['warehouse','Warehouse'],['available','Available Qty'],['stockDate','Stock Date']],
-  priority:[['country','Country'],['priority','Priority']],
+  stock:[['fgCode','FG Code'],['warehouse','Location'],['batch','Batch'],['available','Available Qty'],['mfgDate','Mfg Date'],['ageDays','Age Days'],['stockDate','Stock Date']],
+  priority:[['country','Country'],['priority','Priority'],['locations','Allocate From'],['maxAge','Max Age Days']],
   shortage:[['fgCode','FG Code'],['shortQty','Short Qty'],['reason','Reason']]
 };
-const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortageqty','shortqty','shortage','short','shortquantity','shortagequantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['warehouse','plant','location'],available:['availableqty','available','stock','qty','quantity','freestock'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
+const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortageqty','shortqty','shortage','short','shortquantity','shortagequantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['location','warehouse','plant','site','depot','storagelocation'],batch:['batch','batchno','lot','lotno','batchnumber'],mfgDate:['mfgdate','manufacturingdate','mfg','productiondate','proddate','dom'],ageDays:['agedays','age','ageindays','inventoryage','stockage'],locations:['allocatefrom','allocatefromlocation','location','locations','warehouse','warehouses','source','sourcelocation'],maxAge:['maxagedays','maxage','maximumage','ageingnorm','agingnorm','agenorm','norm','maxinventoryage'],available:['availableqty','available','stock','qty','quantity','freestock'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
 const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function excelDate(v){ if(v==null||v==='') return ''; if(v instanceof Date) return v.toISOString().slice(0,10); if(typeof v==='number'){ const d=XLSX.SSF.parse_date_code(v); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } const s=String(v).trim(); const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(m){ let y=m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; } const d=new Date(s); return isNaN(d)?s:d.toISOString().slice(0,10); }
-const DATE_FIELDS = new Set(['orderDate','suppliedDate','eta','stockDate']);
-const NUM_FIELDS = new Set(['qty','reserved','supplied','plannedQty','produced','shortQty','available','priority']);
+const DATE_FIELDS = new Set(['orderDate','suppliedDate','eta','stockDate','mfgDate']);
+const NUM_FIELDS = new Set(['qty','reserved','supplied','plannedQty','produced','shortQty','available','priority','maxAge','ageDays']);
 
 function parseSheet(file, sheet){
   return new Promise((resolve,reject)=>{
@@ -746,7 +779,7 @@ function parseSheet(file, sheet){
       COLS[sheet].forEach(([field])=>{ const al=[norm(COLS[sheet].find(c=>c[0]===field)[1]), ...(ALIASES[field]||[])]; const h=headers.find(h=>al.includes(norm(h))); if(h) map[field]=h; });
       const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['matCode'],stock:['fgCode','available'],priority:['country','priority'],shortage:['fgCode','shortQty']}[sheet];
       const missing=required.filter(f=>!map[f]); if(missing.length) return reject(new Error('Missing columns: '+missing.map(f=>COLS[sheet].find(c=>c[0]===f)[1]).join(', ')+'. Found: '+headers.join(', ')));
-      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v=Number(String(v).replace(/,/g,''))||0; else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : sheet==='rmpm'? o.matCode : o.fgCode);
+      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v= (String(v).trim()===''&&(f==='ageDays'||f==='maxAge')) ? '' : (Number(String(v).replace(/,/g,''))||0); else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : sheet==='rmpm'? o.matCode : o.fgCode);
       resolve(rows);
     }catch(err){ reject(err); } };
     fr.onerror=()=>reject(new Error('Could not read the file'));
