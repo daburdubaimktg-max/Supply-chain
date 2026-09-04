@@ -1,0 +1,998 @@
+<title>OMS Order Tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3f4f1; --surface:#ffffff; --surface-2:#eaece7; --surface-3:#dfe3dc;
+  --ink:#172026; --ink-2:#55606a; --muted:#8a949c; --line:#d9ded9; --line-2:#c4cbc5;
+  --accent:#1c3f63; --accent-ink:#ffffff; --accent-soft:#e3ebf4; --gold:#b8892b; --gold-soft:#f5ecd6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --good-text:#006300; --warn:#fab219; --warn-text:#7a5200; --serious:#ec835a; --serious-text:#8a3a16; --crit:#d03b3b; --crit-text:#9b1c1c;
+  --grid:#e4e7e3; --axis:#c4cbc5;
+  --font-display:"Archivo",system-ui,sans-serif; --font-body:"IBM Plex Sans",system-ui,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --shadow:0 1px 2px rgba(23,32,38,.06),0 4px 14px rgba(23,32,38,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121517; --surface:#1b1f22; --surface-2:#23282c; --surface-3:#2b3135;
+    --ink:#f2f4f3; --ink-2:#b9c1c4; --muted:#858e93; --line:#2d3337; --line-2:#3a4146;
+    --accent:#7fb0e6; --accent-ink:#0f1a26; --accent-soft:#1f2c3a; --gold:#d4a84b; --gold-soft:#332a17;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --good-text:#3fc23f; --warn-text:#f2c04e; --serious-text:#f19a76; --crit-text:#ef6b6b;
+    --grid:#262b2f; --axis:#3a4146;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121517; --surface:#1b1f22; --surface-2:#23282c; --surface-3:#2b3135;
+  --ink:#f2f4f3; --ink-2:#b9c1c4; --muted:#858e93; --line:#2d3337; --line-2:#3a4146;
+  --accent:#7fb0e6; --accent-ink:#0f1a26; --accent-soft:#1f2c3a; --gold:#d4a84b; --gold-soft:#332a17;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good-text:#3fc23f; --warn-text:#f2c04e; --serious-text:#f19a76; --crit-text:#ef6b6b;
+  --grid:#262b2f; --axis:#3a4146;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.45}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:20px;font-weight:700}
+h2{font-size:16px;font-weight:600}
+h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+p{margin:0}
+a{color:var(--accent)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.rail{background:var(--accent);color:var(--accent-ink);display:flex;flex-direction:column;padding:20px 14px;gap:6px;position:sticky;top:0;height:100vh}
+.rail .brand{padding:4px 8px 18px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:10px}
+.rail .brand h1{color:inherit;font-size:18px;line-height:1.15}
+.rail .brand .sub{opacity:.7;font-size:12px;margin-top:4px}
+.rail .brand .gold{display:inline-block;width:36px;height:3px;background:var(--gold);margin-bottom:10px}
+.rail .logo{display:block;background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:12px;width:fit-content}
+.rail .logo img{display:block;height:44px;width:auto}
+.topbar .title{display:flex;gap:12px;align-items:center}
+.topbar .title img{height:38px;width:auto;flex:none;background:#fff;border-radius:6px;padding:3px 5px;border:1px solid var(--line)}
+.topbar .title .tt{min-width:0}
+@media (max-width:1100px){.rail .logo{margin:0 12px 0 0}.rail .logo img{height:30px}}
+@media print{.topbar .title img{display:inline-block}}
+.nav-btn{display:flex;align-items:center;gap:10px;background:transparent;border:0;color:inherit;text-align:left;padding:9px 10px;border-radius:6px;font-weight:500;opacity:.82}
+.nav-btn:hover{background:rgba(255,255,255,.1);opacity:1}
+.nav-btn.active{background:rgba(255,255,255,.16);opacity:1;box-shadow:inset 3px 0 0 var(--gold)}
+.nav-btn .k{font-family:var(--font-mono);font-size:11px;opacity:.7;width:14px}
+.rail .foot{margin-top:auto;font-size:11.5px;opacity:.75;line-height:1.5;padding:0 8px}
+.rail .foot .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-right:6px;vertical-align:middle}
+.main{min-width:0;padding:22px 28px 60px}
+.topbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin-bottom:20px}
+.topbar .title{flex:1 1 260px}
+.topbar .title h1{font-size:22px}
+.topbar .title p{color:var(--ink-2);margin-top:2px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.field select,.field input{background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:7px 10px;min-width:140px;height:36px}
+.field input[type=date]{min-width:150px}
+.btn{background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:7px 12px;font-weight:500;height:36px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{height:30px;padding:4px 10px;font-size:12.5px}
+.btn.danger{color:var(--crit-text)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* ---------- panels ---------- */
+.view{display:none}
+.view.active{display:block}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(8,minmax(0,1fr))}
+@media (max-width:1300px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-height:96px}
+.kpi .label{font-size:12px;color:var(--ink-2)}
+.kpi .value{font-family:var(--font-display);font-size:26px;font-weight:600;line-height:1.05}
+.kpi .sub{font-size:12px;color:var(--muted)}
+.kpi.hero{grid-column:span 2;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.kpi.hero .label,.kpi.hero .sub{color:inherit;opacity:.8}
+.kpi.hero .value{font-size:44px}
+.kpi .mark{width:22px;height:4px;border-radius:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.panel-h p{color:var(--muted);font-size:12.5px}
+.two{grid-template-columns:3fr 2fr}
+@media (max-width:1100px){.two{grid-template-columns:1fr}.app{grid-template-columns:1fr}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}.rail .brand{border:0;padding:4px 8px;margin:0}.rail .foot{display:none}.kpi.hero{grid-column:span 1}.kpi.hero .value{font-size:30px}}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);background:var(--surface-2);position:sticky;top:0;font-weight:600}
+td.r,th.r{text-align:right}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.group td{background:var(--accent-soft);font-weight:600}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+td input,td select{background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 6px;width:100%;min-width:70px}
+td input:focus,td select:focus{border-color:var(--line-2);background:var(--surface)}
+td input.n{text-align:right}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.good{color:var(--good-text);background:color-mix(in srgb,var(--good) 12%,var(--surface));border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+.pill.warn{color:var(--warn-text);background:color-mix(in srgb,var(--warn) 16%,var(--surface));border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.pill.serious{color:var(--serious-text);background:color-mix(in srgb,var(--serious) 16%,var(--surface));border-color:color-mix(in srgb,var(--serious) 45%,transparent)}
+.pill.crit{color:var(--crit-text);background:color-mix(in srgb,var(--crit) 12%,var(--surface));border-color:color-mix(in srgb,var(--crit) 40%,transparent)}
+.pill.info{color:var(--accent);background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.pill.neutral{color:var(--ink-2);background:var(--surface-2);border-color:var(--line-2)}
+.prio{display:inline-block;font-family:var(--font-mono);font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--gold-soft);color:var(--gold);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent)}
+.prio.p1{background:var(--gold);color:#fff}
+.bar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--s3);border-radius:3px}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar .spacer{flex:1}
+.filelabel{position:relative;overflow:hidden}
+.filelabel input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border-left:3px solid var(--gold);padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:12px}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;max-width:420px}
+.toast.show{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* ---------- charts ---------- */
+.chart{width:100%;height:auto;display:block;font-family:var(--font-body)}
+.chart text{fill:var(--ink-2);font-size:11px}
+.chart .grid line{stroke:var(--grid);stroke-width:1}
+.chart .axis{stroke:var(--axis);stroke-width:1}
+.chart .lbl{fill:var(--ink);font-weight:600;font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;box-shadow:var(--shadow);opacity:0;transition:opacity .12s;z-index:20;white-space:nowrap}
+.tip.show{opacity:1}
+.tip b{font-weight:600}
+.hit{fill:transparent}
+.hit:hover + rect, rect.bar-mark:hover{filter:brightness(.92)}
+
+/* ---------- process ---------- */
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.hubgroup{margin-bottom:18px}
+.hubgroup h3{margin-bottom:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.upcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;border-top:3px solid var(--accent)}
+.upcard.alt{border-top-color:var(--gold)}
+.upcard .t{font-family:var(--font-display);font-weight:600;font-size:14px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.upcard .t .n{font-size:11.5px;color:var(--muted);font-weight:400;white-space:nowrap}
+.upcard .owner{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.upcard .owner label{color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-size:10.5px;font-weight:600}
+.upcard .owner input{flex:1;background:var(--surface-2);border:1px solid var(--line-2);border-radius:5px;padding:4px 8px;font-size:12.5px}
+.upcard .owner .ro{font-weight:600}
+.upcard .cols{font-size:11.5px;color:var(--ink-2);line-height:1.5}
+.upcard .cols code{font-family:var(--font-mono);font-size:11px;background:var(--surface-2);padding:0 4px;border-radius:3px}
+.upcard .last{font-size:11.5px;color:var(--muted)}
+.upcard .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+body.readonly .upcard .filelabel{display:none!important}
+.step{background:var(--surface-2);border-radius:8px;padding:12px 14px;border-top:3px solid var(--accent);min-height:120px}
+.step.alt{border-top-color:var(--gold)}
+.step .who{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.step .what{font-weight:600;margin:4px 0 6px;font-family:var(--font-display)}
+.step .how{font-size:12.5px;color:var(--ink-2)}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:900px){.spec{grid-template-columns:1fr}}
+.spec .panel h2{margin-bottom:4px}
+.spec ul{margin:8px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px}
+.spec li{margin:3px 0}
+.spec code{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--ink)}
+.req{border-left:3px solid var(--crit);padding-left:10px}
+.opt{border-left:3px solid var(--line-2);padding-left:10px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px;padding:12px;background:var(--surface-2);border-radius:8px}
+.form .field select,.form .field input{min-width:0;width:100%;height:34px}
+.form .actions{display:flex;align-items:flex-end;gap:8px}
+details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);margin-bottom:8px}
+body.readonly .form,body.readonly .filelabel,body.readonly [data-del],body.readonly #resetData,body.readonly details,body.readonly .note{display:none!important}
+body.readonly td input,body.readonly td select{border-color:transparent;background:transparent;color:inherit;opacity:1;appearance:none;-webkit-appearance:none;pointer-events:none}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <span class="logo"><img id="railLogo" alt="Dabur"></span>
+      <span class="gold"></span>
+      <h1>OMS Order Tracker</h1>
+      <div class="sub">Country · Brand · FG code</div>
+    </div>
+    <button class="nav-btn active" data-view="dash"><span class="k">1</span>Dashboard</button>
+    <button class="nav-btn" data-view="orders"><span class="k">2</span>Order Tracker</button>
+    <button class="nav-btn" data-view="summary"><span class="k">3</span>Order Summary</button>
+    <button class="nav-btn" data-view="prod"><span class="k">4</span>Production &amp; RMPM</button>
+    <button class="nav-btn" data-view="slob"><span class="k">5</span>Liquidation</button>
+    <button class="nav-btn" data-view="hub"><span class="k">6</span>Supply Chain Inputs</button>
+    <button class="nav-btn" data-view="inputs"><span class="k">7</span>Process &amp; Access</button>
+    <div class="foot"><span class="dot"></span><span id="storeState">Loading shared data…</span><br><span id="lastRefresh"></span></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title">
+        <img id="topLogo" alt="Dabur">
+        <div class="tt"><h1 id="viewTitle">Dashboard</h1>
+        <p id="viewSub">Finished goods available, planned in production, and pending to produce.</p></div>
+      </div>
+      <div class="filters">
+        <div class="field"><label for="fMonth">Order month</label><select id="fMonth"><option value="">All months</option></select></div>
+        <div class="field"><label for="fCountry">Country</label><select id="fCountry"><option value="">All countries</option></select></div>
+        <div class="field"><label for="fBrand">Brand</label><select id="fBrand"><option value="">All brands</option></select></div>
+        <div class="field"><label for="fFg">FG code</label><select id="fFg"><option value="">All FG codes</option></select></div>
+        <div class="field"><label for="fCur">Values in</label><select id="fCur"><option value="AED">AED</option><option value="USD">USD</option></select></div>
+        <button class="btn" id="clearFilters" title="Clear all filters">Clear</button>
+      </div>
+    </div>
+
+    <!-- ================= DASHBOARD ================= -->
+    <section class="view active" id="view-dash">
+      <div class="grid kpis" id="kpis"></div>
+      <div class="grid" id="valueKpis" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:12px"></div>
+      <div class="grid two" style="margin-top:16px">
+        <div class="panel">
+          <div class="panel-h"><h2>Ordered vs supplied vs pending, by month</h2><p>Cases · month of order date</p></div>
+          <div id="chartMonth"></div>
+          <div class="legend"><span><i style="background:var(--s1)"></i>Ordered</span><span><i style="background:var(--s2)"></i>Supplied</span><span><i style="background:var(--s3)"></i>Pending to produce</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>Pending to produce, by country</h2><p>Sorted by supply priority</p></div>
+          <div id="chartCountry"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Country vs value</h2><p id="valueSub">Order value, dispatched value and balance value · ACR from Logistics</p></div>
+        <div id="chartValue"></div>
+        <div class="legend"><span><i style="background:var(--s1)"></i>Order value</span><span><i style="background:var(--s2)"></i>Dispatched value</span><span><i style="background:var(--s3)"></i>Balance value</span></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Forecast vs orders</h2><p>Country · brand level above, FG code detail below · cases</p></div>
+        <div id="chartForecast"></div>
+        <div class="legend" style="margin-bottom:14px"><span><i style="background:var(--s1)"></i>Forecast</span><span><i style="background:var(--s2)"></i>Ordered</span></div>
+        <div class="tablewrap"><table id="tblForecast"></table></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Country · Brand · FG position</h2><p>Eligible stock = lots in the country's allowed locations and within its age norm</p></div>
+        <div class="tablewrap"><table id="tblPosition"></table></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Order to supply timeline</h2><p>When each order was placed and when it was supplied</p></div>
+        <div class="tablewrap"><table id="tblTimeline"></table></div>
+      </div>
+    </section>
+
+    <!-- ================= ORDER TRACKER ================= -->
+    <section class="view" id="view-orders">
+      <div class="note"><b>Logistics team.</b> Enter distributor orders here as they arrive, or upload the Excel tracker. When stock is reserved or an order is supplied, update the reserved and supplied columns so the dashboard shows the supply date.</div>
+      <div class="toolbar">
+        <button class="btn" data-template="orders">Blank template</button>
+        <button class="btn" data-download="orders">Download uploaded tracker</button>
+        <span class="small muted" data-src="orders"></span>
+        <span class="spacer"></span>
+        <span class="small muted" id="ordersCount"></span>
+      </div>
+      <details open><summary>Add an order</summary>
+      <form class="form" id="formOrder">
+        <div class="field"><label>Order no</label><input name="orderNo" required placeholder="PO-UAE-1041"></div>
+        <div class="field"><label>Order date</label><input name="orderDate" type="date" required></div>
+        <div class="field"><label>Country</label><input name="country" required list="dlCountry"></div>
+        <div class="field"><label>Distributor</label><input name="distributor" placeholder="Distributor name"></div>
+        <div class="field"><label>Brand</label><input name="brand" required list="dlBrand"></div>
+        <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
+        <div class="field"><label>FG description</label><input name="fgName"></div>
+        <div class="field"><label>Order qty (cases)</label><input name="qty" type="number" min="1" required></div>
+        <div class="field"><label>ACR (USD per case)</label><input name="caseRate" type="number" min="0" step="0.01"></div>
+        <div class="actions"><button class="btn primary" type="submit">Add order</button></div>
+      </form></details>
+      <div class="tablewrap"><table id="tblOrders"></table></div>
+    </section>
+
+    <!-- ================= ORDER SUMMARY ================= -->
+    <section class="view" id="view-summary">
+      <div class="note"><b>Planning team.</b> This sheet is computed from the tracker, FG stock, the country priority list and the production plan. Stock is allocated to orders by priority 1 → 2 → 3, then by order date, only from the country's allowed locations and within its ageing norm, oldest eligible lot first. Share the pending rows with Production; share the production plan back to all stakeholders.</div>
+      <div class="toolbar">
+        <button class="btn" id="exportSummary">Export summary</button>
+        <span class="spacer"></span>
+        <span class="small muted">Allocation runs automatically whenever any sheet changes.</span>
+      </div>
+      <div class="tablewrap"><table id="tblSummary"></table></div>
+    </section>
+
+    <!-- ================= PRODUCTION & RMPM ================= -->
+    <section class="view" id="view-prod">
+      <div class="note"><b>Production team.</b> For every FG with a pending quantity, either enter the production planned and produced quantities, or log the raw material (RM) or packing material (PM) shortage by material. RM shortages route to Saurav Nagrale; PM shortages route to Maslekar Purushottam Parth. They add the ETA, and production is then planned to the connectivity date. Which FG codes are short comes from the FG shortage list in Supply Inputs.</div>
+      <div class="grid" style="grid-template-columns:1fr;gap:16px">
+        <div class="panel">
+          <div class="panel-h"><h2>Production plan</h2><p>Production planned and produced so far, per FG code</p></div>
+          <div class="toolbar">
+            <button class="btn sm" data-template="production">Blank template</button>
+            <button class="btn sm" data-download="production">Download uploaded plan</button>
+            <span class="small muted" data-src="production"></span>
+            <span class="spacer"></span>
+            <span class="small muted" id="pendingHint"></span>
+          </div>
+          <form class="form" id="formProd">
+            <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
+            <div class="field"><label>Description</label><input name="fgName" placeholder="Auto-filled from orders if blank"></div>
+            <div class="field"><label>Production planned</label><input name="plannedQty" type="number" min="1" required></div>
+            <div class="field"><label>Produced</label><input name="produced" type="number" min="0" value="0"></div>
+            <div class="actions"><button class="btn primary" type="submit">Add plan</button></div>
+          </form>
+          <div class="tablewrap"><table id="tblProd"></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>RM / PM shortages and connectivity</h2><p>Material level. Planner is assigned from the type; ETA comes from procurement. FG-level shortages come from the FG shortage list in Supply Inputs.</p></div>
+          <div class="toolbar">
+            <button class="btn sm" data-template="rmpm">Blank template</button>
+            <button class="btn sm" data-download="rmpm">Download uploaded shortages</button>
+            <span class="small muted" data-src="rmpm"></span>
+          </div>
+          <form class="form" id="formRmpm">
+            <div class="field"><label>Material code</label><input name="matCode" required class="mono"></div>
+            <div class="field"><label>Material</label><input name="matName"></div>
+            <div class="field"><label>Type</label><select name="type"><option>RM</option><option>PM</option></select></div>
+            <div class="field"><label>Shortage qty</label><input name="shortQty" type="number" min="0" required></div>
+            <div class="field"><label>UOM</label><input name="uom" placeholder="kg / pcs"></div>
+            <div class="field"><label>ETA</label><input name="eta" type="date"></div>
+            <div class="actions"><button class="btn primary" type="submit">Add shortage</button></div>
+          </form>
+          <div class="tablewrap"><table id="tblRmpm"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LIQUIDATION ================= -->
+    <section class="view" id="view-slob">
+      <div class="note"><b>FG Planner, Arun Muthian.</b> Upload the FG SLOB file here. Quantities are in cases. For every lot the page shows its age and remaining shelf life, and which countries' norms and open orders could absorb it, so liquidation can be planned against real demand.</div>
+      <div class="toolbar">
+        <button class="btn" data-template="slob">Blank template</button>
+        <button class="btn" data-download="slob">Download uploaded SLOB</button>
+        <span class="small muted" data-src="slob"></span>
+        <span class="spacer"></span>
+        <span class="small muted" id="slobCount"></span>
+      </div>
+      <div class="grid kpis" id="slobKpis" style="margin-bottom:16px"></div>
+      <div class="tablewrap"><table id="tblSlob"></table></div>
+    </section>
+
+    <!-- ================= SUPPLY CHAIN INPUTS ================= -->
+    <section class="view" id="view-hub">
+      <div class="note"><b>One place for every upload.</b> Each card names the file, who owns it, the columns it needs and when it was last uploaded. Column headers are matched loosely, so files with similar headings load without renaming. Owner names can be changed only by the admin.</div>
+      <div class="toolbar"><span class="small muted" id="hubAccess"></span><span class="spacer"></span><span id="logoBox"></span><span class="small muted">USD → AED rate</span><span id="fxBox"></span><button class="btn sm danger" id="resetData">Reset to example data</button></div>
+      <div id="hubCards"></div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>FG ageing file · lots on hand</h2><p>Age and remaining shelf life per lot</p></div>
+        <div class="tablewrap"><table id="tblStock"></table></div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div class="panel"><div class="panel-h"><h2>Country priority &amp; norms</h2></div><div class="tablewrap"><table id="tblPriority"></table></div></div>
+        <div class="panel"><div class="panel-h"><h2>FG shortage list</h2></div><div class="tablewrap"><table id="tblShortage"></table></div></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Master data and plans</h2><p>FG master, lead times, bill of materials, in-transit plan, forecast</p></div>
+        <div id="hubTables"></div>
+      </div>
+    </section>
+
+    <!-- ================= SUPPLY INPUTS ================= -->
+    <section class="view" id="view-inputs">
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-h"><h2>How the platform runs</h2><p>Each team owns one sheet; the dashboard reads all of them</p></div>
+        <div class="flow">
+          <div class="step"><div class="who">1 · Logistics</div><div class="what">Order Tracker</div><div class="how">Log each distributor order: country, brand, FG code, quantity, date. Update reserved and supplied when stock moves.</div></div>
+          <div class="step alt"><div class="who">2 · Planning</div><div class="what">Order Summary</div><div class="how">Allocation runs by country priority, only from each country's allowed locations and within its age norm, oldest lot first. Pending quantities go to Production; the planned quantities come back and are shared with all stakeholders.</div></div>
+          <div class="step"><div class="who">3 · Production</div><div class="what">Plan or flag shortage</div><div class="how">If RM and PM are available, enter production planned and produced. Otherwise log the RMPM shortage.</div></div>
+          <div class="step alt"><div class="who">4 · RM / PM planners</div><div class="what">Connectivity ETA</div><div class="how">Saurav Nagrale (RM) and Maslekar Purushottam Parth (PM) enter the procurement ETA against each shortage. Arun Muthian (FG) keeps batch and storage location stock current so allocation runs on real lots.</div></div>
+          <div class="step"><div class="who">5 · Production</div><div class="what">Plan to connectivity</div><div class="how">Once materials are connected, the planned quantity is entered against the FG and the order summary updates automatically.</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-h"><h2>Who can update the files</h2><span id="accessBadge"></span></div>
+        <div class="flow">
+          <div class="step alt"><div class="who">Editors</div><div class="what">Logistics, Planning, Production, FG planner Arun Muthian (ageing and SLOB files), RM and PM planners</div><div class="how">Share the tracker with these people as <b>Can edit</b>. They can upload files on the Supply Chain Inputs tab, add rows, change cells and download sheets.</div></div>
+          <div class="step"><div class="who">Viewers</div><div class="what">Country managers, brand managers, other stakeholders</div><div class="how">Share as <b>Can view</b>. They see the live dashboard and every sheet and can download, but cannot change anything. The shared store refuses their writes.</div></div>
+          <div class="step"><div class="who">Admin (page owner)</div><div class="what">Sharing is managed from the share menu on this page</div><div class="how">Only the admin can change the owner name shown against each upload on the Supply Chain Inputs tab. Access is checked when the page opens; a viewer sees "View only" in the left rail.</div></div>
+        </div>
+      </div>
+
+      <div class="spec">
+        <div class="panel req"><h2>Core inputs</h2><p class="small muted">All uploaded on the Supply Chain Inputs tab.</p>
+          <ul>
+            <li><b>FG ageing file</b> from the FG Planner, Arun Muthian <span class="muted">[daily]</span>. Columns: <code>FG Code</code>, <code>FG Description</code>, <code>Stoc Loc</code>, <code>Stoc Loc Description</code>, <code>Manuf Date</code>, <code>Expiry Date</code>, <code>Ageing Remarks</code>. Add <code>Batch</code> and <code>Available Qty</code> per line so each lot can be allocated; without a quantity column the lots load with zero available.</li>
+            <li><b>FG SLOB file</b> (slow-moving and obsolete stock, in cases) from the FG Planner, Arun Muthian <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>FG Description</code>, <code>Stoc Loc</code>, <code>Batch</code>, <code>Manuf Date</code>, <code>Expiry Date</code>, <code>SLOB Qty (Cases)</code>, <code>Case Rate (USD)</code> (optional; the order tracker ACR is used when blank), <code>SLOB Category</code>, <code>Remarks</code>. Shown in the Liquidation view with SLOB value.</li>
+            <li><b>Country priority and norms</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3), <code>Allocate From</code> (Stoc Loc codes or descriptions, comma separated; blank = any), <code>Max Age Days</code> (oldest inventory the country accepts), <code>Min Shelf Life Days</code> (least remaining life at dispatch). Blank = any.</li>
+            <li><b>FG shortage list</b>: what FG will be short and by how much <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>Short Qty</code>, <code>Reason</code>.</li>
+            <li><b>Production plan</b>: production planned and produced per FG code <span class="muted">[weekly, and on every change]</span>. Columns: <code>FG Code</code>, <code>Description</code>, <code>Production Planned</code>, <code>Produced</code>.</li>
+            <li><b>RM and PM shortage list</b> by material <span class="muted">[weekly]</span>. Columns: <code>Material Code</code>, <code>Material Description</code>, <code>Type</code> (RM or PM), <code>Shortage Qty</code>, <code>UOM</code>, <code>ETA</code>.</li>
+            <li><b>Procurement ETA</b> per short material, entered by the RM or PM planner <span class="muted">[as received]</span>.</li>
+            <li><b>Supply confirmation</b>: supplied quantity, supply date and invoice or dispatch reference against each order <span class="muted">[as dispatched]</span>. This is what sets the supplied date on the dashboard.</li>
+          </ul>
+        </div>
+        <div class="panel opt"><h2>Master data and plan inputs</h2><p class="small muted">Also uploaded on the Supply Chain Inputs tab. Each one switches on a feature.</p>
+          <ul>
+            <li><b>FG master</b>: FG code, description, brand, category, cases per pallet, MOQ, shelf life. Fills brand and description on any order, plan or SLOB line that only has the code.</li>
+                        <li><b>Bill of materials</b> mapping FG to RM and PM codes. Links the material-level RMPM sheet back to the FG codes and orders it blocks, with the material ETA.</li>
+            <li><b>In-transit plan</b>: dispatch date, mode and ETA at destination per order, shown on the order timeline so country managers see arrival, not just dispatch.</li>
+            <li><b>Expiry date</b> is already part of the FG ageing file, so the age norm can also be expressed as minimum remaining shelf life.</li>
+            <li><b>Sales forecast</b> by country, brand, FG and month, in cases. Shown against ordered on the dashboard so demand not yet ordered is visible.</li>
+          </ul>
+          <h2 style="margin-top:14px">Refresh routine</h2>
+          <ul>
+            <li>Logistics updates the tracker as orders and dispatches happen.</li>
+            <li>Supply uploads stock every morning; planning re-checks the summary after the upload.</li>
+            <li>Production and RMPM sheets refresh weekly at the planning meeting and on every ETA change.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<datalist id="dlCountry"></datalist><datalist id="dlBrand"></datalist><datalist id="dlFg"></datalist>
+<div class="toast" id="toast"></div>
+<div class="tip" id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+'use strict';
+/* =====================================================================
+   DATA MODEL
+   sheets: orders, production, rmpm, stock, priority, shortage
+   Each sheet is one shared document {rows:[...], updatedAt}
+   ===================================================================== */
+const SHEETS = ['orders','production','rmpm','stock','priority','shortage','slob','fgmaster','bom','transit','forecast'];
+const DATA = {orders:[],production:[],rmpm:[],stock:[],priority:[],shortage:[],slob:[],fgmaster:[],bom:[],transit:[],forecast:[]};
+const SOURCE = {}; // per sheet: {fileName, uploadedAt}
+let db = null, downloads = null, storeMode = 'local', CAN_EDIT = true, IS_ADMIN = true;
+const FILES = {
+  orders:   {name:'Order Tracker', group:'Team sheets', owner:'Logistics team', cadence:'As orders and dispatches happen', desc:'Distributor orders with ACR (average case rate, USD), reserved and supplied quantities. Order, dispatch and balance values are calculated.'},
+  production:{name:'Production Plan', group:'Team sheets', owner:'Production team', cadence:'Weekly and on change', desc:'Production planned and produced per FG code.'},
+  rmpm:     {name:'RM / PM Shortages', group:'Team sheets', owner:'Saurav Nagrale (RM) · Maslekar Purushottam Parth (PM)', cadence:'Weekly and on every ETA change', desc:'Material-level shortages with procurement ETA.'},
+  stock:    {name:'FG Ageing File', group:'FG Planner', owner:'Arun Muthian, FG Planner', cadence:'Daily', desc:'Lots on hand with location, batch, manufacturing and expiry dates.'},
+  slob:     {name:'FG SLOB File', group:'FG Planner', owner:'Arun Muthian, FG Planner', cadence:'Weekly', desc:'Slow-moving and obsolete stock, in cases.'},
+  priority: {name:'Country Priority & Norms', group:'Planning norms', owner:'Planning team', cadence:'Monthly or when changed', desc:'Supply priority, allowed locations, max age and min shelf life per country.'},
+  shortage: {name:'FG Shortage List', group:'Planning norms', owner:'Supply planning', cadence:'Weekly', desc:'FG codes expected to be short, with quantity and reason.'},
+  fgmaster: {name:'FG Master', group:'Master data & plans', owner:'Master data owner', cadence:'When SKUs change', desc:'Fills brand and description from the FG code everywhere.'},
+  bom:      {name:'Bill of Materials', group:'Master data & plans', owner:'Production planning', cadence:'When formulations or packs change', desc:'Links each FG to its RM and PM codes, so material shortages flag the orders they block.'},
+  transit:  {name:'In-Transit Plan', group:'Master data & plans', owner:'Logistics team', cadence:'As shipments move', desc:'Dispatch date, mode and arrival ETA per order.'},
+  forecast: {name:'Sales Forecast', group:'Master data & plans', owner:'Demand planning', cadence:'Monthly', desc:'Forecast cases by country, brand, FG and month.'}
+};
+const OWNERS = {}; Object.keys(FILES).forEach(k=>OWNERS[k]=FILES[k].owner);
+const LOGO_DEFAULT = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyNjgiIHZpZXdCb3g9IjAgMCAzMDAgMjY4IiA+PGRlZnMgaWQ9ImRlZnM2Ij48Y2xpcFBhdGggY2xpcFBhdGhVbml0cz0idXNlclNwYWNlT25Vc2UiIGlkPSJjbGlwUGF0aDEwMiI+PHBhdGggZD0ibSAyMjguMDIsNjE4LjA0IDE2Ni42OCwwIDAsLTE2My4zMiAtMTY2LjY4LDAgMCwxNjMuMzIgeiIgaWQ9InBhdGgxMDQiIC8+PC9jbGlwUGF0aD48L2RlZnM+PGcgaWQ9ImcxMiIgdHJhbnNmb3JtPSJtYXRyaXgoMS4yNSwwLDAsLTEuMjUsLTE4My45ODgxMSw3ODEuNDgyNzEpIj48ZyBpZD0iZzMwNjgiIHRyYW5zZm9ybT0ibWF0cml4KDEuNDIxMjM4OSwwLDAsMS40MjEyMzg5LC0xNzUuNTUxODQsLTI1NS4wNDYwNikiPjxwYXRoIGlkPSJwYXRoNTgiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzI2LjMyOCw0OTMuODQ2IC0wLjAwMiwwLjAwMiBjIC0xLjExMywxLjIxNSAtMi43ODMsMS4zNTIgLTQuMzY3LDEuMzUyIC0xLjY3LDAgLTMuMjI4LC0wLjI0NCAtNS4zNTUsLTEuNjg0IDIuNjYyLDYuNjI5IDYuODcsMTUuNjkgNi45MTIsMTUuNzg2IGwgMC4yMDgsMC40NDEgLTAuNDg3LC0wLjA0NyBjIC0wLjAyNSwtMC4wMDEgLTIuNTY4LC0wLjI2MyAtNy42OTQsLTEuNDcgbCAtMC4xNDQsLTAuMDM3IC0wLjM3OCwtMS4wMjggLTEwLjY4OSwtMjcuODU3IGMgMCwwIC0wLjc4NCwtMS42ODYgLTMuMTE4LC0zLjA0MSAtMS4yMjEsLTAuNzA3IC0xLjkwOCwtMC43OTMgLTIuMzE1LC0wLjg1MyAtMC4zOTMsLTAuMDc0IC0wLjQ5OSwwLjMwMiAtMC40NTEsMC40MzIgMC4zMDksMC44NTIgMS4xNzcsMy4yMjIgMS4xNzcsMy4yMjIgMi41OSw3LjI1NCA0LjIsMTEuNjIzIDQuOTE5LDEzLjM1OCBsIDAuOTQsMi4yNjkgLTcuMDU3LDAgYyAwLDAgLTAuMTIzLC0wLjIyOCAtMC4xNjksLTAuMzA5IC0wLjgxMywwLjQ4OSAtMS43NjYsMC43NzEgLTIuODgyLDAuNzcxIC0xLjU2NiwwIC0zLjU4MiwtMC44OTMgLTYuMzQzLC0yLjgxNCAtMi44MzgsLTEuOTk0IC01LjI3NywtNC4zMTEgLTcuMjY1LC02Ljg5NyAtMi40NzYsLTMuMjcyIC0zLjczMSwtNi41NDMgLTMuNzMxLC05LjcyMSAwLC0xLjQ2NCAwLjM0LC0yLjczNyAxLjAxNCwtMy43ODcgMC41NTYsLTAuODggMS42NTcsLTEuOTMyIDMuNzI4LC0xLjkzMiAyLjY4NSwwIDUuMjgxLDEgNy43MywyLjkxNSAwLjE4OSwtMC42NTYgMC41OTQsLTEuMjYxIDEuMzY1LC0xLjgwNyAxLjAwNiwtMC43MjMgMi40MiwtMS4wNzMgMi45ODksLTEuMTAxIDAuNTcsLTAuMDI2IDIuNjcxLDAuMDc0IDQuNTMzLDEuMDMyIDEuNTc5LDAuODEzIDIuNTU3LDEuODYxIDMuNDQxLDMuMjIgMC40NTcsLTEuMTA5IDEuMDU5LC0yLjA1IDEuODA3LC0yLjc5IDAuOTc1LC0wLjk3NSAyLjIwMywtMS40NjkgMy42NDYsLTEuNDY5IDQuMDQyLDAgOC4yODQsMS45OTIgMTIuNjA1LDUuOTE0IDQuNjY2LDQuMjI1IDcuMDM3LDguODA4IDcuMDM3LDEzLjYyNSAwLDEuNjc4IC0wLjU0LDMuMTI1IC0xLjYwNCw0LjMwNSB6IG0gLTkuNTYzLC0xNC41MTIgYyAtMi43NTQsLTQuMDkgLTMuNjYxLC00LjMzMyAtNC42MzQsLTQuNDA4IC0wLjU1OCwtMC4wNDcgLTAuOTY3LDAuMTI5IC0xLjI4MywwLjQwNyAtMC4xODcsMC4xNjIgLTAuMzkxLDAuNDc5IC0wLjM2MSwwLjkxNyAwLDAgMC4wNjEsMC41MzIgMC4xMTQsMC43NDQgMC4wNTcsMC4yMTIgMC44MTQsMi44OSAyLjA3MSw1LjcyNyAxLjI1NiwyLjg0MiAxLjc1OCwzLjU1OSAyLjcyNCw0LjY5NiAxLjYyLDEuOTA4IDMuNDA1LDIuNzA1IDQuMjk3LDIuMjA5IDEuNzUzLC0wLjk3MiAtMC44MjMsLTcuMTU4IC0yLjkyOCwtMTAuMjkyIHogbSAtMzAuNTY3LC0zLjk1OCBjIC0xLjQ0NiwwLjcwMyAtMC4zMTgsMy44NTMgMi4xNzgsOC4zNTcgMi4wMzMsMy42NzYgNC4wNTcsNS41MjYgNS45Nyw1LjUyNiAwLjIzNywwIDAuNTA0LC0wLjA1MyAwLjgzNywtMC40MjUgMC4zMDcsLTAuMzQ0IDAuNDQ3LC0wLjY3NCAwLjQ0NywtMS4wMzggMCwtMS4wMTEgLTAuNTM5LC0zLjA2NiAtMy4xMiwtNy4wOSAtMi4yNywtMy41MzcgLTUuMTMsLTUuOTAzIC02LjMxMiwtNS4zMyIgLz48cGF0aCBpZD0icGF0aDYwIiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM3My4zNzEsNDkzLjE1NCAwLDAgYyAtMC45NjgsMS4wMyAtMi4zMzMsMS41NTIgLTQuMDU4LDEuNTUyIC0xLjMwMiwwIC0yLjYyMywtMC41ODYgLTMuOTk3LC0xLjU2NSAwLjE1NywwLjQ0MyAwLjQ0OSwxLjI2IDAuNDQ5LDEuMjYgbCAtNy4zNTQsMC4wMDggLTUuNjY2LC0xNi44OTcgYyAtMC43OTUsLTAuODM4IC0xLjc4LC0xLjU5NiAtMi4yMDgsLTEuODUxIC0wLjkyMSwtMC41MzYgLTIuMjMyLC0xLjAzIC0zLjMzOCwtMC41ODMgMCwwIC0wLjUzNCwwLjI3IC0wLjQxNCwwLjU5MSAwLjM2MiwxLjA2OCAyLjA4MSw2LjEyNCAyLjA4MSw2LjEyNCAxLjUxMyw0LjQ3IDIuODQ5LDguMTg0IDMuODY5LDEwLjc0NiBsIDAuODkxLDIuMjQzIC03LjQ0MywwIC0wLjQwNSwtMS4wNjEgYyAtMS4zMTQsLTMuNDgzIC0yLjQwNiwtNi4xMTEgLTMuMzM4LC04LjA0MSAtMS40NjEsLTMuMDcyIC0yLjkyNCwtNS40NDMgLTQuMzQ1LC03LjA1MSAtMS4zMDcsLTEuNDU1IC0yLjQ3NiwtMi42MjUgLTMuOTU4LC0yLjYxOSAtMC4xMTgsMCAtMC4yNTIsLTEwZS00IC0wLjM2MiwwLjAyNSAtMC4yMDYsMC4wNDkgLTAuMzY2LDAuMzA0IC0wLjI4OSwwLjQ3IDEuMTE4LDIuOTU0IDcuMTI1LDE4LjI3NyA3LjEyNSwxOC4yNzcgbCAtNy42MDQsMCBjIDAsMCAtNy4yNywtMTguNDU0IC03LjM5MiwtMjAuMDg4IC0wLjA5OCwtMS4zNDUgMC42LC0yLjQ3OSAxLjUzNCwtMy4zNjkgMC45MjYsLTAuODggMi4wNiwtMS4zMjMgMy4zNjksLTEuMzIzIDIuNDE2LDAgNS4xNiwxLjQyMSA4LjMyNiw0LjIwMyAtMC4wMDMsLTAuMDExIC0wLjAyNiwtMC4wNjggLTAuMDI2LC0wLjA2OCAwLC0wLjAwNyAtMC4xNDUsLTAuNzQ5IC0wLjE0NSwtMC43NDkgMCwtMC43MDggMC4zOTQsLTEuNzI0IDIuMjY3LC0yLjU3MiAxLjIxMSwtMC41NCAyLjM1MiwtMC44MTQgMy4zODUsLTAuODE0IDEuNzkzLDAgMy4yODMsMC4yNTggNS4xNzYsMS41NDYgMC44MTQsMC41NTMgMS4zNzgsMS4xMTYgMS44MTIsMS42ODEgbCAtMS4wODMsLTMuMjI3IDcuMzMyLDAgMC4zNSwxLjE3MSBjIDAuODk1LDMuMDE3IDEuNzgyLDUuNjMxIDIuNjQxLDcuNzY2IDEuMjA2LDMuMDcyIDIuNDIzLDUuNTUxIDMuNjIxLDcuMzc0IDEuMzc3LDIuMDc5IDIuMTMzLDIuMzc3IDIuNzk1LDIuNjQxIDAsMCAwLjQ5OSwwLjI0NCAxLjQ0OCwwLjMzOSAwLjgwMSwwLjA4MSAxLjYwNSwtMC41MzcgMS44MzYsLTEuMDE1IDAuMjU0LC0wLjUyMiAtMC4wNjcsLTEuNDEyIC0wLjM2MywtMi4xNDYgLTAuMjY3LC0wLjY2MyAtMC40NTcsLTEuMTQxIC0wLjI1LC0xLjQ1MSAwLjA2NCwtMC4wOTggMC4xOTgsLTAuMjE0IDAuNDUxLC0wLjIxNCAxLjQ1MiwwIDIuNjcxLDAuNTQ1IDMuNTI1LDEuNTY4IDAuNzg4LDAuOTYgMS4xODcsMi4xMDUgMS4xODcsMy40MDcgMCwxLjQ2NSAtMC40ODIsMi43MTMgLTEuNDMyLDMuNzEyIiAvPjxwYXRoIGlkPSJwYXRoNjIiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjY3LjIwOCw1MTAuNjE3IDAuMDExLC0wLjAwOSBjIC0wLjA3LDAuMDQ2IC03LjE5OCw0LjMyOSAtMTQuMDg0LDQuNzA3IC04LjE2MywwLjQ0OCAtMjIuNjIyLC0zLjE4MiAtMjUuMDU0LC0xOS42MjEgbCAwLjU0NSwtMC4xMTEgYyAxLjkxNyw3LjMxOSA4LjgyNSwxNC4yNDggMTYuNDIzLDE2LjQ3NiA0LjU5NCwxLjM0MSA5Ljc0LDAuODIxIDE0LjQ4NiwtMS40NjkgNS42ODksLTIuODY0IDEwLjMwMywtOS42MDYgMTAuOTY3LC0xNi4wMjggMC4zODUsLTMuNzMzIC0wLjM0NiwtOS4xMzMgLTYuMDE3LC0xMy42NSAtNC43MzQsLTMuODM2IC0xMi45MDEsLTUuMzEzIC0xNS44ODcsLTIuODc0IC0xLjM5NCwxLjE0IC0xLjAwNywyLjk0MSAtMC4xNiw1LjUzOSBsIDkuMzM4LDIzLjc2NSAtMC4wODksMC4xMjMgYyAtMC4xOCwwLjI1MSAtNC40NDIsNi4xMzUgLTguNTE0LDQuMjQ2IC0xLjMwNywtMC42MDggLTEwLjAyLC0yOS40NTEgLTEyLjY2LC0zOC4yNzYgbCAtMC4wNzQsLTAuMjQ5IDAuMjQyLC0wLjA5IGMgMTIuNDg1LC00LjYxMyAyMy4zNDUsLTQuNzg2IDMyLjI4NCwtMC41MDQgNi42ODgsMi43ODQgMTEuNDQ2LDkuNzA1IDExLjgyNSwxNy4yMTYgMC40MTcsOC4zMzQgLTQuNTMzLDE1LjkxNiAtMTMuNTgyLDIwLjgwOSIgLz48cGF0aCBpZD0icGF0aDY0IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI0Ni40NzUsNTY0LjE3OSBjIC0wLjQxLDAuODU5IC0yLjIyNSw0LjA0OCAtNS4yNjQsNC45MDkgLTMuMTA2LDAuODc4IC01Ljk0OSwtMC4zNzQgLTcuMzE1LC0xLjM2OSBsIDEyLjU3OSwtMy41NCIgLz48cGF0aCBpZD0icGF0aDY2IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDIzOS42MTgsNTYyLjc3IGMgMi44MzQsLTAuODE1IDUuODM2LDAuNzI4IDYuODU3LDEuNDA5IGwgLTEyLjU3OSwzLjU0IGMgMC45MDQsLTEuNTIxIDIuMTg2LC0zLjkzMiA1LjcyMiwtNC45NDkiIC8+PHBhdGggaWQ9InBhdGg2OCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNDguODg0LDU3MC43MzggYyAwLjE0MywxLjE0NCAwLjIxOCw0LjY2OSAtMS44MzEsNyAtMi4xODIsMi40OCAtNS4xMzksMi45NzEgLTYuODI1LDIuODI3IGwgOC42NTYsLTkuODI3IiAvPjxwYXRoIGlkPSJwYXRoNzAiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjQyLjM5Miw1NzMuMjQ0IGMgMi4wMDMsLTIuMTY3IDUuMjYzLC0yLjU1OCA2LjQ5MiwtMi41MDYgbCAtOC42NTYsOS44MjcgYyAtMC4wMTUsLTEuNzY4IC0wLjMzMywtNC42MTkgMi4xNjQsLTcuMzIxIiAvPjxwYXRoIGlkPSJwYXRoNzIiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjU4LjI0NSw1MzguMzg5IGMgLTEuMzA0LDAuNDc5IC02LjE2MiwxLjM2NCAtOS4yNTgsLTAuODExIC0zLjE4MiwtMi4yMyAtNC4xNDcsLTUuOTczIC00LjM1MSwtNy45NjEgbCAxMy42MDksOC43NzIiIC8+PHBhdGggaWQ9InBhdGg3NCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNTMuODc5LDUzMC41MTIgYyAzLjIyOCwyLjA5NyA0LjMsNi4yNzIgNC4zNjYsNy44NzcgbCAtMTMuNjA5LC04Ljc3MiBjIDIuNDE0LC0wLjY5OCA2LjEyNSwtMS4xMjggOS4yNDMsMC44OTUiIC8+PHBhdGggaWQ9InBhdGg3NiIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNTcuNDU2LDU0Mi44NDMgYyAtMC44MDUsMS4yNiAtNS4wNjUsNS43NjEgLTkuNzgsNi4xNzIgLTQuNTQ5LDAuMzkyIC04LjYxNywtMS41NTggLTEwLjM5OCwtMy4wNDcgbCAyMC4xNzgsLTMuMTI1IiAvPjxwYXRoIGlkPSJwYXRoNzgiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjQ2LjU1Miw1MzkuOTExIGMgNC42NDIsLTAuODM3IDkuMzA5LDEuNjMxIDEwLjkwNCwyLjkzMiBsIC0yMC4xNzgsMy4xMjUgYyAyLjAxOSwtMi41MTEgNC44NjksLTUuMjYyIDkuMjc0LC02LjA1NyIgLz48cGF0aCBpZD0icGF0aDgwIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI5Mi4xODMsNTgxLjkzOCBjIC0wLjUyOCwxLjI0MyAtMy4xMTIsNS42OTYgLTcuMjQ2LDcuMjY3IC00LjUzOSwxLjcyNiAtOC44MTEsMC40ODcgLTEwLjc2NiwtMC42MzcgbCAxOC4wMTIsLTYuNjMiIC8+PHBhdGggaWQ9InBhdGg4MiIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyODEuNTMyLDU4MS4yOCBjIDQuMDgzLC0xLjY2NSA4Ljg1OCwtMC4yMzkgMTAuNjUxLDAuNjU4IGwgLTE4LjAxMiw2LjYzIGMgMS40MDUsLTIuNjU4IDMuNDg5LC01LjcwOCA3LjM2MSwtNy4yODgiIC8+PHBhdGggaWQ9InBhdGg4NCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNjguNjA1LDUzMS45NjYgYyAwLjA5NSwxLjQ1MyAtMC4wMjMsNC42NTUgLTIuMTAxLDcuMDQ2IC0yLjI0LDIuNTc2IC01LjIzNywzLjA4NiAtNi44MzYsMy4xNzkgbCA4LjkzNywtMTAuMjI1IiAvPjxwYXRoIGlkPSJwYXRoODYiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjYxLjkyNiw1MzQuOTcxIGMgMi4wNzYsLTIuNCA1LjM2MSwtMy4xMzMgNi42NzksLTMuMDA1IGwgLTguOTM3LDEwLjIyNSBjIC0wLjE1LC0xLjc2MyAwLjI1LC00LjkwMiAyLjI1OCwtNy4yMiIgLz48cGF0aCBpZD0icGF0aDg4IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI2OS42NTQsNTQ0LjY3MiBjIC0wLjQzOSwxLjE0NCAtMS45NzUsNC4yNCAtNC44ODIsNS40ODYgLTMuMTM0LDEuMzQ3IC02LjAzNSwwLjU4NyAtNy41MjEsLTAuMDA2IGwgMTIuNDAzLC01LjQ4IiAvPjxwYXRoIGlkPSJwYXRoOTAiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjYyLjAxNCw1NDQuNzI5IGMgMy4xNDEsLTEuNTU5IDYuNDk4LC0wLjczMyA3LjY0LC0wLjA1NyBsIC0xMi40MDMsNS40OCBjIDAuNjgyLC0xLjYzMSAyLjAyNiwtNC4wNjEgNC43NjMsLTUuNDIzIiAvPjxwYXRoIGlkPSJwYXRoOTIiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjU2Ljk0MSw1NTUuNzA5IGMgLTAuNzUxLDAuOTQ4IC0zLjIyMiwzLjYzIC02LjYwMSwzLjg3OSAtMy42MjQsMC4yNjggLTYuMTczLC0xLjg3MiAtNy4zNzEsLTMuMDUzIGwgMTMuOTcyLC0wLjgyNiIgLz48cGF0aCBpZD0icGF0aDk0IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI1MC4wMDQsNTUyLjYyMiBjIDMuMjAyLC0wLjE3OCA2LjA4MiwyLjIwNSA2LjkzNywzLjA4NyBsIC0xMy45NzIsMC44MjYgYyAxLjIwNCwtMS4yOTMgMy4zNjUsLTMuNzA4IDcuMDM1LC0zLjkxMyIgLz48cGF0aCBpZD0icGF0aDk2IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMwMC43NzYsNTk2LjIyNyBjIDAuNzIsMS4yMjQgMi41OTQsNS4wMDggMS40MzEsOC43ODcgLTEuMjUyLDQuMDUzIC00LjY0NCw1Ljg5MiAtNi40NTIsNi42ODcgbCA1LjAyMSwtMTUuNDc0IiAvPjxnIGlkPSJnOTgiPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwUGF0aDEwMikiIGlkPSJnMTAwIj48cGF0aCBpZD0icGF0aDEwNiIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyOTQuNTcyLDYwMi4zOTYgYyAxLjE2OSwtMy41NTQgNC44NzQsLTUuNjE3IDYuMjA0LC02LjE2OSBsIC01LjAyMSwxNS40NzQgYyAtMC45MDUsLTEuODY1IC0yLjUyMywtNS4yMjkgLTEuMTgzLC05LjMwNSIgLz48cGF0aCBpZD0icGF0aDEwOCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMTUuMDk3LDYwMy40NTggYyAwLjgxOSwxLjA3MyAyLjk2NSw0LjQ0NSAyLjI2Nyw4LjEwNyAtMC43NDYsMy45MjcgLTMuNzA3LDYuMDc0IC01LjMzNCw3LjAwMiBsIDMuMDY3LC0xNS4xMDkiIC8+PHBhdGggaWQ9InBhdGgxMTAiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzA5Ljg2Niw2MTAuMDE4IGMgMC44NTgsLTMuODM5IDQuMjk5LC01LjkwOCA1LjIzMSwtNi41NiBsIC0zLjA2NywxNS4xMDkgYyAtMS4wOTEsLTEuNTEgLTMuMDM1LC00LjY0MSAtMi4xNjQsLTguNTQ5IiAvPjwvZz48L2c+PHBhdGggaWQ9InBhdGgxMTIiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzE2LjQ5Myw1ODUuMzg3IGMgMS4wNDQsMC44MjUgMy44MTEsNC4wMTUgMy42MzcsNy41NzUgLTAuMTYxLDMuMzA0IC0zLjAwMSw2LjE5MSAtNC41Niw3LjI2OSBsIDAuOTIzLC0xNC44NDQiIC8+PHBhdGggaWQ9InBhdGgxMTQiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzEyLjEyMSw1OTIuMzk3IGMgMC4zMzksLTMuNzQ5IDMuNDk2LC02LjI3OCA0LjM3MiwtNy4wMSBsIC0wLjkyMywxNC44NDQgYyAtMS4zNSwtMS4zMDIgLTMuNzk2LC00LjAxNiAtMy40NDksLTcuODM0IiAvPjxwYXRoIGlkPSJwYXRoMTE2IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMyMS42MTksNTc2IGMgMS4xNzYsMC41MyA0LjQ0LDIuNDU1IDUuMjM5LDYuMjk3IDAuNjU3LDMuMTcxIC0xLjI3LDYuNiAtMi40NTMsNy45OTkgTCAzMjEuNjE5LDU3NiIgLz48cGF0aCBpZD0icGF0aDExOCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMTkuMjgyLDU4My43MSBjIC0wLjU4MiwtMy4zOTcgMS43MDUsLTYuODAzIDIuMzM3LC03LjcxIGwgMi43ODYsMTQuMjk2IGMgLTEuNTcyLC0wLjkwNiAtNC40ODcsLTIuODg1IC01LjEyMywtNi41ODYiIC8+PHBhdGggaWQ9InBhdGgxMjAiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzM1LjQ1LDU1Ny44NzQgYyAxLjMxOSwtMC4xNDcgNS4yMjcsLTAuMTIyIDcuOTA1LDIuODU5IDIuMjA5LDIuNDU4IDIuMjcxLDYuNTI0IDEuOTMxLDguMzgzIGwgLTkuODM2LC0xMS4yNDIiIC8+PHBhdGggaWQ9InBhdGgxMjIiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzM3LjMwNiw1NjUuOTQ5IGMgLTIuMjIsLTIuNzMgLTEuOTYsLTYuOTQxIC0xLjg1NiwtOC4wNzUgbCA5LjgzNiwxMS4yNDIgYyAtMS41OTQsMC4xNDEgLTUuMzgxLDAuMDMxIC03Ljk4LC0zLjE2NyIgLz48cGF0aCBpZD0icGF0aDEyNCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNjMuMDEyLDU2Ni4wMzEgYyAxLjM1MiwtMC4wOTcgNS4yNjgsMC4xNzMgOC4xNjQsMy4wODkgMi40MDksMi40MzEgMi42ODcsNi42MzEgMi40NzksOC41MDQgbCAtMTAuNjQzLC0xMS41OTMiIC8+PHBhdGggaWQ9InBhdGgxMjYiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzY1LjI4MSw1NzQuMzM1IGMgLTIuNTE5LC0yLjgzNiAtMi4zNTIsLTcuMTI4IC0yLjI2OSwtOC4zMDQgbCAxMC42NDMsMTEuNTkzIGMgLTEuNjQ3LDAuMTgxIC01Ljg2MiwtMC40NjQgLTguMzc0LC0zLjI4OSIgLz48cGF0aCBpZD0icGF0aDEyOCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMzkuNDcxLDU4MC4zNjUgYyAxLjIzLDAuMjg4IDQuOTM2LDEuNjY0IDYuNDgzLDQuODA5IDEuNDcsMi45ODYgMC43MzQsNi42MDkgLTAuMDMsOC4yNSBsIC02LjQ1MywtMTMuMDU5IiAvPjxwYXRoIGlkPSJwYXRoMTMwIiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMzOS4zNDMsNTg4LjMxNyBjIC0xLjUzNSwtMy4yMDggLTAuMjQsLTYuOTI1IDAuMTI4LC03Ljk1MiBsIDYuNDUzLDEzLjA1OSBjIC0xLjczMiwtMC40NTggLTQuOTgxLC0xLjc2NiAtNi41ODEsLTUuMTA3IiAvPjxwYXRoIGlkPSJwYXRoMTMyIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMzNi4zMiw1OTQuMzE3IGMgMS4yNjEsMC4xNTggNS4xNTIsMS4xMzQgNy4wODEsNC4xNCAxLjgyOSwyLjg1MyAxLjQzOCw2LjUzNSAwLjk5NSw4LjMzMyBsIC04LjA3NiwtMTIuNDczIiAvPjxwYXRoIGlkPSJwYXRoMTM0IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMzNy4xNTcsNjAyLjQwMSBjIC0xLjkyNCwtMy4wNzEgLTEuMDgyLC03LjAxIC0wLjgzNywtOC4wODQgbCA4LjA3NiwxMi40NzMgYyAtMS43ODYsLTAuMjggLTUuMjM2LC0xLjE5IC03LjIzOSwtNC4zODkiIC8+PHBhdGggaWQ9InBhdGgxMzYiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzUwLjAwMiw1ODcuNzM2IGMgMS4wNTYsLTAuMTk5IDQuNDMsLTAuNDI1IDYuNzIzLDEuNDkyIDIuMTcyLDEuODE5IDIuNzU3LDQuODgyIDIuODQsNi40NDEgbCAtOS41NjMsLTcuOTMzIiAvPjxwYXRoIGlkPSJwYXRoMTM4IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM1Mi42NTYsNTk0LjAxOSBjIC0yLjMwMSwtMS45NjkgLTIuNTg4LC01LjM1NiAtMi42NTQsLTYuMjgzIGwgOS41NjMsNy45MzMgYyAtMS41MDUsMC4yNDIgLTQuNTA4LDAuNDA0IC02LjkwOSwtMS42NSIgLz48cGF0aCBpZD0icGF0aDE0MCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNjIuNjQ2LDU3OS4xNjQgYyAxLjEwMywwLjI0NiA0LjUwNywxLjEyOSA2LjA2Niw0LjI1NCAxLjUyNCwzLjA1NCAwLjc3LDUuOTUgMC4yNDksNy41MSBsIC02LjMxNSwtMTEuNzY0IiAvPjxwYXRoIGlkPSJwYXRoMTQyIiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM2Mi43ODQsNTg2LjQ2NyBjIC0xLjQ4LC0yLjg4NyAtMC41MzIsLTYuMTE5IC0wLjEzOCwtNy4zMDMgbCA2LjMxNSwxMS43NjQgYyAtMS41NTcsLTAuMzkyIC00LjYzNCwtMS40NTQgLTYuMTc3LC00LjQ2MSIgLz48cGF0aCBpZD0icGF0aDE0NCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNTMuNDYzLDU2Mi45NCBjIDEuMTMzLDAuMjY5IDQuNjIzLDEuMjM1IDYuMTc3LDQuNDc4IDEuNTE2LDMuMTY3IDAuNjk1LDYuMTM0IDAuMTMyLDcuNzMyIGwgLTYuMzA5LC0xMi4yMSIgLz48cGF0aCBpZD0icGF0aDE0NiIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNTMuNDg4LDU3MC40NTUgYyAtMS40NzYsLTIuOTk2IC0wLjQ0NiwtNi4zMDQgLTAuMDI1LC03LjUxNSBsIDYuMzA5LDEyLjIxIGMgLTEuNTk3LC0wLjQyOSAtNC43NDYsLTEuNTcyIC02LjI4NCwtNC42OTUiIC8+PHBhdGggaWQ9InBhdGgxNDgiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzczLjY5MSw1NjguODcxIGMgMC45NzYsLTAuMzMyIDQuMDQzLC0xLjI0NiA2Ljc0NiwwLjQ1MiAyLjY0MSwxLjY1OSAzLjQzNSw0LjI2NSAzLjc3NSw1LjcyNiBsIC0xMC41MjEsLTYuMTc4IiAvPjxwYXRoIGlkPSJwYXRoMTUwIiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM3Ny4yODEsNTc0LjQ4NSBjIC0yLjUyOSwtMS41NDkgLTMuMzI5LC00LjUwOCAtMy41OSwtNS42MTQgbCAxMC41MjEsNi4xNzggYyAtMS4zOTksMC40MjcgLTQuMjk4LDEuMDUgLTYuOTMxLC0wLjU2NCIgLz48cGF0aCBpZD0icGF0aDE1MiIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNjguODgyLDU1OC4yMjIgYyAwLjg4NiwtMC41OTQgMy42OCwtMi4yMzkgNi44NzIsLTEuMzczIDMuMTg0LDAuODYyIDQuMzk4LDMuMzA2IDUuMzI1LDQuNzA2IGwgLTEyLjE5NywtMy4zMzMiIC8+PHBhdGggaWQ9InBhdGgxNTQiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzczLjk5LDU2Mi44NjggYyAtMi45NDksLTAuODY1IC00LjU0OSwtMy42MSAtNS4xMDgsLTQuNjQ2IGwgMTIuMTk3LDMuMzMzIGMgLTEuMjg1LDAuODA4IC00LjAxOCwyLjIxNyAtNy4wODksMS4zMTMiIC8+PHBhdGggaWQ9InBhdGgxNTYiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzc5LjUzNiw1NTUuODYxIGMgMC44NTMsLTAuOTU2IDMuNjQsLTMuNjYzIDcuNTc4LC0zLjYxNiA0LjAzLDAuMDQ3IDYuMjM1LDIuMzE0IDcuNTQsMy45MzQgbCAtMTUuMTE4LC0wLjMxOCIgLz48cGF0aCBpZD0icGF0aDE1OCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzODYuNzk5LDU1OS44MjcgYyAtMy42NTUsLTAuMTU2IC02LjMyLC0yLjkxMSAtNy4yNjMsLTMuOTY2IGwgMTUuMTE4LDAuMzE4IGMgLTEuMjUzLDEuMzIxIC00LjA0OCwzLjgwOCAtNy44NTUsMy42NDgiIC8+PHBhdGggaWQ9InBhdGgxNjAiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzY4LjE3Myw1NTYuMzAxIGMgLTAuMDc3LC0xLjA2NCAtMC4wMzgsLTQuNDIxIDIuMzExLC02Ljc1MyAyLjMwMSwtMi4yODYgNS4yMDYsLTIuMTc3IDYuNzY0LC0yLjE5NiBsIC05LjA3NSw4Ljk0OSIgLz48cGF0aCBpZD0icGF0aDE2MiIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNzQuODY4LDU1NC4xNTUgYyAtMi4yMTIsMi4xMzQgLTUuNTE4LDIuMTc0IC02LjY5NSwyLjE0NiBsIDkuMDc1LC04Ljk0OSBjIDAuMDY1LDEuNTE0IC0wLjA3NCw0LjU4MSAtMi4zOCw2LjgwMyIgLz48cGF0aCBpZD0icGF0aDE2NCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNDUuMjQxLDU0NC45OTkgYyAxLjAzLDAuMzIzIDQuMTYsMS41NzcgNS4zOSw0LjY3IDEuMjAyLDMuMDIxIDAuMjE4LDUuNjI0IC0wLjQwMSw3LjA2NSBsIC00Ljk4OSwtMTEuNzM1IiAvPjxwYXRoIGlkPSJwYXRoMTY2IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM0NC43NTgsNTUyLjA4NyBjIC0xLjE3NiwtMi44NTkgMC4wMTYsLTUuOTkzIDAuNDgzLC03LjA4OCBsIDQuOTg5LDExLjczNSBjIC0xLjQ0OCwtMC40OTggLTQuMjQ3LC0xLjY2NSAtNS40NzIsLTQuNjQ3IiAvPjxwYXRoIGlkPSJwYXRoMTY4IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM2MS40MDMsNTQwLjM3NSBjIDAuNDE1LDEuMDc4IDAuODA0LDQuNjI5IC0wLjg3NSw3LjA2IC0xLjc1MiwyLjU0MyAtNC42MzUsMy4yODEgLTYuMTYxLDMuNTQ4IGwgNy4wMzYsLTEwLjYwOCIgLz48cGF0aCBpZD0icGF0aDE3MCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNTUuNDMyLDU0My42NDggYyAxLjY2NCwtMi4zMSA0LjgxNSwtMy4wNjggNS45NzEsLTMuMjczIGwgLTcuMDM2LDEwLjYwOCBjIC0wLjQyLC0xLjM5NCAtMC44MjcsLTQuNzEgMS4wNjUsLTcuMzM1IiAvPjxwYXRoIGlkPSJwYXRoMTcyIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM0OC4zNTEsNTk0LjA2OCBjIDEuMjI4LDAuMjQ4IDQuODM3LDEuNDczIDYuNTUyLDQuNTY4IDEuNjE5LDIuOTIxIDAuOTE5LDYuNTQ2IDAuMzUzLDguMjc4IGwgLTYuOTA1LC0xMi44NDYiIC8+PHBhdGggaWQ9InBhdGgxNzQiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzQ4LjUzOCw2MDIuMDY0IGMgLTEuNjcsLTMuMTU3IC0wLjU3MywtNi44NzIgLTAuMTg3LC03Ljk5NiBsIDYuOTA1LDEyLjg0NiBjIC0xLjczNiwtMC40IC00Ljk4LC0xLjU1OSAtNi43MTgsLTQuODUiIC8+PHBhdGggaWQ9InBhdGgxNzYiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjg4LjI4Nyw2MDQuNzE4IGMgMC42MjcsMS4yMTYgMS42MTYsNC4xNjQgMC42MDYsNi44NTIgLTEuMTQzLDMuMDQyIC0zLjk2LDQuNDEgLTUuNDU3LDQuOTI0IGwgNC44NTEsLTExLjc3NiIgLz48cGF0aCBpZD0icGF0aDE3OCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyODMuMDcxLDYwOS4xMTIgYyAxLjE0LC0yLjU0NCA0LjA2NiwtMy45NTMgNS4yMTYsLTQuMzk0IGwgLTQuODUxLDExLjc3NiBjIC0wLjY2NCwtMS41NzcgLTEuNzg1LC00LjIxMSAtMC4zNjUsLTcuMzgyIiAvPjxwYXRoIGlkPSJwYXRoMTgwIiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMwOC41Niw1OTIuMjEyIGMgMC45ODgsMS4wMzkgMi44MDksMy42OTEgMi41NjUsNi42NzIgLTAuMjc0LDMuMzczIC0yLjc1Myw1LjU0NSAtNC4xMjYsNi40ODkgbCAxLjU2MSwtMTMuMTYxIiAvPjxwYXRoIGlkPSJwYXRoMTgyIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMwNC40OTYsNTk4LjA3NCBjIDAuNDE2LC0yLjg3MSAzLjAyNCwtNS4wOTUgNC4wNjQsLTUuODYyIGwgLTEuNTYxLDEzLjE2MSBjIC0xLjEzMiwtMS4zOTEgLTMuMDIzLC0zLjcxNSAtMi41MDMsLTcuMjk5IiAvPjxwYXRoIGlkPSJwYXRoMTg0IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMyMi42ODcsNTk1Ljk2OCBjIDEuMTQsMC43MzUgMy40MDcsMi44MDQgMy44NjgsNS42MTggMC41MjUsMy4xODYgLTEuMjI4LDUuODA0IC0yLjI2MSw2Ljk5MSBsIC0xLjYwNywtMTIuNjA5IiAvPjxwYXRoIGlkPSJwYXRoMTg2IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMyMC4zMzUsNjAyLjM1OCBjIC0wLjI4MSwtMi43NTQgMS41ODMsLTUuNDQyIDIuMzUyLC02LjM5IGwgMS42MDcsMTIuNjA5IGMgLTEuMzUzLC0xLjAyOCAtMy42MTEsLTIuNzggLTMuOTU5LC02LjIxOSIgLz48cGF0aCBpZD0icGF0aDE4OCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMjcuODY2LDU5MC4xMzQgYyAxLjAzMiwwLjQxOCAzLjIwNiwxLjc3NSA0LjAzNSwzLjk2MyAwLjk5MywyLjYyIC0wLjExNyw1LjAxMSAtMC43NjgsNi4xMjkgbCAtMy4yNjcsLTEwLjA5MiIgLz48cGF0aCBpZD0icGF0aDE5MCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMjYuOTI5LDU5NS42MyBjIC0wLjYxNCwtMi4xODcgMC40NjIsLTQuNjE0IDAuOTM3LC01LjQ5NiBsIDMuMjY3LDEwLjA5MiBjIC0xLjI1LC0wLjYyMiAtMy40MDIsLTEuNzIgLTQuMjA0LC00LjU5NiIgLz48cGF0aCBpZD0icGF0aDE5MiIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMzEuMTM2LDU3Ni4yNzIgYyAxLjE0NCwwLjQ1MyAzLjU4MSwxLjg3IDQuNDkyLDQuMjY4IDEuMDg5LDIuODY4IC0wLjA4OSw1LjUyMyAtMC44Miw2Ljc1IGwgLTMuNjcyLC0xMS4wMTgiIC8+PHBhdGggaWQ9InBhdGgxOTQiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzMwLjA5Nyw1ODIuMjQ3IGMgLTAuNjcsLTIuMzk5IDAuNTA5LC01LjAwNCAxLjAzOSwtNS45NzUgbCAzLjY3MiwxMS4wMTggYyAtMS4zODIsLTAuNjc1IC0zLjgzMywtMS44OTMgLTQuNzExLC01LjA0MyIgLz48cGF0aCBpZD0icGF0aDE5NiIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyODkuNTQzLDU5MC4zMTIgYyAwLjQ0NywzLjIyOCAtMC4yOSw2LjIxMiAtMi4wOCw4LjM1NyAtMi4yNTUsMi43MDMgLTYuMjE2LDMuNTE3IC03Ljk0OCwzLjM4NSBsIDEwLjAyOCwtMTEuNzQyIiAvPjxwYXRoIGlkPSJwYXRoMTk4IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI4MS41ODgsNTkzLjc4NiBjIDEuODY4LC0yLjA2NyA0LjEyNiwtMy4yMzggNy45NTUsLTMuNDc0IGwgLTEwLjAyOCwxMS43NDIgYyAtMC4yMDgsLTEuNjggLTAuMjU4LC01LjY5MSAyLjA3MywtOC4yNjgiIC8+PHBhdGggaWQ9InBhdGgyMDAiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjk5LjQwNyw1NjUuMDc5IGMgMS4zMzYsMi44MTggMS43NTEsNS45NDggMC42OTQsOC40MDMgLTEuNTgyLDMuNjY3IC00Ljk5Miw1LjAyNCAtNi42MTEsNS40MDEgbCA1LjkxNywtMTMuODA0IiAvPjxwYXRoIGlkPSJwYXRoMjAyIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI5Mi45NzQsNTcwLjY5OSBjIDEuMTEsLTIuNDIzIDMuMDA0LC00LjMwMSA2LjQzMywtNS42MiBsIC01LjkxNywxMy44MDQgYyAtMC42NzMsLTEuNDcyIC0xLjkwMiwtNS4xNTkgLTAuNTE2LC04LjE4NCIgLz48cGF0aCBpZD0icGF0aDIwNCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMzEuMTU2LDYwMi45NjIgYyAyLjU3MywxLjAzOCA0LjY4MSwyLjY4NCA1LjU2OCw0Ljk5OSAxLjEwMywyLjg3MSAtMC4xNDksNi40NzkgLTEuMDE5LDcuNzc3IGwgLTQuNTQ5LC0xMi43NzYiIC8+PHBhdGggaWQ9InBhdGgyMDYiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzMwLjA3Nyw2MTAuNjggYyAtMC44OTIsLTIuMzI5IC0wLjQ0NCwtNC42NDEgMS4wNzksLTcuNzE4IGwgNC41NDksMTIuNzc2IGMgLTEuNTg1LC0wLjQ4OCAtNC41MywtMi4xNzQgLTUuNjI4LC01LjA1OCIgLz48cGF0aCBpZD0icGF0aDIwOCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzMDguNzQ4LDU3My44NyBjIDEuNjgyLDIuNzMxIDIuNzUzLDUuOTU2IDIuMDg4LDguNTM0IC0xLjExNCw0LjMxIC00Ljc3MSw2LjE1MSAtNi4zMzYsNi44MTEgbCA0LjI0OCwtMTUuMzQ1IiAvPjxwYXRoIGlkPSJwYXRoMjEwIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMwMi41NjMsNTgwLjE0NCBjIDAuODA2LC0yLjcxNSAzLjA5NSwtNC44OTEgNi4xODUsLTYuMjc0IGwgLTQuMjQ4LDE1LjM0NSBjIC0xLjM1NywtMS45NDggLTIuOTQzLC01LjY4MSAtMS45MzcsLTkuMDcxIiAvPjxwYXRoIGlkPSJwYXRoMjEyIiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM0MC43MTIsNTcyLjU5MiBjIDMuMzY4LC0xLjMxMyA3LjMwNywtMS40NTkgMTAuMTMyLC0wLjE1NyA0LjUzOCwyLjA5NCA1Ljk3Nyw2LjcwMyA2LjYzNSw4LjQ5OSBsIC0xNi43NjcsLTguMzQyIiAvPjxwYXRoIGlkPSJwYXRoMjE0IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM0Ni43NDIsNTgwLjc4NCBjIC0yLjkzNCwtMS41MzcgLTQuOTM1LC00LjYzOSAtNi4wMywtOC4xOTIgbCAxNi43NjcsOC4zNDIgYyAtMi40NjcsMC45NzIgLTYuODExLDEuOTA3IC0xMC43MzcsLTAuMTUiIC8+PHBhdGggaWQ9InBhdGgyMTYiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzUyLjU1NCw1NTIuODgyIGMgMy4zODMsLTAuOTMgNy4zMywtMC43MDUgOS45NjUsMC43NjggNC4yMjYsMi4zNjcgNS4yOCw2LjcyMSA1Ljc1Nyw4LjU0MyBsIC0xNS43MjIsLTkuMzExIiAvPjxwYXRoIGlkPSJwYXRoMjE4IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM1Ny42ODYsNTYxLjA5NyBjIC0yLjcyNywtMS42OTggLTQuMzg0LC00LjYyOCAtNS4xMzIsLTguMjE1IGwgMTUuNzIyLDkuMzExIGMgLTIuNTIxLDAuNjgxIC03LjA2NCwxLjEgLTEwLjU5LC0xLjA5NiIgLz48cGF0aCBpZD0icGF0aDIyMCIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAzNzUuNTk1LDUzNC4zODYgYyAwLjkyNiwzLjY3MSAwLjQwMiw3LjI2NSAtMS4xNjksOS42MDMgLTIuNDY5LDMuNjc0IC02LjcyNyw0LjY1MyAtOC41MTYsNC45ODMgbCA5LjY4NSwtMTQuNTg2IiAvPjxwYXRoIGlkPSJwYXRoMjIyIiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDM2Ny4zOTIsNTM4LjgyMSBjIDEuNzMxLC0yLjM4NyA0Ljc0LC0zLjc1IDguMjAzLC00LjQzNSBsIC05LjY4NSwxNC41ODYgYyAtMC43NTgsLTIuNTM1IC0wLjk3NCwtNi43NTggMS40ODIsLTEwLjE1MSIgLz48cGF0aCBpZD0icGF0aDIyNCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyOTcuNTA4LDU4My4yNSBjIDEuNDU1LDIuNjM4IDEuOTA3LDUuNzM2IDEuMDE0LDguMTMyIC0xLjI3NiwzLjQyMiAtNC4zNzcsNS4xMzMgLTUuOTI4LDUuNjk0IGwgNC45MTQsLTEzLjgyNiIgLz48cGF0aCBpZD0icGF0aDIyNiIgc3R5bGU9ImZpbGw6IzUyYjEyZjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyOTEuNTYyLDU4OS4xMDggYyAwLjk1MiwtMi41OTggMi42MjcsLTQuMzM2IDUuOTQ2LC01Ljg1OCBsIC00LjkxNCwxMy44MjYgYyAtMC43NiwtMS40MjEgLTIuMTcsLTQuODYxIC0xLjAzMiwtNy45NjgiIC8+PHBhdGggaWQ9InBhdGgyMjgiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjYwLjk2Miw1NzQuMjY4IGMgMC4xMDUsMS4xMzIgMC4yMTMsNC42OTIgLTEuODgsNi44NDkgLTIuMjI1LDIuMjk2IC01LjE1MiwyLjU5MyAtNi44MDUsMi4zNDMgbCA4LjY4NSwtOS4xOTIiIC8+PHBhdGggaWQ9InBhdGgyMzAiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjU0LjY1MSw1NzYuMzk2IGMgMi4wNDIsLTEuOTk1IDUuMTA2LC0yLjI2IDYuMzExLC0yLjEyOCBsIC04LjY4NSw5LjE5MiBjIC0wLjEwNywtMS40MzUgLTAuMTczLC00LjU3IDIuMzc0LC03LjA2NCIgLz48cGF0aCBpZD0icGF0aDIzMiIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNzUuMjg3LDU4MS4zOTEgYyAtMC4zODMsMS4xMjEgLTEuMjkzLDQuMjg1IC00LjY2Miw2LjA0MiAtMi43NzcsMS40NDkgLTYuNDU4LDAuNjk2IC04LC0wLjEwMyBsIDEyLjY2MiwtNS45MzkiIC8+PHBhdGggaWQ9InBhdGgyMzQiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjY3Ljg0NSw1ODEuMDI0IGMgMi43NDcsLTEuMTk5IDYuMjk1LC0wLjE2NSA3LjQ0MiwwLjM2NyBsIC0xMi42NjIsNS45MzkgYyAwLjUxNCwtMS40MTEgMS43ODMsLTQuODA0IDUuMjIsLTYuMzA2IiAvPjxwYXRoIGlkPSJwYXRoMjM2IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI3Ny41NzksNTkzLjU0NCBjIC0wLjA4LDEuMzk0IC0wLjQxMSw1LjA4IC0zLjgwNiw4LjMzOCAtMi41NDEsMi40NDIgLTYuMDQ0LDIuMzk1IC03Ljc0NCwyLjA1IGwgMTEuNTUsLTEwLjM4OCIgLz48cGF0aCBpZD0icGF0aDIzOCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNjkuNDI4LDU5Ni4xOTYgYyAyLjMwNiwtMi4wNTMgNS40MzUsLTIuODQ1IDguMTUxLC0yLjY1MiBsIC0xMS41NSwxMC4zODggYyAwLjEwOSwtMS40OTggMC40NjQsLTUuMTIyIDMuMzk5LC03LjczNiIgLz48cGF0aCBpZD0icGF0aDI0MCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNzcuOTY4LDU3Mi45IGMgLTAuNTYyLDEuMDQ2IC0yLjQwOCw0LjM4NSAtNS42MDgsNS4yMzQgLTMuNDAzLDAuOTA1IC02LjQ2NiwtMC4zOTYgLTcuODU1LC0xLjQzNyBsIDEzLjQ2MywtMy43OTciIC8+PHBhdGggaWQ9InBhdGgyNDIiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjcwLjc2LDU3MS4zNCBjIDMuMDU3LC0wLjczNSA2LjE2MiwwLjg0OCA3LjIwOCwxLjU2IGwgLTEzLjQ2MywzLjc5NyBjIDAuNzM1LC0xLjMwNiAyLjQzNiwtNC40MzcgNi4yNTUsLTUuMzU3IiAvPjxwYXRoIGlkPSJwYXRoMjQ0IiBzdHlsZT0iZmlsbDojMWI1YzI5O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI5MC43MjksNTY3LjU3OSBjIC0wLjE2NCwxLjA3MSAtMS4yMyw0LjU0NCAtMy40ODEsNS45ODQgLTIuNDc3LDEuNTggLTUuNTc0LDEuMDE5IC02Ljk2MSwwLjQ0NCBsIDEwLjQ0MiwtNi40MjgiIC8+PHBhdGggaWQ9InBhdGgyNDYiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjg0LjIxMiw1NjcuNzUgYyAyLjM3OSwtMS4zMjUgNS40NjYsLTAuNjMgNi41MTcsLTAuMTcxIGwgLTEwLjQ0Miw2LjQyOCBjIDAuMzM2LC0xLjI1MyAxLjA1MSwtNC42NTQgMy45MjUsLTYuMjU3IiAvPjxwYXRoIGlkPSJwYXRoMjQ4IiBzdHlsZT0iZmlsbDojNTJiMTJmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDI2NCw1NTUuOTU1IGMgMC41MTUsMS43NTYgMC43NTQsNi40OCAtMS4wNTksOS42ODMgLTIuODI3LDQuOTkgLTcuNTkzLDYuMjczIC05LjI1LDYuNTU5IEwgMjY0LDU1NS45NTUiIC8+PHBhdGggaWQ9InBhdGgyNTAiIHN0eWxlPSJmaWxsOiMxYjVjMjk7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjU1LjIzLDU2MS43OTYgYyAyLjMyNSwtMy44NzggNy4yMzEsLTUuNjg3IDguNzcsLTUuODQxIGwgLTEwLjMwOSwxNi4yNDIgYyAtMC40NjEsLTIuMDIgLTAuODYsLTYuMzk3IDEuNTM5LC0xMC40MDEiIC8+PHBhdGggaWQ9InBhdGgyNTIiIHN0eWxlPSJmaWxsOiM1MmIxMmY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjg1LjA4OSw1NTcuOTIgYyAtMC4yMzIsMS44MjUgLTEuOTAyLDYuNDQxIC00Ljg3Nyw4LjcwNCAtNC42MjksMy41MjYgLTkuNjM5LDIuODM0IC0xMS4yODgsMi40NTIgbCAxNi4xNjUsLTExLjE1NiIgLz48cGF0aCBpZD0icGF0aDI1NCIgc3R5bGU9ImZpbGw6IzFiNWMyOTtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgZD0ibSAyNzQuNDE2LDU1OS44OTMgYyAzLjgyNywtMi43NjUgOS4zMDksLTIuNDI0IDEwLjY3MywtMS45NzMgbCAtMTYuMTY1LDExLjE1NiBjIDAuMjYxLC0xLjk5NyAxLjc5NiwtNi41MTIgNS40OTIsLTkuMTgzIiAvPjxwYXRoIGlkPSJwYXRoMjU2IiBzdHlsZT0iZmlsbDojZjQ3MTFmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiBkPSJtIDMyMS4xMyw1NDQuNTA5IGMgLTEuMywtMy4xMTMgLTEuMDc2LC01LjgxNiAwLjU0MSwtNS45NSAxLjYxMiwtMC4xMzMgMy45MTQsMi4zNDMgNS4xMiw1LjQ0MyAxLjE2NCwzIDAuODY4LDUuNDggLTAuNjQ4LDUuNjI2IC0xLjUxNCwwLjE0NSAtMy43NDMsLTIuMTA5IC01LjAxMywtNS4xMTkiIC8+PHBhdGggaWQ9InBhdGgyNTgiIHN0eWxlPSJmaWxsOiNmNDcxMWY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzEzLjU5Myw1NjcuMDM2IGMgLTEuNTEsLTIuNDg2IC0xLjcyNSwtNC44MTEgLTAuNDQyLC01LjExNSAxLjI3OSwtMC4zMTMgMy41MDcsMS41MTMgNC45MzQsMy45OTggMS4zODYsMi40MSAxLjQ5Nyw0LjU1OCAwLjI5OCw0Ljg2NCAtMS4yMDMsMC4zMDUgLTMuMzI5LC0xLjM0MyAtNC43OSwtMy43NDciIC8+PHBhdGggaWQ9InBhdGgyNjAiIHN0eWxlPSJmaWxsOiNmNDcxMWY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMjk4Ljk3NCw1NDMuNzY0IGMgMS42ODUsMC42MjMgMS4wMTgsMy4yOTUgLTEuNDMyLDUuOSAtMi4zNzUsMi41MTkgLTUuNTMsNC4wMTggLTcuMTA3LDMuNDE2IC0xLjU3OSwtMC41OTcgLTEuMDY5LC0zLjA4MiAxLjE5NywtNS42MjUgMi4zNDIsLTIuNjIxIDUuNjU3LC00LjMwOCA3LjM0MiwtMy42OTEiIC8+PHBhdGggaWQ9InBhdGgyNjIiIHN0eWxlPSJmaWxsOiNmNDcxMWY7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIGQ9Im0gMzA0LjE2NSw1NDcuNDQzIGMgLTUuODk5LDguMjc3IC03LjIxNywxMS4xMjUgLTE0LjkzNywxNy42NzkgMS43NjgsLTMuMjY1IDI5Ljk3MiwtNDAuNzM5IDMuNjgxLC0yMS4xNSAwLDAgLTE1LjEyMSwxMC40NzQgLTM0Ljg5Niw5LjM4NCAwLDAgMzguNTA3LC00LjA3NiA0NS4yNzQsLTMwLjAxNyAwLjA2MiwtMC4yMzYgMC4xNTQsLTEuNTc2IDAuMTIyLC0yLjAwMSAtMC4yNjMsLTMuNDg3IC0xLjQ2OSwtNi40MTIgLTIuNTAxLC04LjM0MiAtMC44NDYsLTEuNTgzIC0yLjQ0NCwtMy41NjYgLTIuOTM0LC00LjA4MiAtMi40MywtMi41NTcgLTYuNzE2LC0zLjUzNCAtOC4zNSwtNC4zMDIgMS44NjUsLTEuMzI5IDguMTcyLC0wLjIwNSAxMS4wMDUsLTAuMDA2IGwgMTAuNTA2LC0wLjQ0MyBjIDAuMjg2LDAuMDE3IDEuMzI5LC0wLjA1MiAxLjg1NiwtMC4wNTIgbCAxLjY2Miw0LjczMyBjIDAsMCA0LjY4NiwwLjk1OCA2LjQ4NiwxLjI3MiAxLjc5NywwLjMxNyAzLjgxMiwwLjUzMiAzLjgxMiwwLjUzMiBsIC0zLjAwNiwtNi43MDkgYyAzLjMxNSwtMC40NDMgMTMuMzExLC0xLjU1MSAxNS4xNDcsLTAuNDE0IC0yLjA4NSwwLjg1NSAtOC4xMzEsMS41MDUgLTEwLjU5Nyw1LjAyNCAtMC4zNDksMC4zNTMgLTIuODIxLDguODg4IC0yLjczNiwxMS45MDQgMC4wMDIsMC4xMDcgMC4wMTMsMC4zODMgMC4wMjMsMC40MjYgNC42NTYsMzEuMDY2IDM2LjQwMiw0Mi4zIDM2LjQwMiw0Mi4zIC0yMC41NTEsLTQuNjU4IC0zMS42MzMsLTIwLjc5MiAtMzEuNjMzLC0yMC43OTIgLTIwLjg0MiwtMjYuMDU3IC02LjM4NSwxMi4yNzQgLTIuMDgyLDE2Ljc5OSAtNy43NjIsLTYuMDA1IC0xMC42MDcsLTE0Ljg4NyAtMTAuNjA3LC0xNC44ODcgMi4zNjksMjUuMjA2IDIzLjY1NCwyNy42MTUgMjMuNjU0LDI3LjYxNSAtMTAuOTY1LDAuMzA1IC0xOS40MDUsLTguODYxIC0xOS40MDUsLTguODYxIC0xOC4wMDQsLTE5LjQ0IC0xMS4yOCw4LjQwOCAtMy42MywxMi4zOCAtMC42ODUsLTAuMzY0IC0xNC45MzYsLTYuNDAzIC0xMi4zMTYsLTI3Ljk5IiAvPjwvZz48L2c+PC9zdmc+';
+const BRAND = {logo:''};
+function renderLogo(){ const src = BRAND.logo || LOGO_DEFAULT; ['railLogo','topLogo'].forEach(id=>{ const el=document.getElementById(id); if(el && el.src!==src) el.src=src; }); }
+const SETTINGS = {fxRate:3.6725}; // USD to AED, admin editable on the Supply Chain Inputs tab
+let CUR = 'AED'; try{ CUR = localStorage.getItem('oms-cur')||'AED'; }catch(e){}
+const money = usd => CUR==='AED' ? usd*SETTINGS.fxRate : usd;
+const fmtMoney = usd => (usd==null||isNaN(usd)) ? '–' : CUR+' '+Math.round(money(usd)).toLocaleString('en-US');
+const PLANNER = {RM:'Saurav Nagrale', PM:'Maslekar Purushottam Parth', FG:'Arun Muthian'};
+const $ = s => document.querySelector(s);
+const fmt = n => (n==null||isNaN(n)) ? '–' : Math.round(n).toLocaleString('en-US');
+const uid = () => Math.random().toString(36).slice(2,9);
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+/* ---------- example data (fallback only; shared store is seeded separately) ---------- */
+function exampleData(){
+  const d = (m,day) => `2026-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  return {
+    priority:[{country:'UAE',priority:1,locations:'JA01',maxAge:90,minShelf:''},{country:'KSA',priority:1,locations:'JD01',maxAge:60,minShelf:540},{country:'Kuwait',priority:2,locations:'JA01',maxAge:120,minShelf:''},{country:'Oman',priority:2,locations:'JA01',maxAge:180,minShelf:''},{country:'Qatar',priority:3,locations:'',maxAge:'',minShelf:''},{country:'Bahrain',priority:3,locations:'JA01',maxAge:180,minShelf:365}],
+    stock:[{fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2406',available:1200,mfgDate:d(6,20),expiryDate:'2028-06-19',ageRemarks:'0-90 days'},{fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2401',available:300,mfgDate:d(3,10),expiryDate:'2028-03-09',ageRemarks:'>180 days · liquidate'},{fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JD01',whName:'Jeddah DC',batch:'B2407',available:600,mfgDate:d(7,28),expiryDate:'2028-07-27',ageRemarks:'0-90 days'},{fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2405',available:400,mfgDate:d(5,25),expiryDate:'2028-05-24',ageRemarks:'90-180 days'},{fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',warehouse:'JD01',whName:'Jeddah DC',batch:'B2408',available:300,mfgDate:d(8,10),expiryDate:'2028-08-09',ageRemarks:'0-90 days'},{fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2407',available:2600,mfgDate:d(7,5),expiryDate:'2028-07-04',ageRemarks:'0-90 days'},{fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',warehouse:'JA01',whName:'Jebel Ali DC',batch:'',available:0,mfgDate:'',expiryDate:'',ageRemarks:''},{fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2406',available:950,mfgDate:d(6,28),expiryDate:'2027-12-27',ageRemarks:'0-90 days'},{fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2404',available:300,mfgDate:d(4,15),expiryDate:'2027-10-14',ageRemarks:'90-180 days'},{fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',warehouse:'JD01',whName:'Jeddah DC',batch:'B2408',available:200,mfgDate:d(8,5),expiryDate:'2028-02-04',ageRemarks:'0-90 days'}],
+    orders:[
+      {id:uid(),orderNo:'PO-UAE-1041',orderDate:d(7,6),country:'UAE',distributor:'Al Seer',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1200,caseRate:38.5,reserved:1200,supplied:1200,suppliedDate:d(7,18),ref:'INV-77021'},
+      {id:uid(),orderNo:'PO-KSA-2210',orderDate:d(7,9),country:'KSA',distributor:'Binzagr',brand:'Vatika',fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',qty:900,caseRate:52,reserved:900,supplied:900,suppliedDate:d(7,29),ref:'INV-77104'},
+      {id:uid(),orderNo:'PO-KWT-0311',orderDate:d(7,14),country:'Kuwait',distributor:'Al Yasra',brand:'Amla',fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',qty:800,caseRate:36,reserved:800,supplied:800,suppliedDate:d(8,2),ref:'INV-77230'},
+      {id:uid(),orderNo:'PO-UAE-1052',orderDate:d(8,4),country:'UAE',distributor:'Al Seer',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1500,caseRate:38.5,reserved:1500,supplied:1500,suppliedDate:d(8,15),ref:'INV-77390'},
+      {id:uid(),orderNo:'PO-KSA-2231',orderDate:d(8,6),country:'KSA',distributor:'Binzagr',brand:'Herbal',fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',qty:1100,caseRate:61,reserved:600,supplied:600,suppliedDate:d(8,20),ref:'INV-77412'},
+      {id:uid(),orderNo:'PO-OMN-0508',orderDate:d(8,11),country:'Oman',distributor:'Khimji',brand:'Amla',fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',qty:700,caseRate:36,reserved:700,supplied:700,suppliedDate:d(8,27),ref:'INV-77488'},
+      {id:uid(),orderNo:'PO-QAT-0119',orderDate:d(8,19),country:'Qatar',distributor:'Ali Bin Ali',brand:'Red',fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',qty:600,caseRate:44,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-UAE-1067',orderDate:d(8,25),country:'UAE',distributor:'Al Seer',brand:'Herbal',fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',qty:900,caseRate:61,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-KSA-2244',orderDate:d(9,1),country:'KSA',distributor:'Binzagr',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1400,caseRate:38.5,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-KWT-0324',orderDate:d(9,2),country:'Kuwait',distributor:'Al Yasra',brand:'Vatika',fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',qty:750,caseRate:52,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-BHR-0077',orderDate:d(9,2),country:'Bahrain',distributor:'Jawad',brand:'Amla',fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',qty:500,caseRate:36,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-UAE-1071',orderDate:d(9,3),country:'UAE',distributor:'Al Seer',brand:'Meswak',fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',qty:650,caseRate:58,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-QAT-0124',orderDate:d(9,3),country:'Qatar',distributor:'Ali Bin Ali',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:800,caseRate:38.5,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-OMN-0519',orderDate:d(9,4),country:'Oman',distributor:'Khimji',brand:'Red',fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',qty:700,caseRate:44,reserved:0,supplied:0,suppliedDate:'',ref:''}
+    ],
+    production:[
+      {id:uid(),fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',plannedQty:1000,produced:0},
+      {id:uid(),fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',plannedQty:400,produced:0},
+      {id:uid(),fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',plannedQty:1400,produced:0},
+      {id:uid(),fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',plannedQty:350,produced:200}
+    ],
+    rmpm:[
+      {id:uid(),matCode:'PM-LAM-100',matName:'Laminate tube 100ml Herbal',type:'PM',shortQty:180000,uom:'pcs',eta:d(9,22),status:'ETA received'},
+      {id:uid(),matCode:'RM-NEEM-EX',matName:'Neem extract',type:'RM',shortQty:120,uom:'kg',eta:'',status:'Awaiting ETA'},
+      {id:uid(),matCode:'PM-CTN-MSW',matName:'Outer carton Meswak 100g',type:'PM',shortQty:9000,uom:'pcs',eta:d(9,18),status:'ETA received'}
+    ],
+    fgmaster:[{id:uid(),fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',brand:'Vatika',category:'Hair oil',casesPerPallet:84,moq:200,shelfLife:730},{id:uid(),fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',brand:'Vatika',category:'Hair oil',casesPerPallet:60,moq:200,shelfLife:730},{id:uid(),fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',brand:'Amla',category:'Hair oil',casesPerPallet:84,moq:200,shelfLife:730},{id:uid(),fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',brand:'Herbal',category:'Oral care',casesPerPallet:48,moq:300,shelfLife:540},{id:uid(),fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',brand:'Red',category:'Oral care',casesPerPallet:56,moq:300,shelfLife:540},{id:uid(),fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',brand:'Meswak',category:'Oral care',casesPerPallet:48,moq:300,shelfLife:540}],
+    bom:[{id:uid(),fgCode:'FG-HRB-100',matCode:'PM-LAM-100',matName:'Laminate tube 100ml Herbal',type:'PM',qtyPer:72},{id:uid(),fgCode:'FG-HRB-100',matCode:'RM-NEEM-EX',matName:'Neem extract',type:'RM',qtyPer:0.35},{id:uid(),fgCode:'FG-MSW-100',matCode:'PM-CTN-MSW',matName:'Outer carton Meswak 100g',type:'PM',qtyPer:1}],
+    transit:[{id:uid(),orderNo:'PO-UAE-1052',fgCode:'FG-VAT-200',country:'UAE',qty:1500,dispatchDate:d(8,15),mode:'Truck',eta:d(8,16),ref:'TRK-4471'},{id:uid(),orderNo:'PO-KSA-2231',fgCode:'FG-HRB-100',country:'KSA',qty:600,dispatchDate:d(8,20),mode:'Sea',eta:d(9,6),ref:'MSK-889012'},{id:uid(),orderNo:'PO-OMN-0508',fgCode:'FG-AML-200',country:'Oman',qty:700,dispatchDate:d(8,27),mode:'Truck',eta:d(8,29),ref:'TRK-4502'}],
+    forecast:[{id:uid(),country:'UAE',brand:'Vatika',fgCode:'FG-VAT-200',month:'2026-09',qty:1800},{id:uid(),country:'KSA',brand:'Vatika',fgCode:'FG-VAT-200',month:'2026-09',qty:1500},{id:uid(),country:'Qatar',brand:'Vatika',fgCode:'FG-VAT-200',month:'2026-09',qty:700},{id:uid(),country:'Kuwait',brand:'Vatika',fgCode:'FG-VAT-300',month:'2026-09',qty:800},{id:uid(),country:'UAE',brand:'Herbal',fgCode:'FG-HRB-100',month:'2026-09',qty:1000},{id:uid(),country:'UAE',brand:'Meswak',fgCode:'FG-MSW-100',month:'2026-09',qty:600},{id:uid(),country:'Bahrain',brand:'Amla',fgCode:'FG-AML-200',month:'2026-09',qty:450},{id:uid(),country:'Oman',brand:'Red',fgCode:'FG-RED-150',month:'2026-09',qty:650},{id:uid(),country:'UAE',brand:'Vatika',fgCode:'FG-VAT-200',month:'2026-08',qty:1600},{id:uid(),country:'KSA',brand:'Herbal',fgCode:'FG-HRB-100',month:'2026-08',qty:1200}],
+    slob:[{id:uid(),fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JA01',batch:'B2401',mfgDate:d(3,10),expiryDate:'2028-03-09',slobQty:300,category:'Slow moving',remarks:'>180 days, offer to P3 markets'},{id:uid(),fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',warehouse:'JA01',batch:'B2404',mfgDate:d(4,15),expiryDate:'2027-10-14',slobQty:300,category:'Slow moving',remarks:'Outside UAE norm'},{id:uid(),fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',warehouse:'JA01',batch:'B2405',mfgDate:d(5,25),expiryDate:'2028-05-24',slobQty:120,category:'Near expiry',remarks:'Promo pack, discontinued artwork'}],
+    shortage:[{fgCode:'FG-HRB-100',shortQty:1400,reason:'PM laminate + neem extract'},{fgCode:'FG-MSW-100',shortQty:350,reason:'Outer carton'},{fgCode:'FG-VAT-200',shortQty:1500,reason:'Capacity - Line 2 full till 12 Sep'}]
+  };
+}
+
+/* =====================================================================
+   STORAGE: shared db when available, localStorage otherwise
+   ===================================================================== */
+const LS_KEY = 'oms-tracker-v1';
+function loadLocal(){
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const o = JSON.parse(raw); SHEETS.forEach(s=>{ if(Array.isArray(o[s])) DATA[s]=o[s]; }); if(o.__source) Object.assign(SOURCE,o.__source); if(o.__owners) Object.assign(OWNERS,o.__owners); if(o.__settings&&o.__settings.fxRate>0) SETTINGS.fxRate=o.__settings.fxRate; if(typeof o.__logo==='string') BRAND.logo=o.__logo; return true; } }catch(e){}
+  return false;
+}
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({...DATA,__source:SOURCE,__owners:OWNERS,__settings:SETTINGS,__logo:BRAND.logo})); }catch(e){} }
+function setExample(){ const ex = exampleData(); SHEETS.forEach(s=>{ DATA[s]=ex[s]; delete SOURCE[s]; }); }
+
+async function persist(sheet){
+  if(!CAN_EDIT){ toast('View only: you do not have edit access to this tracker'); recompute(); return; }
+  DATA[sheet] = DATA[sheet].map(r => ({...r, id: r.id || uid()}));
+  if(db){
+    try{ await db.doc('oms/'+sheet).set({rows: DATA[sheet], updatedAt: new Date().toISOString(), source: SOURCE[sheet]||null}); }
+    catch(e){ toast('Could not save '+sheet+' to the shared store: '+(e.message||e.code)); }
+  } else saveLocal();
+  recompute();
+}
+
+async function persistOwners(){
+  if(!IS_ADMIN){ toast('Only the admin can change owner names'); renderHub(); return; }
+  if(db){ try{ await db.doc('admin/owners').set({...OWNERS, fxRate:SETTINGS.fxRate, logo:BRAND.logo||'', updatedAt:new Date().toISOString()}); }catch(e){ toast('Could not save: '+(e.message||e.code)); } }
+  else saveLocal();
+  recompute();
+}
+function setStoreLabel(){
+  const el = $('#storeState');
+  el.textContent = storeMode==='db' ? (CAN_EDIT ? 'Shared live data · you can edit' : 'Shared live data · view only') : storeMode==='local' ? 'Saved in this browser only' : 'Example data';
+  document.body.classList.toggle('readonly', !CAN_EDIT);
+  const ha=$('#hubAccess'); if(ha) ha.textContent = storeMode!=='db' ? 'Local copy: uploads are saved in this browser only.' : IS_ADMIN ? 'You are the admin: you can upload and change owner names.' : CAN_EDIT ? 'Editor: you can upload files. Owner names are set by the admin.' : 'View only: you can download files but not upload.';
+  const ab=$('#accessBadge'); if(ab) ab.innerHTML = storeMode!=='db' ? '<span class="pill neutral">Local copy · not shared</span>' : CAN_EDIT ? '<span class="pill good">Editor · your changes are saved for everyone</span>' : '<span class="pill info">View only</span>';
+  $('#lastRefresh').textContent = 'Refreshed '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function initStore(){
+  // Render immediately from whatever is local, then light up the shared store.
+  if(!loadLocal()){ setExample(); storeMode='example'; }
+  setStoreLabel(); recompute();
+  try{
+    downloads = await window.claude?.use?.('downloads');
+  }catch(e){ downloads=null; }
+  try{ db = await window.claude?.use?.('db'); }catch(e){ db=null; }
+  if(!db) return;
+  storeMode='db';
+  // Access probe: the store only accepts writes from people the artifact is shared with as editors.
+  try{ await db.doc('oms/access').set({checkedAt:new Date().toISOString()}); CAN_EDIT=true; }catch(e){ CAN_EDIT=false; }
+  try{ await db.doc('admin/probe').set({checkedAt:new Date().toISOString()}); IS_ADMIN=true; }catch(e){ IS_ADMIN=false; }
+  setStoreLabel();
+  db.doc('admin/owners').onSnapshot(snap=>{ if(snap.exists){ const d=snap.data(); Object.keys(FILES).forEach(k=>{ if(typeof d[k]==='string' && d[k].trim()) OWNERS[k]=d[k]; }); if(Number(d.fxRate)>0) SETTINGS.fxRate=Number(d.fxRate); BRAND.logo = (typeof d.logo==='string' && d.logo.startsWith('data:image/')) ? d.logo : ''; } recompute(); }, ()=>{});
+  let firstLoad = SHEETS.map(()=>false);
+  SHEETS.forEach((s,i)=>{
+    db.doc('oms/'+s).onSnapshot(snap=>{
+      if(snap.exists){ const d=snap.data(); if(Array.isArray(d.rows)) DATA[s]=d.rows; if(d.source) SOURCE[s]=d.source; else delete SOURCE[s]; }
+      else if(!firstLoad[i]){ DATA[s]=[]; }
+      firstLoad[i]=true;
+      setStoreLabel(); recompute();
+    }, err=>{ toast('Shared data error on '+s+': '+err.code); });
+  });
+}
+
+/* =====================================================================
+   ALLOCATION ALGORITHM
+   ===================================================================== */
+let CALC = null;
+function computeAll(){
+  const prioOf = {}; DATA.priority.forEach(p=>{ if(p.country) prioOf[String(p.country).trim().toLowerCase()] = Number(p.priority)||3; });
+  const getPrio = c => prioOf[String(c||'').trim().toLowerCase()] || 3;
+  // ---- stock lots with age, and country norms (allowed locations, max age) ----
+  const today = todayStr();
+  const daysBetween = (a,b)=> Math.round((new Date(b)-new Date(a))/864e5);
+  const lots = DATA.stock.map(st=>{ const hasAge = st.ageDays!==''&&st.ageDays!=null&&!isNaN(Number(st.ageDays)); const age = hasAge? Number(st.ageDays) : (st.mfgDate? daysBetween(st.mfgDate, today) : null); const remaining = st.expiryDate? daysBetween(today, st.expiryDate) : null; const qty=Math.max(0,Number(st.available)||0); return {row:st, k:key(st.fgCode), fgName:st.fgName||'', wh:String(st.warehouse||'').trim(), whKey:String(st.warehouse||'').trim().toLowerCase(), whName:String(st.whName||'').trim(), whNameKey:String(st.whName||'').trim().toLowerCase(), batch:st.batch||'', age, remaining, remarks:st.ageRemarks||'', qty, free:qty}; }).filter(l=>l.k);
+  const stockOf = {}; lots.forEach(l=>{ stockOf[l.k]=(stockOf[l.k]||0)+l.qty; });
+  const normOf = {}; DATA.priority.forEach(pr=>{ if(!pr.country) return; const locs=String(pr.locations||'').split(/[,;/|]/).map(x=>x.trim().toLowerCase()).filter(Boolean); const num=v=>{ const n=Number(v); return (v===''||v==null||isNaN(n)||n<=0)? null : n; }; normOf[String(pr.country).trim().toLowerCase()]={locs, maxAge:num(pr.maxAge), minShelf:num(pr.minShelf), locNames:String(pr.locations||'').trim()}; });
+  const normFor = c => normOf[String(c||'').trim().toLowerCase()] || {locs:[], maxAge:null, minShelf:null, locNames:''};
+  const eligible = (lot, norm) => (!norm.locs.length || norm.locs.includes(lot.whKey) || (lot.whNameKey && norm.locs.includes(lot.whNameKey))) && (norm.maxAge==null || lot.age==null || lot.age<=norm.maxAge) && (norm.minShelf==null || lot.remaining==null || lot.remaining>=norm.minShelf);
+  // oldest eligible lot first, so the oldest inventory a country accepts leaves first
+  const takeFrom = (o, need) => { const norm=normFor(o.country); const cands=lots.filter(l=>l.k===o.k && l.free>0 && eligible(l,norm)).sort((a,b)=>((b.age==null?-1:b.age)-(a.age==null?-1:a.age))); let got=0; for(const l of cands){ if(need<=0) break; const q=Math.min(need,l.free); l.free-=q; need-=q; got+=q; o.alloc.push({wh:l.wh,batch:l.batch,age:l.age,qty:q}); } return got; };
+  // plannedOf = quantity still to come from production (planned minus produced); produced goods enter FG stock via the stock upload
+  const plannedOf = {}, plannedGross = {}, producedOf = {}, planRows = {};
+  DATA.production.forEach(p=>{ const k=key(p.fgCode); if(!k) return; const pl=Number(p.plannedQty)||0, pr=Math.min(Number(p.produced)||0, pl); plannedGross[k]=(plannedGross[k]||0)+pl; producedOf[k]=(producedOf[k]||0)+pr; plannedOf[k]=(plannedOf[k]||0)+(pl-pr); (planRows[k]=planRows[k]||[]).push(p); });
+  const shortOf = {}, shortReason = {}; DATA.shortage.forEach(sh=>{ const k=key(sh.fgCode); if(k){ shortOf[k]=(shortOf[k]||0)+(Number(sh.shortQty)||0); if(sh.reason) shortReason[k]=[...(shortReason[k]||[]),sh.reason]; } });
+  const openMaterials = DATA.rmpm.filter(r=>r.status!=='Connected'); const materialEta = openMaterials.map(r=>r.eta).filter(Boolean).sort().pop()||''; const materialsAwaiting = openMaterials.filter(r=>!r.eta).length;
+
+  // ---- master data: FG master fills brand/description; BOM links materials to FGs; lead time per FG ----
+  const master = {}; DATA.fgmaster.forEach(m=>{ const k=key(m.fgCode); if(k) master[k]=m; });
+  const bomOf = {}; DATA.bom.forEach(b=>{ const k=key(b.fgCode), m=key(b.matCode); if(k&&m) (bomOf[k]=bomOf[k]||[]).push(m); });
+  const openMatByCode = {}; openMaterials.forEach(r=>{ openMatByCode[key(r.matCode)]=r; });
+  const blockedVia = k => (bomOf[k]||[]).map(m=>openMatByCode[m]).filter(Boolean);
+  const transitOf = {}; DATA.transit.forEach(t=>{ const id=norm(t.orderNo)+'|'+key(t.fgCode); (transitOf[id]=transitOf[id]||[]).push(t); (transitOf[norm(t.orderNo)]=transitOf[norm(t.orderNo)]||[]).push(t); });
+  // ---- orders: priority 1 -> 2 -> 3, then order date ----
+  const orders = DATA.orders.map(o=>({...o, brand:o.brand||(master[key(o.fgCode)]||{}).brand||'', fgName:o.fgName||(master[key(o.fgCode)]||{}).fgName||'', qty:Number(o.qty)||0, reservedIn:Number(o.reserved)||0, supplied:Number(o.supplied)||0, prio:getPrio(o.country), month:(o.orderDate||'').slice(0,7), k:key(o.fgCode), alloc:[]}));
+  orders.forEach(o=>{ const open=Math.max(0,o.qty-o.supplied); o.reservedNet=Math.min(Math.max(0,o.reservedIn-o.supplied),open); });
+  const sorted = [...orders].sort((a,b)=> a.prio-b.prio || (a.orderDate||'').localeCompare(b.orderDate||'') || a.orderNo.localeCompare(b.orderNo));
+  // pass 1: reservations already made by logistics consume eligible lots first
+  sorted.forEach(o=>{ o.reservedUnlocated = o.reservedNet>0 ? o.reservedNet - takeFrom(o,o.reservedNet) : 0; });
+  // pass 2: the algorithm allocates what is still free, within each country's location and age norm
+  sorted.forEach(o=>{
+    const open = Math.max(0,o.qty-o.supplied);
+    let reserved = o.reservedNet;
+    if(reserved<open) reserved += takeFrom(o, open-reserved);
+    o.open=open; o.reserved=reserved; o.pending=open-reserved; o.autoReserved = reserved - o.reservedNet;
+    o.rate=Number(o.caseRate)||0; o.orderValue=o.qty*o.rate; o.dispatchValue=o.supplied*o.rate; o.balanceValue=Math.max(0,o.qty-o.supplied)*o.rate;
+    const norm=normFor(o.country); o.norm=norm;
+    o.ineligible = o.pending>0 ? lots.filter(l=>l.k===o.k && l.free>0 && !eligible(l,norm)).reduce((t,l)=>t+l.free,0) : 0;
+  });
+  // Per FG roll-up: pending vs planned; coverage assigned in the same priority order.
+  const fg = {};
+  const remainingPlan = {...plannedOf};
+  sorted.forEach(o=>{
+    const f = fg[o.k] = fg[o.k] || {fgCode:o.fgCode, fgName:o.fgName||((lots.find(l=>l.k===o.k)||{}).fgName||''), brand:o.brand, stock:stockOf[o.k]||0, planned:plannedOf[o.k]||0, plannedGross:plannedGross[o.k]||0, produced:producedOf[o.k]||0, ordered:0, supplied:0, reserved:0, pending:0, covered:0, plans:planRows[o.k]||[], shortage:shortOf[o.k]||0, shortReason:(shortReason[o.k]||[]).join('; ')};
+    f.ordered+=o.qty; f.supplied+=o.supplied; f.reserved+=o.reserved; f.pending+=o.pending;
+    const cover = Math.min(o.pending, remainingPlan[o.k]||0); remainingPlan[o.k]=(remainingPlan[o.k]||0)-cover; o.covered=cover; f.covered+=cover;
+    // status + expected date
+    const viaBom = blockedVia(o.k); const shortFg = (shortOf[o.k]||0)>0 || viaBom.length>0;
+    o.transit = transitOf[norm(o.orderNo)+'|'+o.k] || transitOf[norm(o.orderNo)] || [];
+    const plans = planRows[o.k]||[]; const inProgress = plans.some(p=>(Number(p.produced)||0)>0 && (Number(p.produced)||0)<(Number(p.plannedQty)||0));
+    if(o.qty>0 && o.supplied>=o.qty){ o.status='Supplied'; o.level='good'; o.expected=o.suppliedDate||''; }
+    else if(o.pending===0 && o.reserved>0){ o.status=o.supplied>0?'Part supplied · rest reserved':'Reserved, ready'; o.level='info'; o.expected='Ready to dispatch'; }
+    else if(shortFg && o.pending>0){ o.status='FG short · RMPM'; o.level='serious'; const etas=viaBom.map(r=>r.eta).filter(Boolean).sort(); const lastEta=etas.length?etas[etas.length-1]:''; const waiting=viaBom.filter(r=>!r.eta).length; const mats=viaBom.map(r=>r.type+' '+r.matCode+(r.eta?' · ETA '+r.eta:' · no ETA')).join(', '); o.expected = mats || (shortReason[o.k]||[]).join('; ') || 'Awaiting RM/PM connectivity'; if(lastEta && !waiting) o.expected += ' · materials connected by '+lastEta; }
+    else if(o.pending>0 && o.covered>=o.pending){ o.status = inProgress?'In production':'Production planned'; o.level='warn'; o.expected = 'After production · '+fmt(plannedGross[o.k]||0)+' planned, '+fmt(producedOf[o.k]||0)+' produced'; }
+    else if(o.pending>0 && o.covered>0){ o.status='Partly planned'; o.level='warn'; o.expected= fmt(o.covered)+' of '+fmt(o.pending)+' in plan'; }
+    else { o.status='Not planned'; o.level='crit'; o.expected='Needs production plan'; }
+  });
+  Object.values(fg).forEach(f=>{ f.gap=Math.max(0,f.pending-f.planned); f.blocked=f.shortage>0 || blockedVia(key(f.fgCode)).length>0; f.blockedMats=blockedVia(key(f.fgCode)); });
+  sorted.forEach(o=>{ if(o.pending>0 && o.ineligible>0) o.expected += ' · '+fmt(o.ineligible)+' in stock but outside location/age norm'; });
+  const eligibleStock = (country, k) => { const norm=normFor(country); return lots.filter(l=>l.k===k && eligible(l,norm)).reduce((t,l)=>t+l.qty,0); };
+  const acrOf = {}; { const v={}, q={}; sorted.forEach(o=>{ if(o.rate>0){ v[o.k]=(v[o.k]||0)+o.orderValue; q[o.k]=(q[o.k]||0)+o.qty; } }); Object.keys(v).forEach(k=>acrOf[k]=v[k]/q[k]); }
+  const forecastOf = DATA.forecast.map(f=>({...f, qty:Number(f.qty)||0, k:key(f.fgCode), month:String(f.month||'').slice(0,7), brand:f.brand||(master[key(f.fgCode)]||{}).brand||''}));
+  return {orders:sorted, fg, getPrio, stockOf, lots, normFor, eligible, eligibleStock, daysBetween, openMaterials, materialEta, materialsAwaiting, master, forecast:forecastOf, acrOf};
+}
+function key(s){ return String(s||'').trim().toUpperCase(); }
+function allocText(alloc){ const by={}; alloc.forEach(a=>{ const id=(a.wh||'Unnamed location')+(a.batch?' '+a.batch:'')+(a.age!=null?' · '+a.age+'d':''); by[id]=(by[id]||0)+a.qty; }); return Object.entries(by).map(([n,q])=>`${esc(n)} ${fmt(q)}`).join(' · '); }
+function normText(norm){ return (norm.locNames||'Any location')+(norm.maxAge!=null?' · ≤'+norm.maxAge+'d old':'')+(norm.minShelf!=null?' · ≥'+norm.minShelf+'d left':''); }
+
+/* =====================================================================
+   FILTERS
+   ===================================================================== */
+const F = {month:'',country:'',brand:'',fg:''};
+function fillSelect(sel, values, current, allLabel){
+  const s=$(sel); const cur=current; s.innerHTML='';
+  const o=document.createElement('option'); o.value=''; o.textContent=allLabel; s.appendChild(o);
+  values.forEach(v=>{ const op=document.createElement('option'); op.value=v; op.textContent=v; s.appendChild(op); });
+  s.value = values.includes(cur)?cur:'';
+}
+function refreshFilterOptions(){
+  const os = DATA.orders;
+  const inScope = o => (!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg));
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  fillSelect('#fMonth', uniq(os.filter(o=>inScope(o)).map(o=>(o.orderDate||'').slice(0,7))).reverse(), F.month, 'All months');
+  fillSelect('#fCountry', uniq(os.filter(o=>(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg))).map(o=>o.country)), F.country, 'All countries');
+  fillSelect('#fBrand', uniq(os.filter(o=>(!F.country||o.country===F.country)&&(!F.fg||key(o.fgCode)===key(F.fg))).map(o=>o.brand)), F.brand, 'All brands');
+  fillSelect('#fFg', uniq(os.filter(o=>(!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)).map(o=>o.fgCode)), F.fg, 'All FG codes');
+  F.month=$('#fMonth').value; F.country=$('#fCountry').value; F.brand=$('#fBrand').value; F.fg=$('#fFg').value;
+  // datalists
+  const dl=(id,vals)=>{ $(id).innerHTML=vals.map(v=>`<option value="${esc(v)}">`).join(''); };
+  dl('#dlCountry', uniq([...os.map(o=>o.country), ...DATA.priority.map(p=>p.country)]));
+  dl('#dlBrand', uniq(os.map(o=>o.brand)));
+  dl('#dlFg', uniq([...os.map(o=>o.fgCode), ...DATA.stock.map(s=>s.fgCode), ...DATA.production.map(p=>p.fgCode)]));
+}
+const passes = o => (!F.month||o.month===F.month)&&(!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg));
+['fMonth','fCountry','fBrand','fFg'].forEach(id=>$('#'+id).addEventListener('change',e=>{ F[{fMonth:'month',fCountry:'country',fBrand:'brand',fFg:'fg'}[id]]=e.target.value; recompute(); }));
+$('#clearFilters').addEventListener('click',()=>{ F.month=F.country=F.brand=F.fg=''; recompute(); });
+$('#fCur').value=CUR; $('#fCur').addEventListener('change',e=>{ CUR=e.target.value; try{localStorage.setItem('oms-cur',CUR);}catch(x){} recompute(); });
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function recompute(){ renderLogo(); refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); renderSlob(); renderHub(); renderSources(); if(!CAN_EDIT) document.querySelectorAll('td input, td select').forEach(i=>i.disabled=true); }
+function renderSources(){ document.querySelectorAll('[data-src]').forEach(el=>{ const m=SOURCE[el.dataset.src]; el.textContent = m ? `Last upload: ${m.fileName} · ${new Date(m.uploadedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}` : ''; }); }
+
+function renderDash(){
+  const rows = CALC.orders.filter(passes);
+  const fgKeys = new Set(rows.map(o=>o.k));
+  // FG available honours brand / fg filter (stock is central, not by country/month)
+  const fgScope = Object.values(CALC.fg).filter(f=>(!F.brand||f.brand===F.brand)&&(!F.fg||key(f.fgCode)===key(F.fg)));
+  const sum = (a,k)=>a.reduce((t,x)=>t+(Number(x[k])||0),0);
+  const ordered=sum(rows,'qty'), supplied=sum(rows,'supplied'), reserved=sum(rows,'reserved'), pending=sum(rows,'pending'), covered=sum(rows,'covered');
+  const available = fgScope.reduce((t,f)=>t+f.stock,0);
+  const plannedTotal = fgScope.reduce((t,f)=>t+f.plannedGross,0); const producedTotal = fgScope.reduce((t,f)=>t+f.produced,0);
+  const blockedQty = rows.filter(o=>o.status==='FG short · RMPM').reduce((t,o)=>t+o.pending,0);
+  const lead = rows.filter(o=>o.suppliedDate&&o.orderDate).map(o=>(new Date(o.suppliedDate)-new Date(o.orderDate))/864e5);
+  const avgLead = lead.length? lead.reduce((a,b)=>a+b,0)/lead.length : null;
+  const fill = ordered? Math.round(100*supplied/ordered):0;
+  const ov=sum(rows,'orderValue'), dv=sum(rows,'dispatchValue'), bv=sum(rows,'balanceValue'); const rated=rows.filter(o=>o.rate>0); const avgAcr = rated.length? sum(rated,'orderValue')/sum(rated,'qty') : null; const unrated=rows.filter(o=>!o.rate).length;
+  $('#valueKpis').innerHTML = `<div class="kpi"><div class="mark" style="background:var(--s1)"></div><div class="label">Order value</div><div class="value">${fmtMoney(ov)}</div><div class="sub">${unrated?unrated+' orders without ACR':'all orders rated'}</div></div><div class="kpi"><div class="mark" style="background:var(--s2)"></div><div class="label">Dispatched value</div><div class="value">${fmtMoney(dv)}</div><div class="sub">${ov?Math.round(100*dv/ov):0}% of order value</div></div><div class="kpi"><div class="mark" style="background:var(--s3)"></div><div class="label">Balance value</div><div class="value">${fmtMoney(bv)}</div><div class="sub">still to dispatch</div></div><div class="kpi"><div class="mark" style="background:var(--gold)"></div><div class="label">Average ACR</div><div class="value">${avgAcr==null?'–':CUR+' '+money(avgAcr).toLocaleString('en-US',{maximumFractionDigits:2})}</div><div class="sub">per case · USD→AED at ${SETTINGS.fxRate}</div></div>`;
+  const byCV={}; rows.forEach(o=>{ const c=byCV[o.country]=byCV[o.country]||{country:o.country,prio:o.prio,orderValue:0,dispatchValue:0,balanceValue:0}; c.orderValue+=money(o.orderValue); c.dispatchValue+=money(o.dispatchValue); c.balanceValue+=money(o.balanceValue); });
+  const cvs=Object.values(byCV).sort((a,b)=>a.prio-b.prio||b.orderValue-a.orderValue);
+  $('#valueSub').textContent=`Order value, dispatched value and balance value in ${CUR} · ACR from Logistics`;
+  $('#chartValue').innerHTML = cvs.length? groupedColumns(cvs, ['orderValue','dispatchValue','balanceValue'], ['Order value','Dispatched','Balance'], c=>c.country, null, CUR) : `<div class="empty">No orders in scope.</div>`;
+  const fc = CALC.forecast.filter(f=>(!F.month||f.month===F.month)&&(!F.country||f.country===F.country)&&(!F.brand||f.brand===F.brand)&&(!F.fg||f.k===key(F.fg))).reduce((t,f)=>t+f.qty,0);
+  $('#kpis').innerHTML = `
+    <div class="kpi hero"><div class="label">Pending to produce</div><div class="value">${fmt(pending)}</div><div class="sub">cases across ${rows.filter(o=>o.pending>0).length} open orders · ${fmt(covered)} covered by the plan, ${fmt(pending-covered)} not yet planned</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--s1)"></div><div class="label">Ordered</div><div class="value">${fmt(ordered)}</div><div class="sub">${rows.length} orders${fc?` · ${Math.round(100*ordered/fc)}% of ${fmt(fc)} forecast`:''}</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--s2)"></div><div class="label">Supplied</div><div class="value">${fmt(supplied)}</div><div class="sub">${fill}% of ordered</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--surface-3)"></div><div class="label">FG available</div><div class="value">${fmt(available)}</div><div class="sub">${fmt(reserved)} reserved against orders</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--s3)"></div><div class="label">Planned in production</div><div class="value">${fmt(plannedTotal)}</div><div class="sub">${fmt(producedTotal)} produced so far</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--crit)"></div><div class="label">Short on RMPM</div><div class="value">${fmt(blockedQty)}</div><div class="sub">${fgScope.filter(f=>f.blocked).length} FG on shortage list · ${CALC.openMaterials.length} open materials${CALC.materialsAwaiting?', '+CALC.materialsAwaiting+' awaiting ETA':''}</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--gold)"></div><div class="label">Order to supply</div><div class="value">${avgLead==null?'–':Math.round(avgLead)+'d'}</div><div class="sub">average, ${lead.length} supplied orders</div></div>`;
+
+  // monthly chart
+  const byMonth = {};
+  CALC.orders.filter(o=>(!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg))).forEach(o=>{ const m=byMonth[o.month]=byMonth[o.month]||{m:o.month,ordered:0,supplied:0,pending:0}; m.ordered+=o.qty; m.supplied+=o.supplied; m.pending+=o.pending; });
+  const months = Object.values(byMonth).sort((a,b)=>a.m.localeCompare(b.m));
+  $('#chartMonth').innerHTML = groupedColumns(months, ['ordered','supplied','pending'], ['Ordered','Supplied','Pending'], m=>monthLabel(m.m), F.month);
+
+  // by country
+  const byC = {}; rows.forEach(o=>{ const c=byC[o.country]=byC[o.country]||{country:o.country,prio:o.prio,pending:0,ordered:0}; c.pending+=o.pending; c.ordered+=o.qty; });
+  const cs = Object.values(byC).sort((a,b)=>a.prio-b.prio||b.pending-a.pending);
+  $('#chartCountry').innerHTML = hbars(cs);
+
+  // forecast vs orders: country · brand · FG · month
+  const fcRows = {};
+  CALC.forecast.filter(f=>(!F.month||f.month===F.month)&&(!F.country||f.country===F.country)&&(!F.brand||f.brand===F.brand)&&(!F.fg||f.k===key(F.fg))).forEach(f=>{ const id=[f.country,f.brand,f.k,f.month].join('|'); const r=fcRows[id]=fcRows[id]||{country:f.country,brand:f.brand,fgCode:f.fgCode,k:f.k,month:f.month,forecast:0,ordered:0,supplied:0}; r.forecast+=f.qty; });
+  rows.forEach(o=>{ const id=[o.country,o.brand,o.k,o.month].join('|'); const r=fcRows[id]=fcRows[id]||{country:o.country,brand:o.brand,fgCode:o.fgCode,k:o.k,month:o.month,forecast:0,ordered:0,supplied:0}; r.ordered+=o.qty; r.supplied+=o.supplied; });
+  const fr=Object.values(fcRows).sort((a,b)=>b.month.localeCompare(a.month)||CALC.getPrio(a.country)-CALC.getPrio(b.country)||a.country.localeCompare(b.country)||a.brand.localeCompare(b.brand)||a.fgCode.localeCompare(b.fgCode));
+  const tf=fr.reduce((t,r)=>t+r.forecast,0), to=fr.reduce((t,r)=>t+r.ordered,0);
+  const cb={}; fr.forEach(r=>{ const id=r.country+'|'+r.brand; const c=cb[id]=cb[id]||{country:r.country,brand:r.brand,prio:CALC.getPrio(r.country),forecast:0,ordered:0}; c.forecast+=r.forecast; c.ordered+=r.ordered; });
+  const cbs=Object.values(cb).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country)||b.forecast-a.forecast);
+  $('#chartForecast').innerHTML = cbs.length ? groupedColumns(cbs, ['forecast','ordered'], ['Forecast','Ordered'], c=>c.country+' · '+c.brand, null) : '';
+  $('#tblForecast').innerHTML = `<thead><tr><th>Month</th><th>Country</th><th>Brand</th><th>FG code</th><th class="r">Forecast</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Ordered − forecast</th><th class="r">Ordered / forecast</th><th>Read</th></tr></thead><tbody>`+
+    (fr.length? fr.map(r=>{ const gap=r.ordered-r.forecast; const pct=r.forecast? Math.round(100*r.ordered/r.forecast) : null; const st = !r.forecast? ['neutral','No forecast'] : !r.ordered? ['crit','Not ordered'] : pct<80? ['warn','Under forecast'] : pct>120? ['serious','Over forecast'] : ['good','On forecast'];
+      return `<tr><td>${monthLabel(r.month)}</td><td>${esc(r.country)} <span class="prio p${CALC.getPrio(r.country)}">P${CALC.getPrio(r.country)}</span></td><td>${esc(r.brand)}</td><td class="mono">${esc(r.fgCode)}</td><td class="r num">${fmt(r.forecast)}</td><td class="r num">${fmt(r.ordered)}</td><td class="r num">${fmt(r.supplied)}</td><td class="r num ${gap<0?'':'muted'}">${gap>0?'+':''}${fmt(gap)}</td><td class="r num">${pct==null?'–':pct+'%'}</td><td><span class="pill ${st[0]}">${st[1]}</span></td></tr>`; }).join('')+
+      `<tr class="group"><td colspan="4">Total in scope</td><td class="r num">${fmt(tf)}</td><td class="r num">${fmt(to)}</td><td class="r num">${fmt(fr.reduce((t,r)=>t+r.supplied,0))}</td><td class="r num">${to-tf>0?'+':''}${fmt(to-tf)}</td><td class="r num">${tf?Math.round(100*to/tf)+'%':'–'}</td><td></td></tr>` : `<tr><td colspan="10" class="empty">Upload the sales forecast on the Supply Chain Inputs tab to compare it with orders.</td></tr>`)+`</tbody>`;
+
+  // position table
+  const pos = {};
+  rows.forEach(o=>{ const id=o.country+'|'+o.brand+'|'+o.k; const p=pos[id]=pos[id]||{country:o.country,prio:o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,ordered:0,supplied:0,reserved:0,pending:0,covered:0,f:CALC.fg[o.k]}; p.ordered+=o.qty;p.supplied+=o.supplied;p.reserved+=o.reserved;p.pending+=o.pending;p.covered+=o.covered; });
+  const pr = Object.values(pos).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country)||a.brand.localeCompare(b.brand)||a.fgCode.localeCompare(b.fgCode));
+  $('#tblPosition').innerHTML = `<thead><tr><th>Country</th><th>Pr.</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending</th><th>Allocate from</th><th class="r">Eligible stock</th><th class="r">Planned</th><th class="r">Produced</th><th>Coverage</th><th>Position</th></tr></thead><tbody>`+
+    (pr.length? pr.map(p=>{ const st = p.pending===0?['good','Fulfilled or reserved']: p.f.blocked&&p.pending>0?['serious','FG short · RMPM']: p.covered>=p.pending?['warn','In production plan']: p.covered>0?['warn','Partly planned']:['crit','Not planned']; const pct=p.pending? Math.round(100*p.covered/p.pending):100;
+      return `<tr><td>${esc(p.country)}</td><td><span class="prio p${p.prio}">P${p.prio}</span></td><td>${esc(p.brand)}</td><td class="mono">${esc(p.fgCode)}</td><td class="muted">${esc(p.fgName||'')}</td><td class="r num">${fmt(p.ordered)}</td><td class="r num">${fmt(p.supplied)}</td><td class="r num">${fmt(p.reserved)}</td><td class="r num"><b>${fmt(p.pending)}</b></td><td class="small">${esc(normText(CALC.normFor(p.country)))}</td><td class="r num" title="Total stock of this FG in all locations: ${fmt(p.f.stock)}">${fmt(CALC.eligibleStock(p.country,key(p.fgCode)))}</td><td class="r num">${fmt(p.f.plannedGross)}</td><td class="r num">${fmt(p.f.produced)}</td><td><div class="bar" title="${pct}% of pending covered"><i style="width:${pct}%"></i></div></td><td><span class="pill ${st[0]}">${st[1]}</span></td></tr>`; }).join('') : `<tr><td colspan="15" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
+
+  // timeline table
+  const tl = [...rows].sort((a,b)=>(b.orderDate||'').localeCompare(a.orderDate||''));
+  $('#tblTimeline').innerHTML = `<thead><tr><th>Order no</th><th>Order placed</th><th>Country</th><th>Brand</th><th>FG code</th><th class="r">Qty</th><th class="r">Supplied</th><th>Supplied on</th><th class="r">Days</th><th>In transit · arrival</th><th>Status</th><th>Next</th></tr></thead><tbody>`+
+    (tl.length? tl.map(o=>{ const days=o.suppliedDate&&o.orderDate? Math.round((new Date(o.suppliedDate)-new Date(o.orderDate))/864e5):null;
+      return `<tr><td>${esc(o.orderNo)}</td><td>${esc(o.orderDate)}</td><td>${esc(o.country)} <span class="prio p${o.prio}">P${o.prio}</span></td><td>${esc(o.brand)}</td><td class="mono">${esc(o.fgCode)}</td><td class="r num">${fmt(o.qty)}</td><td class="r num">${fmt(o.supplied)}</td><td>${esc(o.suppliedDate)||'<span class="muted">–</span>'}</td><td class="r num">${days==null?'–':days}</td><td class="small">${o.transit.length? o.transit.map(t=>`${esc(t.mode||'')} ${t.dispatchDate?'dep '+esc(t.dispatchDate):''}${t.eta?' → '+esc(t.eta):''}`).join('<br>') : '<span class="muted">–</span>'}</td><td><span class="pill ${o.level}">${esc(o.status)}</span></td><td class="muted">${esc(o.expected)}</td></tr>`; }).join('') : `<tr><td colspan="12" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
+}
+
+function monthLabel(m){ if(!m) return '–'; const [y,mo]=m.split('-'); return new Date(Number(y),Number(mo)-1,1).toLocaleString('en-GB',{month:'short',year:'2-digit'}); }
+function niceMax(v){ if(v<=0) return 10; const p=Math.pow(10,Math.floor(Math.log10(v))); const n=v/p; const s = n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10; return s*p; }
+
+function groupedColumns(data, keys, names, labelFn, highlight, unit){ unit=unit||'cases';
+  if(!data.length) return `<div class="empty">No orders in scope.</div>`;
+  const W=Math.max(640, data.length*78),H=260,mL=52,mR=12,mT=14,mB=34; const pw=W-mL-mR, ph=H-mT-mB;
+  const max=niceMax(Math.max(...data.flatMap(d=>keys.map(k=>d[k]))));
+  const ticks=[0,.25,.5,.75,1].map(t=>t*max);
+  const gw=pw/data.length; const inner=Math.min(gw*.72, 90); const bw=Math.max(6,Math.min(22,(inner-2*(keys.length-1))/keys.length)); const gapx=2;
+  const colors=['var(--s1)','var(--s2)','var(--s3)'];
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Ordered, supplied and pending cases by month"><g class="grid">`;
+  ticks.forEach(t=>{ const y=mT+ph-(t/max)*ph; s+=`<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}"/><text x="${mL-8}" y="${y+4}" text-anchor="end" class="num">${fmt(t)}</text>`; });
+  s+=`</g><line class="axis" x1="${mL}" x2="${W-mR}" y1="${mT+ph}" y2="${mT+ph}"/>`;
+  data.forEach((d,i)=>{ const x0=mL+i*gw+(gw-(bw*keys.length+gapx*(keys.length-1)))/2;
+    const hl = highlight && d.m===highlight;
+    keys.forEach((k,j)=>{ const v=d[k]; const h=(v/max)*ph; const x=x0+j*(bw+gapx); const y=mT+ph-h;
+      s+=`<rect class="bar-mark" x="${x}" y="${y}" width="${bw}" height="${h}" fill="${colors[j]}" rx="4" ry="4" data-tip="${esc(labelFn(d))} · ${names[j]}: ${unit==='cases'?fmt(v)+' cases':unit+' '+fmt(v)}"/>`;
+      if(h>0) s+=`<rect x="${x}" y="${mT+ph-Math.min(4,h)}" width="${bw}" height="${Math.min(4,h)}" fill="${colors[j]}"/>`;
+      if(j===keys.length-1 && v>0) s+=`<text class="lbl" x="${x+bw/2}" y="${y-4}" text-anchor="middle">${fmt(v)}</text>`;
+    });
+    const lab=labelFn(d); const parts=lab.includes(' · ')? lab.split(' · ') : [lab];
+    s+=`<text x="${mL+i*gw+gw/2}" y="${H-(parts.length>1?20:12)}" text-anchor="middle" ${hl?'class="lbl"':''}>${esc(parts[0])}</text>`+(parts[1]?`<text x="${mL+i*gw+gw/2}" y="${H-8}" text-anchor="middle" class="muted" style="font-size:10px">${esc(parts[1])}</text>`:'');
+    if(hl) s+=`<rect x="${mL+i*gw+2}" y="${mT}" width="${gw-4}" height="${ph}" fill="var(--gold)" opacity=".08" pointer-events="none"/>`;
+  });
+  return s+'</svg>';
+}
+function hbars(cs){
+  if(!cs.length) return `<div class="empty">No orders in scope.</div>`;
+  const W=420, rowH=30, mL=96, mR=56, mT=6; const H=mT+cs.length*rowH+8; const pw=W-mL-mR;
+  const max=niceMax(Math.max(...cs.map(c=>c.pending),1));
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pending to produce by country">`;
+  cs.forEach((c,i)=>{ const y=mT+i*rowH; const w=(c.pending/max)*pw; const pct=c.ordered?Math.round(100*c.pending/c.ordered):0;
+    s+=`<text x="${mL-10}" y="${y+18}" text-anchor="end" class="lbl">${esc(c.country)}</text>`;
+    s+=`<rect x="${mL}" y="${y+6}" width="${pw}" height="16" fill="var(--surface-2)" rx="4"/>`;
+    s+=`<rect class="bar-mark" x="${mL}" y="${y+6}" width="${w}" height="16" fill="${c.prio===1?'var(--s3)':c.prio===2?'color-mix(in srgb,var(--s3) 70%,var(--surface))':'color-mix(in srgb,var(--s3) 45%,var(--surface))'}" rx="4" data-tip="${esc(c.country)} · P${c.prio} · pending ${fmt(c.pending)} of ${fmt(c.ordered)} ordered (${pct}%)"/>`;
+    s+=`<text x="${mL+w+6}" y="${y+18}" class="num">${fmt(c.pending)}</text>`;
+    s+=`<text x="${W-4}" y="${y+18}" text-anchor="end" style="font-family:var(--font-mono);font-size:10px;fill:var(--gold);font-weight:600">P${c.prio}</text>`;
+  });
+  return s+'</svg>';
+}
+// tooltips
+const tip=$('#tip');
+document.addEventListener('mousemove',e=>{ const t=e.target.closest&&e.target.closest('[data-tip]'); if(t){ tip.innerHTML=t.getAttribute('data-tip'); tip.classList.add('show'); tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; } else tip.classList.remove('show'); });
+
+/* ---------- Order tracker ---------- */
+function renderOrders(){
+  const rows=[...CALC.orders].filter(passes).sort((a,b)=>(b.orderDate||'').localeCompare(a.orderDate||''));
+  $('#ordersCount').textContent = `${rows.length} of ${DATA.orders.length} orders shown`;
+  $('#tblOrders').innerHTML = `<thead><tr><th>Order no</th><th>Order date</th><th>Country</th><th>Distributor</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Order qty</th><th class="r">ACR (USD)</th><th class="r">Order value</th><th class="r" title="Total stock reserved against the order, including what has since been supplied">Stock reserved</th><th class="r">Supplied qty</th><th>Supplied date</th><th class="r">Dispatch value</th><th class="r">Balance value</th><th>Invoice / ref</th><th>Status</th><th></th></tr></thead><tbody>`+
+    (rows.length? rows.map(o=>`<tr data-id="${o.id}"><td><input data-f="orderNo" value="${esc(o.orderNo)}"></td><td><input type="date" data-f="orderDate" value="${esc(o.orderDate)}"></td><td><input data-f="country" list="dlCountry" value="${esc(o.country)}"></td><td><input data-f="distributor" value="${esc(o.distributor||'')}"></td><td><input data-f="brand" list="dlBrand" value="${esc(o.brand)}"></td><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(o.fgCode)}"></td><td><input data-f="fgName" value="${esc(o.fgName||'')}"></td><td><input class="n num" type="number" data-f="qty" value="${o.qty}"></td><td><input class="n num" type="number" step="0.01" data-f="caseRate" value="${o.rate||''}" placeholder="ACR"></td><td class="r num">${o.rate?fmtMoney(o.orderValue):'<span class="muted">–</span>'}</td><td><input class="n num" type="number" data-f="reserved" value="${o.reservedIn}" title="${o.autoReserved>0?'Algorithm allocated a further '+fmt(o.autoReserved)+' from free stock':''}">${o.autoReserved>0?`<div class="small muted" style="text-align:right">+${fmt(o.autoReserved)} auto</div>`:''}${o.alloc.length?`<div class="small muted" style="text-align:right;white-space:normal;max-width:220px">${allocText(o.alloc)}</div>`:''}${o.reservedUnlocated>0?`<div class="small" style="text-align:right;color:var(--warn-text)">${fmt(o.reservedUnlocated)} reserved with no eligible lot</div>`:''}</td><td><input class="n num" type="number" data-f="supplied" value="${o.supplied}"></td><td><input type="date" data-f="suppliedDate" value="${esc(o.suppliedDate||'')}"></td><td class="r num">${o.rate?fmtMoney(o.dispatchValue):'<span class="muted">–</span>'}</td><td class="r num">${o.rate?fmtMoney(o.balanceValue):'<span class="muted">–</span>'}</td><td><input data-f="ref" value="${esc(o.ref||'')}"></td><td><span class="pill ${o.level}">${esc(o.status)}</span></td><td><button class="btn sm danger" data-del="orders" data-id="${o.id}" title="Delete order">✕</button></td></tr>`).join('') : `<tr><td colspan="18" class="empty">No orders yet. Add one above or upload the Excel tracker.</td></tr>`)+`</tbody>`+(rows.length?`<tfoot><tr class="group"><td colspan="7">Total · ${rows.length} orders · values in ${CUR}</td><td class="r num">${fmt(rows.reduce((t,o)=>t+o.qty,0))}</td><td></td><td class="r num">${fmtMoney(rows.reduce((t,o)=>t+o.orderValue,0))}</td><td></td><td class="r num">${fmt(rows.reduce((t,o)=>t+o.supplied,0))}</td><td></td><td class="r num">${fmtMoney(rows.reduce((t,o)=>t+o.dispatchValue,0))}</td><td class="r num">${fmtMoney(rows.reduce((t,o)=>t+o.balanceValue,0))}</td><td colspan="3"></td></tr></tfoot>`:'');
+}
+function bindInlineEdits(tableSel, sheet){
+  $(tableSel).addEventListener('change',e=>{ const inp=e.target.closest('[data-f]'); if(!inp) return; const tr=inp.closest('tr'); const row=DATA[sheet].find(r=>r.id===tr.dataset.id); if(!row) return; const f=inp.dataset.f; row[f]= inp.type==='number'? Number(inp.value)||0 : inp.value; if(sheet==='rmpm' && f==='type') row.planner=PLANNER[row.type]||''; if(sheet==='rmpm' && f==='eta' && row.eta && row.status==='Awaiting ETA') row.status='ETA received'; persist(sheet); });
+  $(tableSel).addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(!b) return; const s=b.dataset.del; DATA[s]=DATA[s].filter(r=>r.id!==b.dataset.id); persist(s); toast('Row removed'); });
+}
+bindInlineEdits('#tblOrders','orders'); bindInlineEdits('#tblProd','production'); bindInlineEdits('#tblRmpm','rmpm');
+$('#formOrder').addEventListener('submit',e=>{ e.preventDefault(); const fd=new FormData(e.target); const o=Object.fromEntries(fd.entries()); o.id=uid(); o.qty=Number(o.qty)||0; o.caseRate=Number(o.caseRate)||0; o.reserved=0; o.supplied=0; o.suppliedDate=''; o.ref=''; DATA.orders.push(o); e.target.reset(); persist('orders'); toast('Order added'); });
+
+/* ---------- Order summary ---------- */
+function renderSummary(){
+  const rows=CALC.orders.filter(passes);
+  const groups={};
+  rows.forEach(o=>{ const g=groups[o.country]=groups[o.country]||{country:o.country,prio:o.prio,items:{}}; const it=g.items[o.brand+'|'+o.k]=g.items[o.brand+'|'+o.k]||{brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,f:CALC.fg[o.k],ordered:0,supplied:0,reserved:0,pending:0,covered:0,orders:[]}; it.ordered+=o.qty;it.supplied+=o.supplied;it.reserved+=o.reserved;it.pending+=o.pending;it.covered+=o.covered;it.orderValue=(it.orderValue||0)+o.orderValue;it.balanceValue=(it.balanceValue||0)+o.balanceValue;it.orders.push(o); });
+  const gs=Object.values(groups).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country));
+  let html=`<thead><tr><th>Country / FG</th><th>Brand</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending to produce</th><th class="r">Planned</th><th class="r">Produced</th><th class="r">Gap</th><th class="r">Order value</th><th class="r">Balance value</th><th>Status</th><th>Next step</th><th>Owner</th></tr></thead><tbody>`;
+  if(!gs.length) html+=`<tr><td colspan="15" class="empty">No orders match these filters.</td></tr>`;
+  gs.forEach(g=>{ const its=Object.values(g.items); const t=k=>its.reduce((a,x)=>a+x[k],0);
+    html+=`<tr class="group"><td>${esc(g.country)} <span class="prio p${g.prio}">P${g.prio}</span></td><td colspan="2" class="muted">${its.length} FG codes</td><td class="r num">${fmt(t('ordered'))}</td><td class="r num">${fmt(t('supplied'))}</td><td class="r num">${fmt(t('reserved'))}</td><td class="r num">${fmt(t('pending'))}</td><td colspan="3"></td><td class="r num">${fmtMoney(its.reduce((a,x)=>a+(x.orderValue||0),0))}</td><td class="r num">${fmtMoney(its.reduce((a,x)=>a+(x.balanceValue||0),0))}</td><td colspan="3"></td></tr>`;
+    its.sort((a,b)=>b.pending-a.pending).forEach(it=>{ const f=it.f; const inProgress=f.plans.some(p=>(Number(p.produced)||0)>0 && (Number(p.produced)||0)<(Number(p.plannedQty)||0));
+      let st,next,owner;
+      if(it.pending===0){ st=['good', it.supplied>=it.ordered?'Supplied':'Reserved, ready']; const al=it.orders.flatMap(o=>o.alloc); next= it.supplied>=it.ordered? 'Done' : (al.length? 'Dispatch from '+allocText(al) : 'Dispatch from reserved stock'); owner='Logistics'; }
+      else if(f.blocked && it.pending>0){ st=['serious','FG short · RMPM']; next = f.blockedMats.length ? f.blockedMats.map(r=>`${r.type} ${esc(r.matCode)}${r.eta?' · '+r.eta:' · no ETA'}`).join('<br>') : esc(f.shortReason||'On FG shortage list')+(CALC.materialEta?` · latest material ETA ${CALC.materialEta}`:''); owner=[...new Set(f.blockedMats.map(r=>PLANNER[r.type]||r.type))].join(' / ') || (PLANNER.RM+' / '+PLANNER.PM); }
+      else if(it.covered>=it.pending){ st=['warn', inProgress?'In production':'Production planned']; next= `${fmt(f.plannedGross)} planned · ${fmt(f.produced)} produced`; owner='Production'; }
+      else if(it.covered>0){ st=['warn','Partly planned']; next=`${fmt(it.covered)} planned, ${fmt(it.pending-it.covered)} not yet`; owner='Production'; }
+      else { st=['crit','Not planned']; next='Share with Production'; owner='Planning'; }
+      html+=`<tr><td class="mono" style="padding-left:26px">${esc(it.fgCode)}</td><td>${esc(it.brand)}</td><td class="muted">${esc(it.fgName||'')}</td><td class="r num">${fmt(it.ordered)}</td><td class="r num">${fmt(it.supplied)}</td><td class="r num">${fmt(it.reserved)}</td><td class="r num"><b>${fmt(it.pending)}</b></td><td class="r num">${fmt(f.plannedGross)}</td><td class="r num">${fmt(f.produced)}</td><td class="r num ${f.gap>0?'':'muted'}">${f.gap>0?fmt(f.gap):'0'}</td><td class="r num">${fmtMoney(it.orderValue||0)}</td><td class="r num">${fmtMoney(it.balanceValue||0)}</td><td><span class="pill ${st[0]}">${st[1]}</span></td><td class="small">${next}</td><td class="small">${esc(owner)}</td></tr>`;
+    });
+  });
+  $('#tblSummary').innerHTML=html+'</tbody>';
+}
+
+/* ---------- Production & RMPM ---------- */
+function renderProd(){
+  const fgFilter = p => (!F.fg||key(p.fgCode)===key(F.fg)) && (!F.brand || (CALC.fg[key(p.fgCode)]||{}).brand===F.brand || !CALC.fg[key(p.fgCode)]);
+  const prods=DATA.production.filter(fgFilter);
+  const pendingFg=Object.values(CALC.fg).filter(f=>f.gap>0);
+  $('#pendingHint').textContent = pendingFg.length? `${pendingFg.length} FG codes have pending qty above the plan: ${pendingFg.map(f=>f.fgCode+' ('+fmt(f.gap)+')').join(', ')}` : 'Every pending quantity is covered by the plan.';
+  $('#tblProd').innerHTML=`<thead><tr><th>FG code</th><th>Description</th><th class="r">Production planned</th><th class="r">Produced</th><th></th></tr></thead><tbody>`+
+    (prods.length? prods.map(p=>{ const f=CALC.fg[key(p.fgCode)]; return `<tr data-id="${p.id}"><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(p.fgCode)}"></td><td><input data-f="fgName" value="${esc(p.fgName||(f?f.fgName:'')||'')}" style="min-width:220px"></td><td><input class="n num" type="number" data-f="plannedQty" value="${p.plannedQty}"></td><td><input class="n num" type="number" data-f="produced" value="${Number(p.produced)||0}"></td><td><button class="btn sm danger" data-del="production" data-id="${p.id}">✕</button></td></tr>`; }).join('') : `<tr><td colspan="5" class="empty">No production plan yet.</td></tr>`)+'</tbody>';
+  const rm=DATA.rmpm;
+  $('#tblRmpm').innerHTML=`<thead><tr><th>Material code</th><th>Material description</th><th>Type</th><th class="r">Shortage qty</th><th>UOM</th><th>Planner</th><th>ETA</th><th>Connectivity</th><th></th></tr></thead><tbody>`+
+    (rm.length? rm.map(r=>`<tr data-id="${r.id}"><td><input class="mono" data-f="matCode" value="${esc(r.matCode)}"></td><td><input data-f="matName" value="${esc(r.matName||'')}"></td><td><select data-f="type"><option ${r.type==='RM'?'selected':''}>RM</option><option ${r.type==='PM'?'selected':''}>PM</option></select></td><td><input class="n num" type="number" data-f="shortQty" value="${r.shortQty}"></td><td><input data-f="uom" value="${esc(r.uom||'')}" style="min-width:50px"></td><td>${esc(PLANNER[r.type]||'')}</td><td><input type="date" data-f="eta" value="${esc(r.eta||'')}"></td><td><select data-f="status">${['Awaiting ETA','ETA received','Connected'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn sm danger" data-del="rmpm" data-id="${r.id}">✕</button></td></tr>`).join('') : `<tr><td colspan="9" class="empty">No RM or PM shortages logged.</td></tr>`)+'</tbody>';
+}
+$('#formProd').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.plannedQty=Number(o.plannedQty)||0; o.produced=Number(o.produced)||0; if(!o.fgName){ const f=CALC.fg[key(o.fgCode)]; const m=CALC.master[key(o.fgCode)]; o.fgName=(f&&f.fgName)||(m&&m.fgName)||''; } DATA.production.push(o); e.target.reset(); persist('production'); toast('Production plan added'); });
+$('#formRmpm').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.shortQty=Number(o.shortQty)||0; o.planner=PLANNER[o.type]; o.status=o.eta?'ETA received':'Awaiting ETA'; DATA.rmpm.push(o); e.target.reset(); persist('rmpm'); toast('Shortage logged for '+o.planner); });
+
+/* ---------- Liquidation (SLOB) ---------- */
+function renderSlob(){
+  const today=todayStr();
+  const rows=DATA.slob.map(r=>{ const k=key(r.fgCode); const f=CALC.fg[k]; const age=r.mfgDate?CALC.daysBetween(r.mfgDate,today):null; const remaining=r.expiryDate?CALC.daysBetween(today,r.expiryDate):null; const lot={k, whKey:String(r.warehouse||'').trim().toLowerCase(), whNameKey:'', age, remaining};
+    const takers=DATA.priority.filter(p=>p.country&&CALC.eligible(lot,CALC.normFor(p.country))).map(p=>{ const pend=CALC.orders.filter(o=>o.k===k&&o.country===p.country&&o.pending>0).reduce((t,o)=>t+o.pending,0); return {country:p.country,prio:Number(p.priority)||3,pend}; }).sort((a,b)=>b.pend-a.pend||a.prio-b.prio);
+    const rate=Number(r.caseRate)||CALC.acrOf[k]||0; return {...r,k,f,age,remaining,takers,qty:Number(r.slobQty)||0,rate,rateFromOrders:!(Number(r.caseRate)>0)&&rate>0,value:(Number(r.slobQty)||0)*rate}; })
+    .filter(r=>(!F.fg||r.k===key(F.fg))&&(!F.brand||(r.f&&r.f.brand===F.brand))&&(!F.country||r.takers.some(t=>t.country===F.country)));
+  const total=rows.reduce((t,r)=>t+r.qty,0); const totalValue=rows.reduce((t,r)=>t+r.value,0); const byCat={}; rows.forEach(r=>{ const c=r.category||'Unclassified'; byCat[c]=(byCat[c]||0)+r.qty; });
+  const absorbable=rows.reduce((t,r)=>t+Math.min(r.qty, r.takers.reduce((a,x)=>a+x.pend,0)),0);
+  $('#slobCount').textContent=`${rows.length} of ${DATA.slob.length} SLOB lines shown`;
+  $('#slobKpis').innerHTML=`<div class="kpi hero"><div class="label">SLOB stock</div><div class="value">${fmt(total)}</div><div class="sub">cases across ${new Set(rows.map(r=>r.k)).size} FG codes · ${fmt(absorbable)} could be absorbed by open orders in countries whose norms accept the lot</div></div>`+
+    Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,q])=>`<div class="kpi"><div class="mark" style="background:var(--gold)"></div><div class="label">${esc(c)}</div><div class="value">${fmt(q)}</div><div class="sub">cases</div></div>`).join('')+
+    `<div class="kpi"><div class="mark" style="background:var(--s1)"></div><div class="label">SLOB value</div><div class="value">${fmtMoney(totalValue)}</div><div class="sub">${rows.filter(r=>!r.rate).length? rows.filter(r=>!r.rate).length+' lines without a case rate':'at case rate, '+CUR}</div></div><div class="kpi"><div class="mark" style="background:var(--crit)"></div><div class="label">No taker under norms</div><div class="value">${fmt(rows.filter(r=>!r.takers.length).reduce((t,r)=>t+r.qty,0))}</div><div class="sub">cases no country norm accepts</div></div>`;
+  $('#tblSlob').innerHTML=`<thead><tr><th>FG code</th><th>Description</th><th>Stoc loc</th><th>Batch</th><th>Manuf date</th><th>Expiry</th><th class="r">Age (d)</th><th class="r">Left (d)</th><th class="r">SLOB (cases)</th><th class="r">Case rate (USD)</th><th class="r">SLOB value</th><th>Category</th><th>Countries that can take it · pending</th><th>Remarks</th><th></th></tr></thead><tbody>`+
+    (rows.length? rows.sort((a,b)=>(a.remaining==null?9e9:a.remaining)-(b.remaining==null?9e9:b.remaining)).map(r=>`<tr data-id="${r.id}"><td class="mono">${esc(r.fgCode)}</td><td class="muted">${esc(r.fgName||(r.f?r.f.fgName:'')||'')}</td><td class="mono">${esc(r.warehouse||'')}</td><td class="mono">${esc(r.batch||'')}</td><td class="muted">${esc(r.mfgDate||'')}</td><td class="muted">${esc(r.expiryDate||'')}</td><td class="r num">${r.age==null?'–':r.age}</td><td class="r num ${r.remaining!=null&&r.remaining<180?'':'muted'}">${r.remaining==null?'–':r.remaining}</td><td><input class="n num" type="number" data-f="slobQty" value="${r.qty}"></td><td><input class="n num" type="number" step="0.01" data-f="caseRate" value="${Number(r.caseRate)>0?r.caseRate:''}" placeholder="${r.rateFromOrders?r.rate.toFixed(2):''}" title="${r.rateFromOrders?'Average ACR from the order tracker; type a rate to override':''}"></td><td class="r num">${r.rate?fmtMoney(r.value):'<span class="muted">–</span>'}</td><td><select data-f="category">${['Slow moving','Obsolete','Near expiry','Damaged','Unclassified'].map(c=>`<option ${(r.category||'Unclassified')===c?'selected':''}>${c}</option>`).join('')}</select></td><td class="small">${r.takers.length? r.takers.map(t=>`${esc(t.country)} <span class="prio p${t.prio}">P${t.prio}</span>${t.pend?' '+fmt(t.pend):' <span class="muted">0</span>'}`).join(' · ') : '<span class="pill crit">No country norm accepts this lot</span>'}</td><td><input data-f="remarks" value="${esc(r.remarks||'')}"></td><td><button class="btn sm danger" data-del="slob" data-id="${r.id}">✕</button></td></tr>`).join('') : `<tr><td colspan="15" class="empty">No SLOB lines yet. Upload the FG SLOB file.</td></tr>`)+'</tbody>';
+}
+bindInlineEdits('#tblSlob','slob');
+
+/* ---------- Supply Chain Inputs hub ---------- */
+const HUB_IDS = {orders:'upOrders',production:'upProd',rmpm:'upRmpm',stock:'upStock',priority:'upPriority',shortage:'upShortage',slob:'upSlob',fgmaster:'upFgmaster',bom:'upBom',transit:'upTransit',forecast:'upForecast'};
+let hubBuilt=false;
+function renderHub(){
+  const groups=[...new Set(Object.values(FILES).map(f=>f.group))];
+  if(!hubBuilt){
+    $('#hubCards').innerHTML = groups.map((g,gi)=>`<div class="hubgroup"><h3>${esc(g)}</h3><div class="cards">`+Object.keys(FILES).filter(k=>FILES[k].group===g).map(k=>{ const f=FILES[k]; return `<div class="upcard ${gi%2?'alt':''}" data-card="${k}">
+        <div class="t"><span>${esc(f.name)}</span><span class="n" data-count="${k}"></span></div>
+        <div class="owner"><label>Owner</label><span data-ownerbox="${k}"></span></div>
+        <div class="cols">${esc(f.desc)}<br>${COLS[k].map(c=>`<code>${esc(c[1])}</code>`).join(' ')}<br><span class="muted">Refresh: ${esc(f.cadence)}</span></div>
+        <div class="last" data-src="${k}"></div>
+        <div class="acts"><label class="btn sm primary filelabel">Upload<input type="file" id="${HUB_IDS[k]}" accept=".xlsx,.xls,.csv"></label><button class="btn sm" data-template="${k}">Template</button><button class="btn sm" data-download="${k}">Download</button></div>
+      </div>`; }).join('')+`</div></div>`).join('');
+    hubBuilt=true;
+    Object.entries(HUB_IDS).forEach(([k,id])=>bindUpload('#'+id,k,k==='orders'?'orders':undefined));
+    document.querySelectorAll('[data-template]').forEach(b=>{ if(!b.dataset.bound){ b.dataset.bound=1; b.addEventListener('click',()=>offerFile(`oms-${b.dataset.template}-template.xlsx`, buildWorkbook(b.dataset.template, []))); } });
+    document.querySelectorAll('[data-download]').forEach(b=>{ if(!b.dataset.bound){ b.dataset.bound=1; b.addEventListener('click',()=>{ const sh=b.dataset.download; const m=SOURCE[sh]; const base = m ? m.fileName.replace(/\.(xlsx|xls|csv)$/i,'') : 'oms-'+sh; if(!DATA[sh].length){ toast('Nothing to download: the '+FILES[sh].name+' sheet is empty'); return; } offerFile(`${base}-${todayStr()}.xlsx`, buildWorkbook(sh, DATA[sh])); }); } });
+    $('#hubCards').addEventListener('change',e=>{ const inp=e.target.closest('[data-owner]'); if(!inp) return; OWNERS[inp.dataset.owner]=inp.value.trim()||FILES[inp.dataset.owner].owner; persistOwners(); });
+  }
+  const lb=$('#logoBox'); if(lb && !lb.dataset.built && IS_ADMIN){ lb.dataset.built=1; lb.innerHTML = `<label class="btn sm filelabel">Replace logo<input type="file" id="upLogo" accept=".svg,.png,.jpg,.jpeg,.webp"></label><button class="btn sm" id="logoReset" title="Back to the built-in Dabur logo">Default logo</button>`; $('#upLogo').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; if(f.size>200*1024){ toast('Logo must be under 200 KB'); e.target.value=''; return; } const fr=new FileReader(); fr.onload=()=>{ BRAND.logo=String(fr.result); renderLogo(); persistOwners(); toast('Logo updated for everyone'); }; fr.readAsDataURL(f); e.target.value=''; }); $('#logoReset').addEventListener('click',()=>{ BRAND.logo=''; renderLogo(); persistOwners(); toast('Default Dabur logo restored'); }); }
+  const fx=$('#fxBox'); if(fx){ fx.innerHTML = IS_ADMIN ? `<input id="fxRate" type="number" step="0.0001" min="0" value="${SETTINGS.fxRate}" style="width:90px;height:30px;padding:3px 8px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface)" class="num">` : `<b class="num">${SETTINGS.fxRate}</b>`; const fi=$('#fxRate'); if(fi&&!fi.dataset.bound){ fi.dataset.bound=1; fi.addEventListener('change',()=>{ const v=Number(fi.value); if(v>0){ SETTINGS.fxRate=v; persistOwners(); } }); } }
+  Object.keys(FILES).forEach(k=>{ const box=document.querySelector(`[data-ownerbox="${k}"]`); if(box) box.innerHTML = IS_ADMIN ? `<input data-owner="${k}" value="${esc(OWNERS[k])}" title="Only the admin can change this">` : `<span class="ro">${esc(OWNERS[k])}</span>`; const c=document.querySelector(`[data-count="${k}"]`); if(c) c.textContent = DATA[k].length? DATA[k].length+' rows' : 'empty'; });
+  // generic tables for master data and plans
+  $('#hubTables').innerHTML = ['fgmaster','bom','transit','forecast'].map(k=>`<details style="margin-bottom:10px"><summary>${esc(FILES[k].name)} · ${DATA[k].length} rows</summary><div class="tablewrap"><table><thead><tr>${COLS[k].map(c=>`<th>${esc(c[1])}</th>`).join('')}</tr></thead><tbody>${DATA[k].length? DATA[k].slice(0,300).map(r=>`<tr>${COLS[k].map(c=>`<td class="${NUM_FIELDS.has(c[0])?'r num':''}">${NUM_FIELDS.has(c[0])?fmt(r[c[0]]):esc(r[c[0]]||'')}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${COLS[k].length}" class="empty">Not uploaded yet</td></tr>`}</tbody></table></div></details>`).join('');
+}
+
+/* ---------- Supply inputs ---------- */
+function renderInputs(){
+  $('#tblStock').innerHTML=`<thead><tr><th>FG code</th><th>FG description</th><th>Stoc loc</th><th>Loc description</th><th>Batch</th><th class="r">Available</th><th>Manuf date</th><th>Expiry date</th><th class="r">Age (d)</th><th class="r">Left (d)</th><th>Ageing remarks</th></tr></thead><tbody>`+(CALC.lots.length? CALC.lots.map(l=>`<tr><td class="mono">${esc(l.k)}</td><td class="muted">${esc(l.fgName)}</td><td class="mono">${esc(l.wh)}</td><td>${esc(l.whName)}</td><td class="mono">${esc(l.batch)}</td><td class="r num">${fmt(l.qty)}</td><td class="muted">${esc(l.row.mfgDate||'')}</td><td class="muted">${esc(l.row.expiryDate||'')}</td><td class="r num">${l.age==null?'–':l.age}</td><td class="r num ${l.remaining!=null&&l.remaining<90?'':'muted'}">${l.remaining==null?'–':l.remaining}</td><td class="small">${esc(l.remarks)}</td></tr>`).join(''):`<tr><td colspan="11" class="empty">Upload the FG ageing file</td></tr>`)+'</tbody>';
+  $('#tblPriority').innerHTML=`<thead><tr><th>Country</th><th>Priority</th><th>Allocate from</th><th class="r">Max age (d)</th><th class="r">Min shelf life (d)</th></tr></thead><tbody>`+(DATA.priority.length? [...DATA.priority].sort((a,b)=>a.priority-b.priority).map(p=>`<tr><td>${esc(p.country)}</td><td><span class="prio p${p.priority}">P${p.priority}</span></td><td>${esc(p.locations||'')||'<span class="muted">Any</span>'}</td><td class="r num">${p.maxAge?p.maxAge:'<span class="muted">Any</span>'}</td><td class="r num">${p.minShelf?p.minShelf:'<span class="muted">Any</span>'}</td></tr>`).join(''):`<tr><td colspan="5" class="empty">Upload the priority list</td></tr>`)+'</tbody>';
+  $('#tblShortage').innerHTML=`<thead><tr><th>FG code</th><th class="r">Short qty</th><th>Reason</th></tr></thead><tbody>`+(DATA.shortage.length? DATA.shortage.map(s=>`<tr><td class="mono">${esc(s.fgCode)}</td><td class="r num">${fmt(s.shortQty)}</td><td class="muted">${esc(s.reason||'')}</td></tr>`).join(''):`<tr><td colspan="3" class="empty">Upload the FG shortage list</td></tr>`)+'</tbody>';
+}
+
+/* =====================================================================
+   EXCEL IN / OUT
+   ===================================================================== */
+const COLS = {
+  orders:[['orderNo','Order No'],['orderDate','Order Date'],['country','Country'],['distributor','Distributor'],['brand','Brand'],['fgCode','FG Code'],['fgName','FG Description'],['qty','Order Qty (cases)'],['caseRate','ACR (USD per case)'],['reserved','Stock Reserved Qty'],['supplied','Supplied Qty'],['suppliedDate','Supplied Date'],['ref','Invoice / Ref']],
+  production:[['fgCode','FG Code'],['fgName','Description'],['plannedQty','Production Planned'],['produced','Produced']],
+  rmpm:[['matCode','Material Code'],['matName','Material Description'],['type','Type'],['shortQty','Shortage Qty'],['uom','UOM'],['eta','ETA']],
+  stock:[['fgCode','FG Code'],['fgName','FG Description'],['warehouse','Stoc Loc'],['whName','Stoc Loc Description'],['batch','Batch'],['available','Available Qty'],['mfgDate','Manuf Date'],['expiryDate','Expiry Date'],['ageRemarks','Ageing Remarks']],
+  priority:[['country','Country'],['priority','Priority'],['locations','Allocate From'],['maxAge','Max Age Days'],['minShelf','Min Shelf Life Days']],
+  shortage:[['fgCode','FG Code'],['shortQty','Short Qty'],['reason','Reason']],
+  slob:[['fgCode','FG Code'],['fgName','FG Description'],['warehouse','Stoc Loc'],['batch','Batch'],['mfgDate','Manuf Date'],['expiryDate','Expiry Date'],['slobQty','SLOB Qty (Cases)'],['caseRate','Case Rate (USD)'],['category','SLOB Category'],['remarks','Remarks']],
+  fgmaster:[['fgCode','FG Code'],['fgName','FG Description'],['brand','Brand'],['category','Category'],['casesPerPallet','Cases per Pallet'],['moq','MOQ (Cases)'],['shelfLife','Shelf Life Days']],
+  bom:[['fgCode','FG Code'],['matCode','Material Code'],['matName','Material Description'],['type','Type'],['qtyPer','Qty per Case']],
+  transit:[['orderNo','Order No'],['fgCode','FG Code'],['country','Country'],['qty','Qty (Cases)'],['dispatchDate','Dispatch Date'],['mode','Mode'],['eta','ETA at Destination'],['ref','Vessel / Truck Ref']],
+  forecast:[['country','Country'],['brand','Brand'],['fgCode','FG Code'],['month','Month'],['qty','Forecast Qty (Cases)']]
+};
+const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qtycases','forecastqtycases','forecastqty','forecast','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],caseRate:['acrusdpercase','acrusd','acr','caserate','caserateusd','averagecaserate','avgcaserate','rate','usdpercase','pricepercase','unitprice','caseprice','price'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortageqty','shortqty','shortage','short','shortquantity','shortagequantity'],uom:['uom','unit'],eta:['procurementeta','etaatdestination','arrivaldate','arrival','eta','connectivitydate','etadate'],warehouse:['stocloc','stockloc','storloc','sloc','storagelocation','location','warehouse','plant','site','depot','stocklocation'],whName:['stoclocdescription','stoclocdesc','stocklocdescription','storagelocationdescription','locationdescription','slocdescription','warehousename','locationname'],expiryDate:['expirydate','expiry','expdate','exp','bestbefore','sled','shelflifeexpirydate','useby'],ageRemarks:['ageingremarks','agingremarks','ageing','aging','ageingbucket','agebucket','ageingremark','remarks','remark'],casesPerPallet:['casesperpallet','palletqty','casespallet','cpp'],moq:['moqcases','moq','minimumorderqty','minorderqty'],shelfLife:['shelflifedays','shelflife','totalshelflife','shelflifemonths'],qtyPer:['qtypercase','qtyper','usage','consumption','bomqty','usageqty'],dispatchDate:['dispatchdate','shipdate','etd','departure','departuredate','shippeddate'],mode:['mode','transportmode','shipmode','modeoftransport'],month:['month','period','yyyymm','forecastmonth','monthyear'],slobQty:['slobqtycases','slobqty','slob','slobcases','liquidationqty','qtycases','cases','qty','quantity','stockcases'],category:['slobcategory','category','slobtype','classification','class','bucket','segment','subcategory'],minShelf:['minshelflifedays','minshelflife','minimumshelflife','minremainingshelflife','remainingshelflife','shelflifenorm','mrsl'],batch:['batch','batchno','lot','lotno','batchnumber'],mfgDate:['manufdate','mfgdate','manufacturingdate','manufacturedate','mfg','mfd','mfddate','productiondate','proddate','dom'],ageDays:['agedays','age','ageindays','inventoryage','stockage'],locations:['allocatefrom','allocatefromlocation','location','locations','warehouse','warehouses','source','sourcelocation'],maxAge:['maxagedays','maxage','maximumage','ageingnorm','agingnorm','agenorm','norm','maxinventoryage'],available:['availableqty','available','unrestricted','unrestrictedstock','stockqty','stock','qty','quantity','freestock','onhand','soh','closingstock','qtyincases','cases'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
+const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function excelDate(v){ if(v==null||v==='') return ''; if(v instanceof Date) return v.toISOString().slice(0,10); if(typeof v==='number'){ const d=XLSX.SSF.parse_date_code(v); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } const s=String(v).trim(); const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(m){ let y=m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; } const d=new Date(s); return isNaN(d)?s:d.toISOString().slice(0,10); }
+const DATE_FIELDS = new Set(['orderDate','suppliedDate','eta','stockDate','mfgDate','expiryDate','dispatchDate']);
+const NUM_FIELDS = new Set(['qty','caseRate','reserved','supplied','plannedQty','produced','shortQty','available','priority','maxAge','ageDays','minShelf','slobQty','casesPerPallet','moq','shelfLife','qtyPer']);
+
+function parseSheet(file, sheet){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=e=>{ try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!raw.length) return reject(new Error('The first sheet is empty'));
+      const headers=Object.keys(raw[0]); const map={};
+      COLS[sheet].forEach(([field])=>{ const al=[norm(COLS[sheet].find(c=>c[0]===field)[1]), ...(ALIASES[field]||[])]; const h=headers.find(h=>al.includes(norm(h))); if(h) map[field]=h; });
+      const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['matCode'],stock:['fgCode'],priority:['country','priority'],shortage:['fgCode','shortQty'],slob:['fgCode'],fgmaster:['fgCode'],bom:['fgCode','matCode'],transit:['orderNo'],forecast:['fgCode','qty']}[sheet];
+      const missing=required.filter(f=>!map[f]); if(missing.length) return reject(new Error('Missing columns: '+missing.map(f=>COLS[sheet].find(c=>c[0]===f)[1]).join(', ')+'. Found: '+headers.join(', ')));
+      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v= (String(v).trim()===''&&(f==='ageDays'||f==='maxAge'||f==='minShelf')) ? '' : (Number(String(v).replace(/,/g,''))||0); else if(f==='month'){ const raw=v; const dt = (typeof raw==='number'||raw instanceof Date)? excelDate(raw) : String(raw||'').trim(); const m=dt.match(/^(\d{4})-(\d{2})/); v = m? m[1]+'-'+m[2] : (isNaN(new Date(dt))? dt : new Date(dt).toISOString().slice(0,7)); } else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : sheet==='rmpm'? o.matCode : o.fgCode);
+      rows.warn = ({stock:['available','mfgDate'],orders:['orderDate','country','brand'],slob:['slobQty'],transit:['eta'],forecast:['country','month']}[sheet]||[]).filter(f=>!map[f]).map(f=>COLS[sheet].find(c=>c[0]===f)[1]);
+      resolve(rows);
+    }catch(err){ reject(err); } };
+    fr.onerror=()=>reject(new Error('Could not read the file'));
+    fr.readAsArrayBuffer(file);
+  });
+}
+function bindUpload(inputId, sheet, merge){
+  $(inputId).addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file) return; try{
+    const rows=await parseSheet(file,sheet);
+    if(rows.warn&&rows.warn.length) setTimeout(()=>toast('Column not found in '+file.name+': '+rows.warn.join(', ')+'. Those values are blank.'),3400);
+    if(merge==='orders'){ // upsert by order no + fg code; keep existing reserved/supplied when the upload leaves them blank
+      const idx={}; DATA.orders.forEach(o=>idx[norm(o.orderNo)+'|'+key(o.fgCode)]=o);
+      let added=0,updated=0; rows.forEach(r=>{ const k=norm(r.orderNo)+'|'+key(r.fgCode); const ex=idx[k]; if(ex){ Object.assign(ex,{...r,id:ex.id, caseRate:r.caseRate||ex.caseRate, reserved:r.reserved||ex.reserved, supplied:r.supplied||ex.supplied, suppliedDate:r.suppliedDate||ex.suppliedDate, ref:r.ref||ex.ref}); updated++; } else { DATA.orders.push(r); idx[k]=r; added++; } });
+      toast(`Tracker uploaded: ${added} new, ${updated} updated`);
+    } else { DATA[sheet]=rows; toast(`${file.name}: ${rows.length} rows loaded into ${sheet}`); }
+    SOURCE[sheet]={fileName:file.name, uploadedAt:new Date().toISOString()};
+    await persist(sheet);
+  }catch(err){ toast('Upload failed: '+err.message); } e.target.value=''; });
+}
+
+function buildWorkbook(sheet, rows){
+  const cols=COLS[sheet]; const aoa=[cols.map(c=>c[1]), ...rows.map(r=>cols.map(c=>r[c[0]]??''))];
+  const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=cols.map(c=>({wch:Math.max(14,c[1].length+2)}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,(FILES[sheet]?FILES[sheet].name:sheet).slice(0,31));
+  return XLSX.write(wb,{bookType:'xlsx',type:'array'});
+}
+async function offerFile(filename, data){
+  if(!downloads){ toast('Downloads are not available in this view. Open the artifact in claude.ai to save files.'); return; }
+  try{ await downloads.save({filename, data}); toast('Saved '+filename); }
+  catch(e){ if(e.code!=='declined') toast('Could not save: '+(e.message||e.code)); }
+}
+$('#exportSummary').addEventListener('click',()=>{
+  const rows=CALC.orders.filter(passes).map(o=>({country:o.country,priority:'P'+o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,orderNo:o.orderNo,orderDate:o.orderDate,qty:o.qty,supplied:o.supplied,suppliedDate:o.suppliedDate,reserved:o.reserved,pending:o.pending,planned:(CALC.fg[o.k]||{}).plannedGross||0,produced:(CALC.fg[o.k]||{}).produced||0,acr:o.rate,orderValue:Math.round(money(o.orderValue)),dispatchValue:Math.round(money(o.dispatchValue)),balanceValue:Math.round(money(o.balanceValue)),status:o.status,expected:o.expected}));
+  const cols=[['country','Country'],['priority','Priority'],['brand','Brand'],['fgCode','FG Code'],['fgName','Description'],['orderNo','Order No'],['orderDate','Order Date'],['qty','Ordered'],['supplied','Supplied'],['suppliedDate','Supplied Date'],['reserved','Reserved'],['pending','Pending to Produce'],['planned','Production Planned (FG total)'],['produced','Produced (FG total)'],['acr','ACR (USD)'],['orderValue','Order Value ('+CUR+')'],['dispatchValue','Dispatch Value ('+CUR+')'],['balanceValue','Balance Value ('+CUR+')'],['status','Status'],['expected','Next']];
+  const ws=XLSX.utils.aoa_to_sheet([cols.map(c=>c[1]),...rows.map(r=>cols.map(c=>r[c[0]]??''))]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Order Summary');
+  offerFile(`oms-order-summary-${todayStr()}.xlsx`, XLSX.write(wb,{bookType:'xlsx',type:'array'}));
+});
+$('#resetData').addEventListener('click',async()=>{ if(!confirm('Replace all sheets with the example data set?')) return; setExample(); for(const s of SHEETS) await persist(s); toast('Example data restored'); });
+
+/* ---------- nav ---------- */
+const TITLES={dash:['Dashboard','Finished goods available, planned in production, and pending to produce.'],orders:['Order Tracker','Logistics input: every order from a distributor, with reserved and supplied quantities.'],summary:['Order Summary','Planning view: stock allocated by country priority, pending quantities and what is planned in production.'],prod:['Production & RMPM','Production plan, raw and packing material shortages, and procurement connectivity.'],inputs:['Process & Access','How the sheets connect, and who can update them.'],hub:['Supply Chain Inputs','Every file the platform runs on, with its owner, columns and last upload.'],slob:['Liquidation','FG slow-moving and obsolete stock in cases, and which countries can absorb it.']};
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.nav-btn').forEach(x=>x.classList.toggle('active',x===b)); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+b.dataset.view)); $('#viewTitle').textContent=TITLES[b.dataset.view][0]; $('#viewSub').textContent=TITLES[b.dataset.view][1]; try{localStorage.setItem('oms-view',b.dataset.view);}catch(e){} }));
+try{ const v=localStorage.getItem('oms-view'); if(v&&document.querySelector(`.nav-btn[data-view="${v}"]`)) document.querySelector(`.nav-btn[data-view="${v}"]`).click(); }catch(e){}
+
+let toastT; function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
+
+initStore();
+})();
+</script>
