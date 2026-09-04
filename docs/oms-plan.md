@@ -9,6 +9,7 @@ All data is country wise, brand wise, FG code wise.
 |---|-------|-------|-------|--------|
 | 1 | Order Tracker | Logistics | Distributor orders as they arrive (Excel upload or manual entry). Reserved qty, supplied qty, supplied date, invoice ref. | Order placed date and supplied date per order |
 | 2 | Order Summary | Planning | Computed. Reads tracker, FG stock, country priority, production plan, RMPM sheet. | Pending to produce per country / brand / FG, planned quantity, gap, owner of next step. Shared with Production and all stakeholders |
+| 4 | Liquidation | FG Planner (Arun Muthian) | FG SLOB file in cases: FG code, description, Stoc Loc, batch, manuf and expiry date, SLOB qty, category, remarks. | Age and remaining life per lot, and the countries whose norms accept the lot with their open pending qty, so liquidation is planned against real demand. |
 | 3 | Production and RMPM | Production, RM planner (Saurav Nagrale), PM planner (Maslekar Purushottam Parth) | Production planned and produced per FG code (FG code, description, production planned, produced). RM or PM shortages by material (material code, description, type, shortage qty, UOM, ETA), not linked to FG code. | Planned and produced quantities back to Planning; connectivity date per shortage |
 
 ## Allocation algorithm
@@ -16,8 +17,8 @@ All data is country wise, brand wise, FG code wise.
 1. Country priority (1, 2, 3), allowed storage locations and the ageing norm (maximum inventory age in days) come from the priority and norms sheet.
 2. Open qty per order = order qty minus supplied qty.
 3. Stock still reserved = tracker reserved qty minus supplied qty (reserved is cumulative).
-4. FG stock is held as lots (FG code, storage location, batch, quantity, manufacturing date). Batch and location are shared by the FG Planner, Arun Muthian. Age is stock date minus manufacturing date, or the Age Days column when supplied.
-5. A lot is eligible for a country only if it sits in one of that country's allowed locations (blank = any) and its age is within the country's maximum (blank = any).
+4. FG stock comes from the FG ageing file shared by the FG Planner, Arun Muthian: FG Code, FG Description, Stoc Loc, Stoc Loc Description, Manuf Date, Expiry Date, Ageing Remarks, plus Batch and Available Qty per line. Age is today minus manufacturing date; remaining shelf life is expiry minus today.
+5. A lot is eligible for a country only if it sits in one of that country's allowed locations (Stoc Loc code or description; blank = any), its age is within the country's maximum age (blank = any), and its remaining shelf life meets the country's minimum (blank = any).
 6. Reservations already made by logistics consume eligible lots first. Then remaining eligible stock is allocated to open orders in priority order, then order date, taking the oldest eligible lot first so older inventory goes to the countries whose norms accept it.
 7. Pending to produce = open qty minus reserved. If stock exists but is outside the country's location or age norm, the order shows that quantity as ineligible.
 8. Quantity still to come from production (production planned minus produced) covers pending qty in the same priority order. Gap = pending minus that remainder. Produced goods reach the dashboard as FG stock through the stock upload, so they are not counted twice.
@@ -33,7 +34,7 @@ All data is country wise, brand wise, FG code wise.
 
 ## Inputs required from the supply end
 
-Required: FG stock on hand by batch and storage location from the FG Planner Arun Muthian (daily), country priority and norms (allowed locations, max age), FG shortage list (weekly; this is what flags an order as short on RMPM), production plan as production planned and produced per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
+Required: FG ageing file from the FG Planner Arun Muthian (daily), FG SLOB file in cases from the same owner (weekly), country priority and norms (allowed locations, max age, min shelf life), FG shortage list (weekly; this is what flags an order as short on RMPM), production plan as production planned and produced per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
 
 Recommended: FG master, production lead time per FG, bill of materials, in-transit plan, batch and expiry, sales forecast.
 

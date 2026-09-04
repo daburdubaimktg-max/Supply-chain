@@ -186,7 +186,8 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
     <button class="nav-btn" data-view="orders"><span class="k">2</span>Order Tracker</button>
     <button class="nav-btn" data-view="summary"><span class="k">3</span>Order Summary</button>
     <button class="nav-btn" data-view="prod"><span class="k">4</span>Production &amp; RMPM</button>
-    <button class="nav-btn" data-view="inputs"><span class="k">5</span>Supply Inputs</button>
+    <button class="nav-btn" data-view="slob"><span class="k">5</span>Liquidation</button>
+    <button class="nav-btn" data-view="inputs"><span class="k">6</span>Supply Inputs</button>
     <div class="foot"><span class="dot"></span><span id="storeState">Loading shared data…</span><br><span id="lastRefresh"></span></div>
   </aside>
 
@@ -311,6 +312,21 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
       </div>
     </section>
 
+    <!-- ================= LIQUIDATION ================= -->
+    <section class="view" id="view-slob">
+      <div class="note"><b>FG Planner, Arun Muthian.</b> Upload the FG SLOB file here. Quantities are in cases. For every lot the page shows its age and remaining shelf life, and which countries' norms and open orders could absorb it, so liquidation can be planned against real demand.</div>
+      <div class="toolbar">
+        <label class="btn filelabel">Upload SLOB file<input type="file" id="upSlob" accept=".xlsx,.xls,.csv"></label>
+        <button class="btn" data-template="slob">Blank template</button>
+        <button class="btn" data-download="slob">Download uploaded SLOB</button>
+        <span class="small muted" data-src="slob"></span>
+        <span class="spacer"></span>
+        <span class="small muted" id="slobCount"></span>
+      </div>
+      <div class="grid kpis" id="slobKpis" style="margin-bottom:16px"></div>
+      <div class="tablewrap"><table id="tblSlob"></table></div>
+    </section>
+
     <!-- ================= SUPPLY INPUTS ================= -->
     <section class="view" id="view-inputs">
       <div class="panel" style="margin-bottom:16px">
@@ -327,9 +343,9 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
       <div class="panel" style="margin-bottom:16px">
         <div class="panel-h"><h2>Supply-side inputs</h2><p>Upload these to keep the dashboard current. Refresh cadence in brackets.</p></div>
         <div class="toolbar">
-          <label class="btn filelabel sm">Upload FG stock (batch &amp; location)<input type="file" id="upStock" accept=".xlsx,.xls,.csv"></label>
-          <button class="btn sm" data-template="stock">Stock template</button>
-          <button class="btn sm" data-download="stock">Download stock</button>
+          <label class="btn filelabel sm">Upload FG ageing file<input type="file" id="upStock" accept=".xlsx,.xls,.csv"></label>
+          <button class="btn sm" data-template="stock">Ageing file template</button>
+          <button class="btn sm" data-download="stock">Download ageing file</button>
           <label class="btn filelabel sm">Upload country priority<input type="file" id="upPriority" accept=".xlsx,.xls,.csv"></label>
           <button class="btn sm" data-template="priority">Priority &amp; norms template</button>
           <button class="btn sm" data-download="priority">Download priority</button>
@@ -339,8 +355,8 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
           <span class="spacer"></span>
           <button class="btn sm danger" id="resetData">Reset to example data</button>
         </div>
-        <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:16px">
-          <div><h3>FG stock on hand · Arun Muthian, FG Planner <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="stock"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
+        <div class="grid" style="grid-template-columns:1fr;gap:16px">
+          <div><h3>FG ageing file · Arun Muthian, FG Planner <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="stock"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
           <div><h3>Country priority &amp; norms <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="priority"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblPriority"></table></div></div>
           <div><h3>FG shortage list <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="shortage"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblShortage"></table></div></div>
         </div>
@@ -349,7 +365,7 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
       <div class="panel" style="margin-bottom:16px">
         <div class="panel-h"><h2>Who can update the files</h2><span id="accessBadge"></span></div>
         <div class="flow">
-          <div class="step alt"><div class="who">Editors</div><div class="what">Logistics, Planning, Production, FG planner (Arun Muthian), RM and PM planners</div><div class="how">Share the tracker with these people as <b>Can edit</b>. They can upload files, add rows, change cells and download sheets.</div></div>
+          <div class="step alt"><div class="who">Editors</div><div class="what">Logistics, Planning, Production, FG planner Arun Muthian (ageing and SLOB files), RM and PM planners</div><div class="how">Share the tracker with these people as <b>Can edit</b>. They can upload files, add rows, change cells and download sheets.</div></div>
           <div class="step"><div class="who">Viewers</div><div class="what">Country managers, brand managers, other stakeholders</div><div class="how">Share as <b>Can view</b>. They see the live dashboard and every sheet and can download, but cannot change anything. The shared store refuses their writes.</div></div>
           <div class="step"><div class="who">Owner</div><div class="what">Sharing is managed from the share menu on this page</div><div class="how">Only the owner and editors can update. Access is checked when the page opens; a viewer sees "View only" in the left rail.</div></div>
         </div>
@@ -358,8 +374,9 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
       <div class="spec">
         <div class="panel req"><h2>Required from the supply end</h2>
           <ul>
-            <li><b>FG stock on hand</b> by FG code, storage location and batch number, with manufacturing date so age can be worked out. Shared by the FG Planner, Arun Muthian <span class="muted">[daily]</span>. Columns: <code>FG Code</code>, <code>Location</code>, <code>Batch</code>, <code>Available Qty</code>, <code>Mfg Date</code> (or <code>Age Days</code>), <code>Stock Date</code>.</li>
-            <li><b>Country priority and norms</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3), <code>Allocate From</code> (location names, comma separated; blank = any), <code>Max Age Days</code> (oldest inventory the country accepts; blank = any).</li>
+            <li><b>FG ageing file</b> from the FG Planner, Arun Muthian <span class="muted">[daily]</span>. Columns: <code>FG Code</code>, <code>FG Description</code>, <code>Stoc Loc</code>, <code>Stoc Loc Description</code>, <code>Manuf Date</code>, <code>Expiry Date</code>, <code>Ageing Remarks</code>. Add <code>Batch</code> and <code>Available Qty</code> per line so each lot can be allocated; without a quantity column the lots load with zero available.</li>
+            <li><b>FG SLOB file</b> (slow-moving and obsolete stock, in cases) from the FG Planner, Arun Muthian <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>FG Description</code>, <code>Stoc Loc</code>, <code>Batch</code>, <code>Manuf Date</code>, <code>Expiry Date</code>, <code>SLOB Qty (Cases)</code>, <code>SLOB Category</code>, <code>Remarks</code>. Shown in the Liquidation view.</li>
+            <li><b>Country priority and norms</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3), <code>Allocate From</code> (Stoc Loc codes or descriptions, comma separated; blank = any), <code>Max Age Days</code> (oldest inventory the country accepts), <code>Min Shelf Life Days</code> (least remaining life at dispatch). Blank = any.</li>
             <li><b>FG shortage list</b>: what FG will be short and by how much <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>Short Qty</code>, <code>Reason</code>.</li>
             <li><b>Production plan</b>: production planned and produced per FG code <span class="muted">[weekly, and on every change]</span>. Columns: <code>FG Code</code>, <code>Description</code>, <code>Production Planned</code>, <code>Produced</code>.</li>
             <li><b>RM and PM shortage list</b> by material <span class="muted">[weekly]</span>. Columns: <code>Material Code</code>, <code>Material Description</code>, <code>Type</code> (RM or PM), <code>Shortage Qty</code>, <code>UOM</code>, <code>ETA</code>.</li>
@@ -400,8 +417,8 @@ body.readonly td input,body.readonly td select{border-color:transparent;backgrou
    sheets: orders, production, rmpm, stock, priority, shortage
    Each sheet is one shared document {rows:[...], updatedAt}
    ===================================================================== */
-const SHEETS = ['orders','production','rmpm','stock','priority','shortage'];
-const DATA = {orders:[],production:[],rmpm:[],stock:[],priority:[],shortage:[]};
+const SHEETS = ['orders','production','rmpm','stock','priority','shortage','slob'];
+const DATA = {orders:[],production:[],rmpm:[],stock:[],priority:[],shortage:[],slob:[]};
 const SOURCE = {}; // per sheet: {fileName, uploadedAt}
 let db = null, downloads = null, storeMode = 'local', CAN_EDIT = true;
 const PLANNER = {RM:'Saurav Nagrale', PM:'Maslekar Purushottam Parth', FG:'Arun Muthian'};
@@ -414,8 +431,8 @@ const todayStr = () => new Date().toISOString().slice(0,10);
 function exampleData(){
   const d = (m,day) => `2026-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   return {
-    priority:[{country:'UAE',priority:1,locations:'Jebel Ali',maxAge:90},{country:'KSA',priority:1,locations:'Jeddah',maxAge:60},{country:'Kuwait',priority:2,locations:'Jebel Ali',maxAge:120},{country:'Oman',priority:2,locations:'Jebel Ali',maxAge:180},{country:'Qatar',priority:3,locations:'',maxAge:''},{country:'Bahrain',priority:3,locations:'Jebel Ali',maxAge:180}],
-    stock:[{fgCode:'FG-VAT-200',warehouse:'Jebel Ali',batch:'B2406',available:1200,mfgDate:d(6,20),stockDate:d(9,3)},{fgCode:'FG-VAT-200',warehouse:'Jebel Ali',batch:'B2401',available:300,mfgDate:d(3,10),stockDate:d(9,3)},{fgCode:'FG-VAT-200',warehouse:'Jeddah',batch:'B2407',available:600,mfgDate:d(7,28),stockDate:d(9,3)},{fgCode:'FG-VAT-300',warehouse:'Jebel Ali',batch:'B2405',available:400,mfgDate:d(5,25),stockDate:d(9,3)},{fgCode:'FG-VAT-300',warehouse:'Jeddah',batch:'B2408',available:300,mfgDate:d(8,10),stockDate:d(9,3)},{fgCode:'FG-AML-200',warehouse:'Jebel Ali',batch:'B2407',available:2600,mfgDate:d(7,5),stockDate:d(9,3)},{fgCode:'FG-HRB-100',warehouse:'Jebel Ali',batch:'',available:0,mfgDate:'',stockDate:d(9,3)},{fgCode:'FG-RED-150',warehouse:'Jebel Ali',batch:'B2406',available:950,mfgDate:d(6,28),stockDate:d(9,3)},{fgCode:'FG-MSW-100',warehouse:'Jebel Ali',batch:'B2404',available:300,mfgDate:d(4,15),stockDate:d(9,3)},{fgCode:'FG-MSW-100',warehouse:'Jeddah',batch:'B2408',available:200,mfgDate:d(8,5),stockDate:d(9,3)}],
+    priority:[{country:'UAE',priority:1,locations:'JA01',maxAge:90,minShelf:''},{country:'KSA',priority:1,locations:'JD01',maxAge:60,minShelf:540},{country:'Kuwait',priority:2,locations:'JA01',maxAge:120,minShelf:''},{country:'Oman',priority:2,locations:'JA01',maxAge:180,minShelf:''},{country:'Qatar',priority:3,locations:'',maxAge:'',minShelf:''},{country:'Bahrain',priority:3,locations:'JA01',maxAge:180,minShelf:365}],
+    stock:[{fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2406',available:1200,mfgDate:d(6,20),expiryDate:'2028-06-19',ageRemarks:'0-90 days'},{fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2401',available:300,mfgDate:d(3,10),expiryDate:'2028-03-09',ageRemarks:'>180 days · liquidate'},{fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JD01',whName:'Jeddah DC',batch:'B2407',available:600,mfgDate:d(7,28),expiryDate:'2028-07-27',ageRemarks:'0-90 days'},{fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2405',available:400,mfgDate:d(5,25),expiryDate:'2028-05-24',ageRemarks:'90-180 days'},{fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',warehouse:'JD01',whName:'Jeddah DC',batch:'B2408',available:300,mfgDate:d(8,10),expiryDate:'2028-08-09',ageRemarks:'0-90 days'},{fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2407',available:2600,mfgDate:d(7,5),expiryDate:'2028-07-04',ageRemarks:'0-90 days'},{fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',warehouse:'JA01',whName:'Jebel Ali DC',batch:'',available:0,mfgDate:'',expiryDate:'',ageRemarks:''},{fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2406',available:950,mfgDate:d(6,28),expiryDate:'2027-12-27',ageRemarks:'0-90 days'},{fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',warehouse:'JA01',whName:'Jebel Ali DC',batch:'B2404',available:300,mfgDate:d(4,15),expiryDate:'2027-10-14',ageRemarks:'90-180 days'},{fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',warehouse:'JD01',whName:'Jeddah DC',batch:'B2408',available:200,mfgDate:d(8,5),expiryDate:'2028-02-04',ageRemarks:'0-90 days'}],
     orders:[
       {id:uid(),orderNo:'PO-UAE-1041',orderDate:d(7,6),country:'UAE',distributor:'Al Seer',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1200,reserved:1200,supplied:1200,suppliedDate:d(7,18),ref:'INV-77021'},
       {id:uid(),orderNo:'PO-KSA-2210',orderDate:d(7,9),country:'KSA',distributor:'Binzagr',brand:'Vatika',fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',qty:900,reserved:900,supplied:900,suppliedDate:d(7,29),ref:'INV-77104'},
@@ -443,6 +460,7 @@ function exampleData(){
       {id:uid(),matCode:'RM-NEEM-EX',matName:'Neem extract',type:'RM',shortQty:120,uom:'kg',eta:'',status:'Awaiting ETA'},
       {id:uid(),matCode:'PM-CTN-MSW',matName:'Outer carton Meswak 100g',type:'PM',shortQty:9000,uom:'pcs',eta:d(9,18),status:'ETA received'}
     ],
+    slob:[{id:uid(),fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',warehouse:'JA01',batch:'B2401',mfgDate:d(3,10),expiryDate:'2028-03-09',slobQty:300,category:'Slow moving',remarks:'>180 days, offer to P3 markets'},{id:uid(),fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',warehouse:'JA01',batch:'B2404',mfgDate:d(4,15),expiryDate:'2027-10-14',slobQty:300,category:'Slow moving',remarks:'Outside UAE norm'},{id:uid(),fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',warehouse:'JA01',batch:'B2405',mfgDate:d(5,25),expiryDate:'2028-05-24',slobQty:120,category:'Near expiry',remarks:'Promo pack, discontinued artwork'}],
     shortage:[{fgCode:'FG-HRB-100',shortQty:1400,reason:'PM laminate + neem extract'},{fgCode:'FG-MSW-100',shortQty:350,reason:'Outer carton'},{fgCode:'FG-VAT-200',shortQty:1500,reason:'Capacity - Line 2 full till 12 Sep'}]
   };
 }
@@ -510,11 +528,11 @@ function computeAll(){
   // ---- stock lots with age, and country norms (allowed locations, max age) ----
   const today = todayStr();
   const daysBetween = (a,b)=> Math.round((new Date(b)-new Date(a))/864e5);
-  const lots = DATA.stock.map(st=>{ const hasAge = st.ageDays!==''&&st.ageDays!=null&&!isNaN(Number(st.ageDays)); const age = hasAge? Number(st.ageDays) : (st.mfgDate? daysBetween(st.mfgDate, st.stockDate||today) : null); const qty=Math.max(0,Number(st.available)||0); return {k:key(st.fgCode), wh:String(st.warehouse||'').trim(), whKey:String(st.warehouse||'').trim().toLowerCase(), batch:st.batch||'', age, qty, free:qty}; }).filter(l=>l.k);
+  const lots = DATA.stock.map(st=>{ const hasAge = st.ageDays!==''&&st.ageDays!=null&&!isNaN(Number(st.ageDays)); const age = hasAge? Number(st.ageDays) : (st.mfgDate? daysBetween(st.mfgDate, today) : null); const remaining = st.expiryDate? daysBetween(today, st.expiryDate) : null; const qty=Math.max(0,Number(st.available)||0); return {row:st, k:key(st.fgCode), fgName:st.fgName||'', wh:String(st.warehouse||'').trim(), whKey:String(st.warehouse||'').trim().toLowerCase(), whName:String(st.whName||'').trim(), whNameKey:String(st.whName||'').trim().toLowerCase(), batch:st.batch||'', age, remaining, remarks:st.ageRemarks||'', qty, free:qty}; }).filter(l=>l.k);
   const stockOf = {}; lots.forEach(l=>{ stockOf[l.k]=(stockOf[l.k]||0)+l.qty; });
-  const normOf = {}; DATA.priority.forEach(pr=>{ if(!pr.country) return; const locs=String(pr.locations||'').split(/[,;/|]/).map(x=>x.trim().toLowerCase()).filter(Boolean); const ma=Number(pr.maxAge); const maxAge = (pr.maxAge===''||pr.maxAge==null||isNaN(ma)||ma<=0)? null : ma; normOf[String(pr.country).trim().toLowerCase()]={locs, maxAge, locNames:String(pr.locations||'').trim()}; });
-  const normFor = c => normOf[String(c||'').trim().toLowerCase()] || {locs:[], maxAge:null, locNames:''};
-  const eligible = (lot, norm) => (!norm.locs.length || norm.locs.includes(lot.whKey)) && (norm.maxAge==null || lot.age==null || lot.age<=norm.maxAge);
+  const normOf = {}; DATA.priority.forEach(pr=>{ if(!pr.country) return; const locs=String(pr.locations||'').split(/[,;/|]/).map(x=>x.trim().toLowerCase()).filter(Boolean); const num=v=>{ const n=Number(v); return (v===''||v==null||isNaN(n)||n<=0)? null : n; }; normOf[String(pr.country).trim().toLowerCase()]={locs, maxAge:num(pr.maxAge), minShelf:num(pr.minShelf), locNames:String(pr.locations||'').trim()}; });
+  const normFor = c => normOf[String(c||'').trim().toLowerCase()] || {locs:[], maxAge:null, minShelf:null, locNames:''};
+  const eligible = (lot, norm) => (!norm.locs.length || norm.locs.includes(lot.whKey) || (lot.whNameKey && norm.locs.includes(lot.whNameKey))) && (norm.maxAge==null || lot.age==null || lot.age<=norm.maxAge) && (norm.minShelf==null || lot.remaining==null || lot.remaining>=norm.minShelf);
   // oldest eligible lot first, so the oldest inventory a country accepts leaves first
   const takeFrom = (o, need) => { const norm=normFor(o.country); const cands=lots.filter(l=>l.k===o.k && l.free>0 && eligible(l,norm)).sort((a,b)=>((b.age==null?-1:b.age)-(a.age==null?-1:a.age))); let got=0; for(const l of cands){ if(need<=0) break; const q=Math.min(need,l.free); l.free-=q; need-=q; got+=q; o.alloc.push({wh:l.wh,batch:l.batch,age:l.age,qty:q}); } return got; };
   // plannedOf = quantity still to come from production (planned minus produced); produced goods enter FG stock via the stock upload
@@ -542,7 +560,7 @@ function computeAll(){
   const fg = {};
   const remainingPlan = {...plannedOf};
   sorted.forEach(o=>{
-    const f = fg[o.k] = fg[o.k] || {fgCode:o.fgCode, fgName:o.fgName, brand:o.brand, stock:stockOf[o.k]||0, planned:plannedOf[o.k]||0, plannedGross:plannedGross[o.k]||0, produced:producedOf[o.k]||0, ordered:0, supplied:0, reserved:0, pending:0, covered:0, plans:planRows[o.k]||[], shortage:shortOf[o.k]||0, shortReason:(shortReason[o.k]||[]).join('; ')};
+    const f = fg[o.k] = fg[o.k] || {fgCode:o.fgCode, fgName:o.fgName||((lots.find(l=>l.k===o.k)||{}).fgName||''), brand:o.brand, stock:stockOf[o.k]||0, planned:plannedOf[o.k]||0, plannedGross:plannedGross[o.k]||0, produced:producedOf[o.k]||0, ordered:0, supplied:0, reserved:0, pending:0, covered:0, plans:planRows[o.k]||[], shortage:shortOf[o.k]||0, shortReason:(shortReason[o.k]||[]).join('; ')};
     f.ordered+=o.qty; f.supplied+=o.supplied; f.reserved+=o.reserved; f.pending+=o.pending;
     const cover = Math.min(o.pending, remainingPlan[o.k]||0); remainingPlan[o.k]=(remainingPlan[o.k]||0)-cover; o.covered=cover; f.covered+=cover;
     // status + expected date
@@ -558,11 +576,11 @@ function computeAll(){
   Object.values(fg).forEach(f=>{ f.gap=Math.max(0,f.pending-f.planned); f.blocked=f.shortage>0; });
   sorted.forEach(o=>{ if(o.pending>0 && o.ineligible>0) o.expected += ' · '+fmt(o.ineligible)+' in stock but outside location/age norm'; });
   const eligibleStock = (country, k) => { const norm=normFor(country); return lots.filter(l=>l.k===k && eligible(l,norm)).reduce((t,l)=>t+l.qty,0); };
-  return {orders:sorted, fg, getPrio, stockOf, lots, normFor, eligibleStock, openMaterials, materialEta, materialsAwaiting};
+  return {orders:sorted, fg, getPrio, stockOf, lots, normFor, eligible, eligibleStock, daysBetween, openMaterials, materialEta, materialsAwaiting};
 }
 function key(s){ return String(s||'').trim().toUpperCase(); }
 function allocText(alloc){ const by={}; alloc.forEach(a=>{ const id=(a.wh||'Unnamed location')+(a.batch?' '+a.batch:'')+(a.age!=null?' · '+a.age+'d':''); by[id]=(by[id]||0)+a.qty; }); return Object.entries(by).map(([n,q])=>`${esc(n)} ${fmt(q)}`).join(' · '); }
-function normText(norm){ return (norm.locNames||'Any location')+(norm.maxAge!=null?' · ≤'+norm.maxAge+'d':''); }
+function normText(norm){ return (norm.locNames||'Any location')+(norm.maxAge!=null?' · ≤'+norm.maxAge+'d old':'')+(norm.minShelf!=null?' · ≥'+norm.minShelf+'d left':''); }
 
 /* =====================================================================
    FILTERS
@@ -597,7 +615,7 @@ $('#clearFilters').addEventListener('click',()=>{ F.month=F.country=F.brand=F.fg
    RENDER
    ===================================================================== */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); renderSources(); if(!CAN_EDIT) document.querySelectorAll('td input, td select').forEach(i=>i.disabled=true); }
+function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); renderSlob(); renderSources(); if(!CAN_EDIT) document.querySelectorAll('td input, td select').forEach(i=>i.disabled=true); }
 function renderSources(){ document.querySelectorAll('[data-src]').forEach(el=>{ const m=SOURCE[el.dataset.src]; el.textContent = m ? `Last upload: ${m.fileName} · ${new Date(m.uploadedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}` : ''; }); }
 
 function renderDash(){
@@ -743,10 +761,28 @@ function renderProd(){
 $('#formProd').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.plannedQty=Number(o.plannedQty)||0; o.produced=Number(o.produced)||0; if(!o.fgName){ const f=CALC.fg[key(o.fgCode)]; o.fgName=f?f.fgName||'':''; } DATA.production.push(o); e.target.reset(); persist('production'); toast('Production plan added'); });
 $('#formRmpm').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.shortQty=Number(o.shortQty)||0; o.planner=PLANNER[o.type]; o.status=o.eta?'ETA received':'Awaiting ETA'; DATA.rmpm.push(o); e.target.reset(); persist('rmpm'); toast('Shortage logged for '+o.planner); });
 
+/* ---------- Liquidation (SLOB) ---------- */
+function renderSlob(){
+  const today=todayStr();
+  const rows=DATA.slob.map(r=>{ const k=key(r.fgCode); const f=CALC.fg[k]; const age=r.mfgDate?CALC.daysBetween(r.mfgDate,today):null; const remaining=r.expiryDate?CALC.daysBetween(today,r.expiryDate):null; const lot={k, whKey:String(r.warehouse||'').trim().toLowerCase(), whNameKey:'', age, remaining};
+    const takers=DATA.priority.filter(p=>p.country&&CALC.eligible(lot,CALC.normFor(p.country))).map(p=>{ const pend=CALC.orders.filter(o=>o.k===k&&o.country===p.country&&o.pending>0).reduce((t,o)=>t+o.pending,0); return {country:p.country,prio:Number(p.priority)||3,pend}; }).sort((a,b)=>b.pend-a.pend||a.prio-b.prio);
+    return {...r,k,f,age,remaining,takers,qty:Number(r.slobQty)||0}; })
+    .filter(r=>(!F.fg||r.k===key(F.fg))&&(!F.brand||(r.f&&r.f.brand===F.brand))&&(!F.country||r.takers.some(t=>t.country===F.country)));
+  const total=rows.reduce((t,r)=>t+r.qty,0); const byCat={}; rows.forEach(r=>{ const c=r.category||'Unclassified'; byCat[c]=(byCat[c]||0)+r.qty; });
+  const absorbable=rows.reduce((t,r)=>t+Math.min(r.qty, r.takers.reduce((a,x)=>a+x.pend,0)),0);
+  $('#slobCount').textContent=`${rows.length} of ${DATA.slob.length} SLOB lines shown`;
+  $('#slobKpis').innerHTML=`<div class="kpi hero"><div class="label">SLOB stock</div><div class="value">${fmt(total)}</div><div class="sub">cases across ${new Set(rows.map(r=>r.k)).size} FG codes · ${fmt(absorbable)} could be absorbed by open orders in countries whose norms accept the lot</div></div>`+
+    Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,q])=>`<div class="kpi"><div class="mark" style="background:var(--gold)"></div><div class="label">${esc(c)}</div><div class="value">${fmt(q)}</div><div class="sub">cases</div></div>`).join('')+
+    `<div class="kpi"><div class="mark" style="background:var(--crit)"></div><div class="label">No taker under norms</div><div class="value">${fmt(rows.filter(r=>!r.takers.length).reduce((t,r)=>t+r.qty,0))}</div><div class="sub">cases no country norm accepts</div></div>`;
+  $('#tblSlob').innerHTML=`<thead><tr><th>FG code</th><th>Description</th><th>Stoc loc</th><th>Batch</th><th>Manuf date</th><th>Expiry</th><th class="r">Age (d)</th><th class="r">Left (d)</th><th class="r">SLOB (cases)</th><th>Category</th><th>Countries that can take it · pending</th><th>Remarks</th><th></th></tr></thead><tbody>`+
+    (rows.length? rows.sort((a,b)=>(a.remaining==null?9e9:a.remaining)-(b.remaining==null?9e9:b.remaining)).map(r=>`<tr data-id="${r.id}"><td class="mono">${esc(r.fgCode)}</td><td class="muted">${esc(r.fgName||(r.f?r.f.fgName:'')||'')}</td><td class="mono">${esc(r.warehouse||'')}</td><td class="mono">${esc(r.batch||'')}</td><td class="muted">${esc(r.mfgDate||'')}</td><td class="muted">${esc(r.expiryDate||'')}</td><td class="r num">${r.age==null?'–':r.age}</td><td class="r num ${r.remaining!=null&&r.remaining<180?'':'muted'}">${r.remaining==null?'–':r.remaining}</td><td><input class="n num" type="number" data-f="slobQty" value="${r.qty}"></td><td><select data-f="category">${['Slow moving','Obsolete','Near expiry','Damaged','Unclassified'].map(c=>`<option ${(r.category||'Unclassified')===c?'selected':''}>${c}</option>`).join('')}</select></td><td class="small">${r.takers.length? r.takers.map(t=>`${esc(t.country)} <span class="prio p${t.prio}">P${t.prio}</span>${t.pend?' '+fmt(t.pend):' <span class="muted">0</span>'}`).join(' · ') : '<span class="pill crit">No country norm accepts this lot</span>'}</td><td><input data-f="remarks" value="${esc(r.remarks||'')}"></td><td><button class="btn sm danger" data-del="slob" data-id="${r.id}">✕</button></td></tr>`).join('') : `<tr><td colspan="13" class="empty">No SLOB lines yet. Upload the FG SLOB file.</td></tr>`)+'</tbody>';
+}
+bindInlineEdits('#tblSlob','slob');
+
 /* ---------- Supply inputs ---------- */
 function renderInputs(){
-  $('#tblStock').innerHTML=`<thead><tr><th>FG code</th><th>Location</th><th>Batch</th><th class="r">Available</th><th>Mfg date</th><th class="r">Age (d)</th></tr></thead><tbody>`+(DATA.stock.length? DATA.stock.map(st=>{ const l=CALC.lots.find(x=>x.k===key(st.fgCode)&&x.batch===(st.batch||'')&&x.wh===String(st.warehouse||'').trim()); return `<tr><td class="mono">${esc(st.fgCode)}</td><td>${esc(st.warehouse||'')}</td><td class="mono">${esc(st.batch||'')}</td><td class="r num">${fmt(st.available)}</td><td class="muted">${esc(st.mfgDate||'')}</td><td class="r num">${l&&l.age!=null?l.age:'–'}</td></tr>`; }).join(''):`<tr><td colspan="6" class="empty">Upload FG stock</td></tr>`)+'</tbody>';
-  $('#tblPriority').innerHTML=`<thead><tr><th>Country</th><th>Priority</th><th>Allocate from</th><th class="r">Max age (d)</th></tr></thead><tbody>`+(DATA.priority.length? [...DATA.priority].sort((a,b)=>a.priority-b.priority).map(p=>`<tr><td>${esc(p.country)}</td><td><span class="prio p${p.priority}">P${p.priority}</span></td><td>${esc(p.locations||'')||'<span class="muted">Any</span>'}</td><td class="r num">${p.maxAge?p.maxAge:'<span class="muted">Any</span>'}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Upload the priority list</td></tr>`)+'</tbody>';
+  $('#tblStock').innerHTML=`<thead><tr><th>FG code</th><th>FG description</th><th>Stoc loc</th><th>Loc description</th><th>Batch</th><th class="r">Available</th><th>Manuf date</th><th>Expiry date</th><th class="r">Age (d)</th><th class="r">Left (d)</th><th>Ageing remarks</th></tr></thead><tbody>`+(CALC.lots.length? CALC.lots.map(l=>`<tr><td class="mono">${esc(l.k)}</td><td class="muted">${esc(l.fgName)}</td><td class="mono">${esc(l.wh)}</td><td>${esc(l.whName)}</td><td class="mono">${esc(l.batch)}</td><td class="r num">${fmt(l.qty)}</td><td class="muted">${esc(l.row.mfgDate||'')}</td><td class="muted">${esc(l.row.expiryDate||'')}</td><td class="r num">${l.age==null?'–':l.age}</td><td class="r num ${l.remaining!=null&&l.remaining<90?'':'muted'}">${l.remaining==null?'–':l.remaining}</td><td class="small">${esc(l.remarks)}</td></tr>`).join(''):`<tr><td colspan="11" class="empty">Upload the FG ageing file</td></tr>`)+'</tbody>';
+  $('#tblPriority').innerHTML=`<thead><tr><th>Country</th><th>Priority</th><th>Allocate from</th><th class="r">Max age (d)</th><th class="r">Min shelf life (d)</th></tr></thead><tbody>`+(DATA.priority.length? [...DATA.priority].sort((a,b)=>a.priority-b.priority).map(p=>`<tr><td>${esc(p.country)}</td><td><span class="prio p${p.priority}">P${p.priority}</span></td><td>${esc(p.locations||'')||'<span class="muted">Any</span>'}</td><td class="r num">${p.maxAge?p.maxAge:'<span class="muted">Any</span>'}</td><td class="r num">${p.minShelf?p.minShelf:'<span class="muted">Any</span>'}</td></tr>`).join(''):`<tr><td colspan="5" class="empty">Upload the priority list</td></tr>`)+'</tbody>';
   $('#tblShortage').innerHTML=`<thead><tr><th>FG code</th><th class="r">Short qty</th><th>Reason</th></tr></thead><tbody>`+(DATA.shortage.length? DATA.shortage.map(s=>`<tr><td class="mono">${esc(s.fgCode)}</td><td class="r num">${fmt(s.shortQty)}</td><td class="muted">${esc(s.reason||'')}</td></tr>`).join(''):`<tr><td colspan="3" class="empty">Upload the FG shortage list</td></tr>`)+'</tbody>';
 }
 
@@ -757,15 +793,16 @@ const COLS = {
   orders:[['orderNo','Order No'],['orderDate','Order Date'],['country','Country'],['distributor','Distributor'],['brand','Brand'],['fgCode','FG Code'],['fgName','FG Description'],['qty','Order Qty (cases)'],['reserved','Stock Reserved Qty'],['supplied','Supplied Qty'],['suppliedDate','Supplied Date'],['ref','Invoice / Ref']],
   production:[['fgCode','FG Code'],['fgName','Description'],['plannedQty','Production Planned'],['produced','Produced']],
   rmpm:[['matCode','Material Code'],['matName','Material Description'],['type','Type'],['shortQty','Shortage Qty'],['uom','UOM'],['eta','ETA']],
-  stock:[['fgCode','FG Code'],['warehouse','Location'],['batch','Batch'],['available','Available Qty'],['mfgDate','Mfg Date'],['ageDays','Age Days'],['stockDate','Stock Date']],
-  priority:[['country','Country'],['priority','Priority'],['locations','Allocate From'],['maxAge','Max Age Days']],
-  shortage:[['fgCode','FG Code'],['shortQty','Short Qty'],['reason','Reason']]
+  stock:[['fgCode','FG Code'],['fgName','FG Description'],['warehouse','Stoc Loc'],['whName','Stoc Loc Description'],['batch','Batch'],['available','Available Qty'],['mfgDate','Manuf Date'],['expiryDate','Expiry Date'],['ageRemarks','Ageing Remarks']],
+  priority:[['country','Country'],['priority','Priority'],['locations','Allocate From'],['maxAge','Max Age Days'],['minShelf','Min Shelf Life Days']],
+  shortage:[['fgCode','FG Code'],['shortQty','Short Qty'],['reason','Reason']],
+  slob:[['fgCode','FG Code'],['fgName','FG Description'],['warehouse','Stoc Loc'],['batch','Batch'],['mfgDate','Manuf Date'],['expiryDate','Expiry Date'],['slobQty','SLOB Qty (Cases)'],['category','SLOB Category'],['remarks','Remarks']]
 };
-const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortageqty','shortqty','shortage','short','shortquantity','shortagequantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['location','warehouse','plant','site','depot','storagelocation'],batch:['batch','batchno','lot','lotno','batchnumber'],mfgDate:['mfgdate','manufacturingdate','mfg','productiondate','proddate','dom'],ageDays:['agedays','age','ageindays','inventoryage','stockage'],locations:['allocatefrom','allocatefromlocation','location','locations','warehouse','warehouses','source','sourcelocation'],maxAge:['maxagedays','maxage','maximumage','ageingnorm','agingnorm','agenorm','norm','maxinventoryage'],available:['availableqty','available','stock','qty','quantity','freestock'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
+const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortageqty','shortqty','shortage','short','shortquantity','shortagequantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['stocloc','stockloc','storloc','sloc','storagelocation','location','warehouse','plant','site','depot','stocklocation'],whName:['stoclocdescription','stoclocdesc','stocklocdescription','storagelocationdescription','locationdescription','slocdescription','warehousename','locationname'],expiryDate:['expirydate','expiry','expdate','exp','bestbefore','sled','shelflifeexpirydate','useby'],ageRemarks:['ageingremarks','agingremarks','ageing','aging','ageingbucket','agebucket','ageingremark','remarks','remark'],slobQty:['slobqtycases','slobqty','slob','slobcases','liquidationqty','qtycases','cases','qty','quantity','stockcases'],category:['slobcategory','category','slobtype','classification','class','bucket'],minShelf:['minshelflifedays','minshelflife','minimumshelflife','minremainingshelflife','remainingshelflife','shelflifenorm','mrsl'],batch:['batch','batchno','lot','lotno','batchnumber'],mfgDate:['manufdate','mfgdate','manufacturingdate','manufacturedate','mfg','mfd','mfddate','productiondate','proddate','dom'],ageDays:['agedays','age','ageindays','inventoryage','stockage'],locations:['allocatefrom','allocatefromlocation','location','locations','warehouse','warehouses','source','sourcelocation'],maxAge:['maxagedays','maxage','maximumage','ageingnorm','agingnorm','agenorm','norm','maxinventoryage'],available:['availableqty','available','unrestricted','unrestrictedstock','stockqty','stock','qty','quantity','freestock','onhand','soh','closingstock','qtyincases','cases'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
 const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function excelDate(v){ if(v==null||v==='') return ''; if(v instanceof Date) return v.toISOString().slice(0,10); if(typeof v==='number'){ const d=XLSX.SSF.parse_date_code(v); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } const s=String(v).trim(); const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(m){ let y=m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; } const d=new Date(s); return isNaN(d)?s:d.toISOString().slice(0,10); }
-const DATE_FIELDS = new Set(['orderDate','suppliedDate','eta','stockDate','mfgDate']);
-const NUM_FIELDS = new Set(['qty','reserved','supplied','plannedQty','produced','shortQty','available','priority','maxAge','ageDays']);
+const DATE_FIELDS = new Set(['orderDate','suppliedDate','eta','stockDate','mfgDate','expiryDate']);
+const NUM_FIELDS = new Set(['qty','reserved','supplied','plannedQty','produced','shortQty','available','priority','maxAge','ageDays','minShelf','slobQty']);
 
 function parseSheet(file, sheet){
   return new Promise((resolve,reject)=>{
@@ -777,9 +814,10 @@ function parseSheet(file, sheet){
       if(!raw.length) return reject(new Error('The first sheet is empty'));
       const headers=Object.keys(raw[0]); const map={};
       COLS[sheet].forEach(([field])=>{ const al=[norm(COLS[sheet].find(c=>c[0]===field)[1]), ...(ALIASES[field]||[])]; const h=headers.find(h=>al.includes(norm(h))); if(h) map[field]=h; });
-      const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['matCode'],stock:['fgCode','available'],priority:['country','priority'],shortage:['fgCode','shortQty']}[sheet];
+      const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['matCode'],stock:['fgCode'],priority:['country','priority'],shortage:['fgCode','shortQty'],slob:['fgCode']}[sheet];
       const missing=required.filter(f=>!map[f]); if(missing.length) return reject(new Error('Missing columns: '+missing.map(f=>COLS[sheet].find(c=>c[0]===f)[1]).join(', ')+'. Found: '+headers.join(', ')));
-      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v= (String(v).trim()===''&&(f==='ageDays'||f==='maxAge')) ? '' : (Number(String(v).replace(/,/g,''))||0); else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : sheet==='rmpm'? o.matCode : o.fgCode);
+      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v= (String(v).trim()===''&&(f==='ageDays'||f==='maxAge'||f==='minShelf')) ? '' : (Number(String(v).replace(/,/g,''))||0); else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : sheet==='rmpm'? o.matCode : o.fgCode);
+      rows.warn = ({stock:['available','mfgDate'],orders:['orderDate','country','brand'],slob:['slobQty']}[sheet]||[]).filter(f=>!map[f]).map(f=>COLS[sheet].find(c=>c[0]===f)[1]);
       resolve(rows);
     }catch(err){ reject(err); } };
     fr.onerror=()=>reject(new Error('Could not read the file'));
@@ -789,6 +827,7 @@ function parseSheet(file, sheet){
 function bindUpload(inputId, sheet, merge){
   $(inputId).addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file) return; try{
     const rows=await parseSheet(file,sheet);
+    if(rows.warn&&rows.warn.length) setTimeout(()=>toast('Column not found in '+file.name+': '+rows.warn.join(', ')+'. Those values are blank.'),3400);
     if(merge==='orders'){ // upsert by order no + fg code; keep existing reserved/supplied when the upload leaves them blank
       const idx={}; DATA.orders.forEach(o=>idx[norm(o.orderNo)+'|'+key(o.fgCode)]=o);
       let added=0,updated=0; rows.forEach(r=>{ const k=norm(r.orderNo)+'|'+key(r.fgCode); const ex=idx[k]; if(ex){ Object.assign(ex,{...r,id:ex.id, reserved:r.reserved||ex.reserved, supplied:r.supplied||ex.supplied, suppliedDate:r.suppliedDate||ex.suppliedDate, ref:r.ref||ex.ref}); updated++; } else { DATA.orders.push(r); idx[k]=r; added++; } });
@@ -798,12 +837,12 @@ function bindUpload(inputId, sheet, merge){
     await persist(sheet);
   }catch(err){ toast('Upload failed: '+err.message); } e.target.value=''; });
 }
-bindUpload('#upOrders','orders','orders'); bindUpload('#upProd','production'); bindUpload('#upRmpm','rmpm'); bindUpload('#upStock','stock'); bindUpload('#upPriority','priority'); bindUpload('#upShortage','shortage');
+bindUpload('#upOrders','orders','orders'); bindUpload('#upProd','production'); bindUpload('#upRmpm','rmpm'); bindUpload('#upStock','stock'); bindUpload('#upPriority','priority'); bindUpload('#upShortage','shortage'); bindUpload('#upSlob','slob');
 
 function buildWorkbook(sheet, rows){
   const cols=COLS[sheet]; const aoa=[cols.map(c=>c[1]), ...rows.map(r=>cols.map(c=>r[c[0]]??''))];
   const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=cols.map(c=>({wch:Math.max(14,c[1].length+2)}));
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,{orders:'Order Tracker',production:'Production Plan',rmpm:'RMPM Shortages',stock:'FG Stock',priority:'Country Priority',shortage:'FG Shortage'}[sheet]);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,{orders:'Order Tracker',production:'Production Plan',rmpm:'RMPM Shortages',stock:'FG Ageing',priority:'Country Priority',shortage:'FG Shortage',slob:'Liquidation SLOB'}[sheet]);
   return XLSX.write(wb,{bookType:'xlsx',type:'array'});
 }
 async function offerFile(filename, data){
@@ -822,7 +861,7 @@ $('#exportSummary').addEventListener('click',()=>{
 $('#resetData').addEventListener('click',async()=>{ if(!confirm('Replace all sheets with the example data set?')) return; setExample(); for(const s of SHEETS) await persist(s); toast('Example data restored'); });
 
 /* ---------- nav ---------- */
-const TITLES={dash:['Dashboard','Finished goods available, planned in production, and pending to produce.'],orders:['Order Tracker','Logistics input: every order from a distributor, with reserved and supplied quantities.'],summary:['Order Summary','Planning view: stock allocated by country priority, pending quantities and what is planned in production.'],prod:['Production & RMPM','Production plan, raw and packing material shortages, and procurement connectivity.'],inputs:['Supply Inputs','What the supply end must provide, and how the sheets connect.']};
+const TITLES={dash:['Dashboard','Finished goods available, planned in production, and pending to produce.'],orders:['Order Tracker','Logistics input: every order from a distributor, with reserved and supplied quantities.'],summary:['Order Summary','Planning view: stock allocated by country priority, pending quantities and what is planned in production.'],prod:['Production & RMPM','Production plan, raw and packing material shortages, and procurement connectivity.'],inputs:['Supply Inputs','What the supply end must provide, and how the sheets connect.'],slob:['Liquidation','FG slow-moving and obsolete stock in cases, and which countries can absorb it.']};
 document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.nav-btn').forEach(x=>x.classList.toggle('active',x===b)); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+b.dataset.view)); $('#viewTitle').textContent=TITLES[b.dataset.view][0]; $('#viewSub').textContent=TITLES[b.dataset.view][1]; try{localStorage.setItem('oms-view',b.dataset.view);}catch(e){} }));
 try{ const v=localStorage.getItem('oms-view'); if(v&&document.querySelector(`.nav-btn[data-view="${v}"]`)) document.querySelector(`.nav-btn[data-view="${v}"]`).click(); }catch(e){}
 
