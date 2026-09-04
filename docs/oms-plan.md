@@ -9,7 +9,7 @@ All data is country wise, brand wise, FG code wise.
 |---|-------|-------|-------|--------|
 | 1 | Order Tracker | Logistics | Distributor orders as they arrive (Excel upload or manual entry). Reserved qty, supplied qty, supplied date, invoice ref. | Order placed date and supplied date per order |
 | 2 | Order Summary | Planning | Computed. Reads tracker, FG stock, country priority, production plan, RMPM sheet. | Pending to produce per country / brand / FG, planned quantity, gap, owner of next step. Shared with Production and all stakeholders |
-| 3 | Production and RMPM | Production, RM planner (Saurav Nagrale), PM planner (Maslekar Purushottam Parth) | Production planned and produced per FG code (FG code, description, production planned, produced). RM or PM shortages with short qty. Procurement ETA per material. | Planned and produced quantities back to Planning; connectivity date per shortage |
+| 3 | Production and RMPM | Production, RM planner (Saurav Nagrale), PM planner (Maslekar Purushottam Parth) | Production planned and produced per FG code (FG code, description, production planned, produced). RM or PM shortages by material (material code, description, type, shortage qty, UOM, ETA), not linked to FG code. | Planned and produced quantities back to Planning; connectivity date per shortage |
 
 ## Allocation algorithm
 
@@ -19,7 +19,7 @@ All data is country wise, brand wise, FG code wise.
 4. Remaining free FG stock is allocated to open orders in priority order, then order date.
 5. Pending to produce = open qty minus reserved.
 6. Quantity still to come from production (production planned minus produced) covers pending qty in the same priority order. Gap = pending minus that remainder. Produced goods reach the dashboard as FG stock through the stock upload, so they are not counted twice.
-7. Order status: Supplied, Reserved ready, Production planned or In production, Partly planned, RMPM shortage (with ETA or awaiting ETA), Not planned.
+7. Order status: Supplied, Reserved ready, Production planned or In production, Partly planned, FG short on RMPM (driven by the FG shortage list from supply, since the RMPM sheet is material level), Not planned.
 8. Next step: supplied date, or "ready to dispatch", or planned and produced quantities, or "after" the latest procurement ETA. An order reads "In production" when produced is above zero but below planned.
 
 ## Dashboard
@@ -31,7 +31,7 @@ All data is country wise, brand wise, FG code wise.
 
 ## Inputs required from the supply end
 
-Required: FG stock on hand (daily), country priority list, FG shortage list (weekly), production plan as production planned and produced per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
+Required: FG stock on hand (daily), country priority list, FG shortage list (weekly; this is what flags an order as short on RMPM), production plan as production planned and produced per FG (weekly and on change), RM and PM shortage list, procurement ETA per material, supply confirmation per order.
 
 Recommended: FG master, production lead time per FG, bill of materials, in-transit plan, batch and expiry, sales forecast.
 

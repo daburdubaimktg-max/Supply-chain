@@ -266,7 +266,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
 
     <!-- ================= PRODUCTION & RMPM ================= -->
     <section class="view" id="view-prod">
-      <div class="note"><b>Production team.</b> For every FG with a pending quantity, either enter the production planned and produced quantities, or log the raw material (RM) or packing material (PM) shortage. RM shortages route to Saurav Nagrale; PM shortages route to Maslekar Purushottam Parth. They add the procurement ETA, and production is then planned to the connectivity date.</div>
+      <div class="note"><b>Production team.</b> For every FG with a pending quantity, either enter the production planned and produced quantities, or log the raw material (RM) or packing material (PM) shortage by material. RM shortages route to Saurav Nagrale; PM shortages route to Maslekar Purushottam Parth. They add the ETA, and production is then planned to the connectivity date. Which FG codes are short comes from the FG shortage list in Supply Inputs.</div>
       <div class="grid" style="grid-template-columns:1fr;gap:16px">
         <div class="panel">
           <div class="panel-h"><h2>Production plan</h2><p>Production planned and produced so far, per FG code</p></div>
@@ -288,7 +288,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
           <div class="tablewrap"><table id="tblProd"></table></div>
         </div>
         <div class="panel">
-          <div class="panel-h"><h2>RM / PM shortages and connectivity</h2><p>Planner is assigned from the material type; ETA comes from procurement</p></div>
+          <div class="panel-h"><h2>RM / PM shortages and connectivity</h2><p>Material level. Planner is assigned from the type; ETA comes from procurement. FG-level shortages come from the FG shortage list in Supply Inputs.</p></div>
           <div class="toolbar">
             <label class="btn filelabel sm">Upload shortages<input type="file" id="upRmpm" accept=".xlsx,.xls,.csv"></label>
             <button class="btn sm" data-template="rmpm">Blank template</button>
@@ -296,13 +296,12 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
             <span class="small muted" data-src="rmpm"></span>
           </div>
           <form class="form" id="formRmpm">
-            <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
             <div class="field"><label>Material code</label><input name="matCode" required class="mono"></div>
             <div class="field"><label>Material</label><input name="matName"></div>
             <div class="field"><label>Type</label><select name="type"><option>RM</option><option>PM</option></select></div>
-            <div class="field"><label>Short qty</label><input name="shortQty" type="number" min="0" required></div>
+            <div class="field"><label>Shortage qty</label><input name="shortQty" type="number" min="0" required></div>
             <div class="field"><label>UOM</label><input name="uom" placeholder="kg / pcs"></div>
-            <div class="field"><label>Procurement ETA</label><input name="eta" type="date"></div>
+            <div class="field"><label>ETA</label><input name="eta" type="date"></div>
             <div class="actions"><button class="btn primary" type="submit">Add shortage</button></div>
           </form>
           <div class="tablewrap"><table id="tblRmpm"></table></div>
@@ -352,7 +351,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
             <li><b>Country priority list</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3).</li>
             <li><b>FG shortage list</b>: what FG will be short and by how much <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>Short Qty</code>, <code>Reason</code>.</li>
             <li><b>Production plan</b>: production planned and produced per FG code <span class="muted">[weekly, and on every change]</span>. Columns: <code>FG Code</code>, <code>Description</code>, <code>Production Planned</code>, <code>Produced</code>.</li>
-            <li><b>RM and PM shortage list</b> per FG with required and short quantity, material type <span class="muted">[weekly]</span>.</li>
+            <li><b>RM and PM shortage list</b> by material <span class="muted">[weekly]</span>. Columns: <code>Material Code</code>, <code>Material Description</code>, <code>Type</code> (RM or PM), <code>Shortage Qty</code>, <code>UOM</code>, <code>ETA</code>.</li>
             <li><b>Procurement ETA</b> per short material, entered by the RM or PM planner <span class="muted">[as received]</span>.</li>
             <li><b>Supply confirmation</b>: supplied quantity, supply date and invoice or dispatch reference against each order <span class="muted">[as dispatched]</span>. This is what sets the supplied date on the dashboard.</li>
           </ul>
@@ -429,9 +428,9 @@ function exampleData(){
       {id:uid(),fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',plannedQty:350,produced:200}
     ],
     rmpm:[
-      {id:uid(),fgCode:'FG-HRB-100',matCode:'PM-LAM-100',matName:'Laminate tube 100ml Herbal',type:'PM',shortQty:180000,uom:'pcs',eta:d(9,22),status:'ETA received'},
-      {id:uid(),fgCode:'FG-HRB-100',matCode:'RM-NEEM-EX',matName:'Neem extract',type:'RM',shortQty:120,uom:'kg',eta:'',status:'Awaiting ETA'},
-      {id:uid(),fgCode:'FG-MSW-100',matCode:'PM-CTN-MSW',matName:'Outer carton Meswak 100g',type:'PM',shortQty:9000,uom:'pcs',eta:d(9,18),status:'ETA received'}
+      {id:uid(),matCode:'PM-LAM-100',matName:'Laminate tube 100ml Herbal',type:'PM',shortQty:180000,uom:'pcs',eta:d(9,22),status:'ETA received'},
+      {id:uid(),matCode:'RM-NEEM-EX',matName:'Neem extract',type:'RM',shortQty:120,uom:'kg',eta:'',status:'Awaiting ETA'},
+      {id:uid(),matCode:'PM-CTN-MSW',matName:'Outer carton Meswak 100g',type:'PM',shortQty:9000,uom:'pcs',eta:d(9,18),status:'ETA received'}
     ],
     shortage:[{fgCode:'FG-HRB-100',shortQty:1400,reason:'PM laminate + neem extract'},{fgCode:'FG-MSW-100',shortQty:350,reason:'Outer carton'},{fgCode:'FG-VAT-200',shortQty:1500,reason:'Capacity - Line 2 full till 12 Sep'}]
   };
@@ -495,8 +494,8 @@ function computeAll(){
   // plannedOf = quantity still to come from production (planned minus produced); produced goods enter FG stock via the stock upload
   const plannedOf = {}, plannedGross = {}, producedOf = {}, planRows = {};
   DATA.production.forEach(p=>{ const k=key(p.fgCode); if(!k) return; const pl=Number(p.plannedQty)||0, pr=Math.min(Number(p.produced)||0, pl); plannedGross[k]=(plannedGross[k]||0)+pl; producedOf[k]=(producedOf[k]||0)+pr; plannedOf[k]=(plannedOf[k]||0)+(pl-pr); (planRows[k]=planRows[k]||[]).push(p); });
-  const rmpmOf = {}; DATA.rmpm.forEach(r=>{ const k=key(r.fgCode); if(!k) return; (rmpmOf[k]=rmpmOf[k]||[]).push(r); });
-  const shortOf = {}; DATA.shortage.forEach(s=>{ const k=key(s.fgCode); if(k) shortOf[k]=(shortOf[k]||0)+(Number(s.shortQty)||0); });
+  const shortOf = {}, shortReason = {}; DATA.shortage.forEach(s=>{ const k=key(s.fgCode); if(k){ shortOf[k]=(shortOf[k]||0)+(Number(s.shortQty)||0); if(s.reason) shortReason[k]=[...(shortReason[k]||[]),s.reason]; } });
+  const openMaterials = DATA.rmpm.filter(r=>r.status!=='Connected'); const materialEta = openMaterials.map(r=>r.eta).filter(Boolean).sort().pop()||''; const materialsAwaiting = openMaterials.filter(r=>!r.eta).length;
 
   // Sort open orders by priority then order date, allocate free stock.
   const orders = DATA.orders.map(o=>({...o, qty:Number(o.qty)||0, reservedIn:Number(o.reserved)||0, supplied:Number(o.supplied)||0, prio:getPrio(o.country), month:(o.orderDate||'').slice(0,7), k:key(o.fgCode)}));
@@ -514,23 +513,21 @@ function computeAll(){
   const fg = {};
   const remainingPlan = {...plannedOf};
   sorted.forEach(o=>{
-    const f = fg[o.k] = fg[o.k] || {fgCode:o.fgCode, fgName:o.fgName, brand:o.brand, stock:stockOf[o.k]||0, planned:plannedOf[o.k]||0, plannedGross:plannedGross[o.k]||0, produced:producedOf[o.k]||0, ordered:0, supplied:0, reserved:0, pending:0, covered:0, rmpm:rmpmOf[o.k]||[], plans:planRows[o.k]||[], shortage:shortOf[o.k]||0};
+    const f = fg[o.k] = fg[o.k] || {fgCode:o.fgCode, fgName:o.fgName, brand:o.brand, stock:stockOf[o.k]||0, planned:plannedOf[o.k]||0, plannedGross:plannedGross[o.k]||0, produced:producedOf[o.k]||0, ordered:0, supplied:0, reserved:0, pending:0, covered:0, plans:planRows[o.k]||[], shortage:shortOf[o.k]||0, shortReason:(shortReason[o.k]||[]).join('; ')};
     f.ordered+=o.qty; f.supplied+=o.supplied; f.reserved+=o.reserved; f.pending+=o.pending;
     const cover = Math.min(o.pending, remainingPlan[o.k]||0); remainingPlan[o.k]=(remainingPlan[o.k]||0)-cover; o.covered=cover; f.covered+=cover;
     // status + expected date
-    const blocked = (rmpmOf[o.k]||[]).filter(r=>r.status!=='Connected');
+    const shortFg = (shortOf[o.k]||0)>0;
     const plans = planRows[o.k]||[]; const inProgress = plans.some(p=>(Number(p.produced)||0)>0 && (Number(p.produced)||0)<(Number(p.plannedQty)||0));
-    const eta = blocked.map(r=>r.eta).filter(Boolean).sort().pop() || '';
-    const awaitingEta = blocked.some(r=>!r.eta);
     if(o.qty>0 && o.supplied>=o.qty){ o.status='Supplied'; o.level='good'; o.expected=o.suppliedDate||''; }
     else if(o.pending===0 && o.reserved>0){ o.status=o.supplied>0?'Part supplied · rest reserved':'Reserved, ready'; o.level='info'; o.expected='Ready to dispatch'; }
-    else if(blocked.length && o.pending>0 && o.covered<o.pending){ o.status= awaitingEta?'RMPM shortage · awaiting ETA':'RMPM shortage · ETA '+eta; o.level=awaitingEta?'crit':'serious'; o.expected= eta? 'After '+eta : 'No ETA yet'; }
+    else if(shortFg && o.pending>0 && o.covered<o.pending){ o.status='FG short · RMPM'; o.level='serious'; o.expected= (shortReason[o.k]||[]).join('; ') || 'Awaiting RM/PM connectivity'; }
     else if(o.pending>0 && o.covered>=o.pending){ o.status = inProgress?'In production':'Production planned'; o.level='warn'; o.expected = 'After production · '+fmt(plannedGross[o.k]||0)+' planned, '+fmt(producedOf[o.k]||0)+' produced'; }
     else if(o.pending>0 && o.covered>0){ o.status='Partly planned'; o.level='warn'; o.expected= fmt(o.covered)+' of '+fmt(o.pending)+' in plan'; }
     else { o.status='Not planned'; o.level='crit'; o.expected='Needs production plan'; }
   });
-  Object.values(fg).forEach(f=>{ f.gap=Math.max(0,f.pending-f.planned); f.blocked=f.rmpm.filter(r=>r.status!=='Connected'); });
-  return {orders:sorted, fg, getPrio, stockOf};
+  Object.values(fg).forEach(f=>{ f.gap=Math.max(0,f.pending-f.planned); f.blocked=f.shortage>0; });
+  return {orders:sorted, fg, getPrio, stockOf, openMaterials, materialEta, materialsAwaiting};
 }
 function key(s){ return String(s||'').trim().toUpperCase(); }
 
@@ -579,7 +576,7 @@ function renderDash(){
   const ordered=sum(rows,'qty'), supplied=sum(rows,'supplied'), reserved=sum(rows,'reserved'), pending=sum(rows,'pending'), covered=sum(rows,'covered');
   const available = fgScope.reduce((t,f)=>t+f.stock,0);
   const plannedTotal = fgScope.reduce((t,f)=>t+f.plannedGross,0); const producedTotal = fgScope.reduce((t,f)=>t+f.produced,0);
-  const blockedQty = rows.filter(o=>o.level==='crit'||o.level==='serious').reduce((t,o)=>t+o.pending,0);
+  const blockedQty = rows.filter(o=>o.status==='FG short · RMPM').reduce((t,o)=>t+o.pending,0);
   const lead = rows.filter(o=>o.suppliedDate&&o.orderDate).map(o=>(new Date(o.suppliedDate)-new Date(o.orderDate))/864e5);
   const avgLead = lead.length? lead.reduce((a,b)=>a+b,0)/lead.length : null;
   const fill = ordered? Math.round(100*supplied/ordered):0;
@@ -589,7 +586,7 @@ function renderDash(){
     <div class="kpi"><div class="mark" style="background:var(--s2)"></div><div class="label">Supplied</div><div class="value">${fmt(supplied)}</div><div class="sub">${fill}% of ordered</div></div>
     <div class="kpi"><div class="mark" style="background:var(--surface-3)"></div><div class="label">FG available</div><div class="value">${fmt(available)}</div><div class="sub">${fmt(reserved)} reserved against orders</div></div>
     <div class="kpi"><div class="mark" style="background:var(--s3)"></div><div class="label">Planned in production</div><div class="value">${fmt(plannedTotal)}</div><div class="sub">${fmt(producedTotal)} produced so far</div></div>
-    <div class="kpi"><div class="mark" style="background:var(--crit)"></div><div class="label">Blocked by RMPM</div><div class="value">${fmt(blockedQty)}</div><div class="sub">${fgScope.filter(f=>f.blocked.length).length} FG codes short on RM or PM</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--crit)"></div><div class="label">Short on RMPM</div><div class="value">${fmt(blockedQty)}</div><div class="sub">${fgScope.filter(f=>f.blocked).length} FG on shortage list · ${CALC.openMaterials.length} open materials${CALC.materialsAwaiting?', '+CALC.materialsAwaiting+' awaiting ETA':''}</div></div>
     <div class="kpi"><div class="mark" style="background:var(--gold)"></div><div class="label">Order to supply</div><div class="value">${avgLead==null?'–':Math.round(avgLead)+'d'}</div><div class="sub">average, ${lead.length} supplied orders</div></div>`;
 
   // monthly chart
@@ -608,7 +605,7 @@ function renderDash(){
   rows.forEach(o=>{ const id=o.country+'|'+o.brand+'|'+o.k; const p=pos[id]=pos[id]||{country:o.country,prio:o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,ordered:0,supplied:0,reserved:0,pending:0,covered:0,f:CALC.fg[o.k]}; p.ordered+=o.qty;p.supplied+=o.supplied;p.reserved+=o.reserved;p.pending+=o.pending;p.covered+=o.covered; });
   const pr = Object.values(pos).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country)||a.brand.localeCompare(b.brand)||a.fgCode.localeCompare(b.fgCode));
   $('#tblPosition').innerHTML = `<thead><tr><th>Country</th><th>Pr.</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending</th><th class="r">FG available</th><th class="r">Planned</th><th class="r">Produced</th><th>Coverage</th><th>Position</th></tr></thead><tbody>`+
-    (pr.length? pr.map(p=>{ const st = p.pending===0?['good','Fulfilled or reserved']: p.f.blocked.length&&p.covered<p.pending?['serious','RMPM shortage']: p.covered>=p.pending?['warn','In production plan']: p.covered>0?['warn','Partly planned']:['crit','Not planned']; const pct=p.pending? Math.round(100*p.covered/p.pending):100;
+    (pr.length? pr.map(p=>{ const st = p.pending===0?['good','Fulfilled or reserved']: p.f.blocked&&p.covered<p.pending?['serious','FG short · RMPM']: p.covered>=p.pending?['warn','In production plan']: p.covered>0?['warn','Partly planned']:['crit','Not planned']; const pct=p.pending? Math.round(100*p.covered/p.pending):100;
       return `<tr><td>${esc(p.country)}</td><td><span class="prio p${p.prio}">P${p.prio}</span></td><td>${esc(p.brand)}</td><td class="mono">${esc(p.fgCode)}</td><td class="muted">${esc(p.fgName||'')}</td><td class="r num">${fmt(p.ordered)}</td><td class="r num">${fmt(p.supplied)}</td><td class="r num">${fmt(p.reserved)}</td><td class="r num"><b>${fmt(p.pending)}</b></td><td class="r num">${fmt(p.f.stock)}</td><td class="r num">${fmt(p.f.plannedGross)}</td><td class="r num">${fmt(p.f.produced)}</td><td><div class="bar" title="${pct}% of pending covered"><i style="width:${pct}%"></i></div></td><td><span class="pill ${st[0]}">${st[1]}</span></td></tr>`; }).join('') : `<tr><td colspan="14" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
 
   // timeline table
@@ -688,7 +685,7 @@ function renderSummary(){
     its.sort((a,b)=>b.pending-a.pending).forEach(it=>{ const f=it.f; const inProgress=f.plans.some(p=>(Number(p.produced)||0)>0 && (Number(p.produced)||0)<(Number(p.plannedQty)||0));
       let st,next,owner;
       if(it.pending===0){ st=['good', it.supplied>=it.ordered?'Supplied':'Reserved, ready']; next= it.supplied>=it.ordered? 'Done' : 'Dispatch from stock'; owner='Logistics'; }
-      else if(f.blocked.length && it.covered<it.pending){ const eta=f.blocked.map(r=>r.eta).filter(Boolean).sort().pop(); const wait=f.blocked.filter(r=>!r.eta); st=[wait.length?'crit':'serious', wait.length?'RMPM shortage · awaiting ETA':'RMPM shortage · ETA '+eta]; next = f.blocked.map(r=>`${r.type} ${esc(r.matCode)}${r.eta?' · '+r.eta:' · no ETA'}`).join('<br>'); owner=[...new Set(f.blocked.map(r=>PLANNER[r.type]||r.type))].join(' / '); }
+      else if(f.blocked && it.covered<it.pending){ st=['serious','FG short · RMPM']; next = esc(f.shortReason||'On FG shortage list')+(CALC.materialEta?` · latest material ETA ${CALC.materialEta}`:''); owner=PLANNER.RM+' / '+PLANNER.PM; }
       else if(it.covered>=it.pending){ st=['warn', inProgress?'In production':'Production planned']; next= `${fmt(f.plannedGross)} planned · ${fmt(f.produced)} produced`; owner='Production'; }
       else if(it.covered>0){ st=['warn','Partly planned']; next=`${fmt(it.covered)} planned, ${fmt(it.pending-it.covered)} not yet`; owner='Production'; }
       else { st=['crit','Not planned']; next='Share with Production'; owner='Planning'; }
@@ -706,9 +703,9 @@ function renderProd(){
   $('#pendingHint').textContent = pendingFg.length? `${pendingFg.length} FG codes have pending qty above the plan: ${pendingFg.map(f=>f.fgCode+' ('+fmt(f.gap)+')').join(', ')}` : 'Every pending quantity is covered by the plan.';
   $('#tblProd').innerHTML=`<thead><tr><th>FG code</th><th>Description</th><th class="r">Production planned</th><th class="r">Produced</th><th></th></tr></thead><tbody>`+
     (prods.length? prods.map(p=>{ const f=CALC.fg[key(p.fgCode)]; return `<tr data-id="${p.id}"><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(p.fgCode)}"></td><td><input data-f="fgName" value="${esc(p.fgName||(f?f.fgName:'')||'')}" style="min-width:220px"></td><td><input class="n num" type="number" data-f="plannedQty" value="${p.plannedQty}"></td><td><input class="n num" type="number" data-f="produced" value="${Number(p.produced)||0}"></td><td><button class="btn sm danger" data-del="production" data-id="${p.id}">✕</button></td></tr>`; }).join('') : `<tr><td colspan="5" class="empty">No production plan yet.</td></tr>`)+'</tbody>';
-  const rm=DATA.rmpm.filter(fgFilter);
-  $('#tblRmpm').innerHTML=`<thead><tr><th>FG code</th><th>Material code</th><th>Material</th><th>Type</th><th class="r">Short qty</th><th>UOM</th><th>Planner</th><th>Procurement ETA</th><th>Connectivity</th><th></th></tr></thead><tbody>`+
-    (rm.length? rm.map(r=>`<tr data-id="${r.id}"><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(r.fgCode)}"></td><td><input class="mono" data-f="matCode" value="${esc(r.matCode)}"></td><td><input data-f="matName" value="${esc(r.matName||'')}"></td><td><select data-f="type"><option ${r.type==='RM'?'selected':''}>RM</option><option ${r.type==='PM'?'selected':''}>PM</option></select></td><td><input class="n num" type="number" data-f="shortQty" value="${r.shortQty}"></td><td><input data-f="uom" value="${esc(r.uom||'')}" style="min-width:50px"></td><td>${esc(PLANNER[r.type]||'')}</td><td><input type="date" data-f="eta" value="${esc(r.eta||'')}"></td><td><select data-f="status">${['Awaiting ETA','ETA received','Connected'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn sm danger" data-del="rmpm" data-id="${r.id}">✕</button></td></tr>`).join('') : `<tr><td colspan="10" class="empty">No RM or PM shortages logged.</td></tr>`)+'</tbody>';
+  const rm=DATA.rmpm;
+  $('#tblRmpm').innerHTML=`<thead><tr><th>Material code</th><th>Material description</th><th>Type</th><th class="r">Shortage qty</th><th>UOM</th><th>Planner</th><th>ETA</th><th>Connectivity</th><th></th></tr></thead><tbody>`+
+    (rm.length? rm.map(r=>`<tr data-id="${r.id}"><td><input class="mono" data-f="matCode" value="${esc(r.matCode)}"></td><td><input data-f="matName" value="${esc(r.matName||'')}"></td><td><select data-f="type"><option ${r.type==='RM'?'selected':''}>RM</option><option ${r.type==='PM'?'selected':''}>PM</option></select></td><td><input class="n num" type="number" data-f="shortQty" value="${r.shortQty}"></td><td><input data-f="uom" value="${esc(r.uom||'')}" style="min-width:50px"></td><td>${esc(PLANNER[r.type]||'')}</td><td><input type="date" data-f="eta" value="${esc(r.eta||'')}"></td><td><select data-f="status">${['Awaiting ETA','ETA received','Connected'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn sm danger" data-del="rmpm" data-id="${r.id}">✕</button></td></tr>`).join('') : `<tr><td colspan="9" class="empty">No RM or PM shortages logged.</td></tr>`)+'</tbody>';
 }
 $('#formProd').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.plannedQty=Number(o.plannedQty)||0; o.produced=Number(o.produced)||0; if(!o.fgName){ const f=CALC.fg[key(o.fgCode)]; o.fgName=f?f.fgName||'':''; } DATA.production.push(o); e.target.reset(); persist('production'); toast('Production plan added'); });
 $('#formRmpm').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.shortQty=Number(o.shortQty)||0; o.planner=PLANNER[o.type]; o.status=o.eta?'ETA received':'Awaiting ETA'; DATA.rmpm.push(o); e.target.reset(); persist('rmpm'); toast('Shortage logged for '+o.planner); });
@@ -726,12 +723,12 @@ function renderInputs(){
 const COLS = {
   orders:[['orderNo','Order No'],['orderDate','Order Date'],['country','Country'],['distributor','Distributor'],['brand','Brand'],['fgCode','FG Code'],['fgName','FG Description'],['qty','Order Qty (cases)'],['reserved','Stock Reserved Qty'],['supplied','Supplied Qty'],['suppliedDate','Supplied Date'],['ref','Invoice / Ref']],
   production:[['fgCode','FG Code'],['fgName','Description'],['plannedQty','Production Planned'],['produced','Produced']],
-  rmpm:[['fgCode','FG Code'],['matCode','Material Code'],['matName','Material Description'],['type','RM/PM'],['shortQty','Short Qty'],['uom','UOM'],['eta','Procurement ETA'],['status','Connectivity Status']],
+  rmpm:[['matCode','Material Code'],['matName','Material Description'],['type','Type'],['shortQty','Shortage Qty'],['uom','UOM'],['eta','ETA']],
   stock:[['fgCode','FG Code'],['warehouse','Warehouse'],['available','Available Qty'],['stockDate','Stock Date']],
   priority:[['country','Country'],['priority','Priority']],
   shortage:[['fgCode','FG Code'],['shortQty','Short Qty'],['reason','Reason']]
 };
-const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortqty','shortage','short','shortquantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['warehouse','plant','location'],available:['availableqty','available','stock','qty','quantity','freestock'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
+const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['productionplanned','productionplan','totalplannedinproduction','plannedinproduction','totalplanned','plannedqty','planned','planqty','quantity','qty'],produced:['produced','producedqty','productionproduced','actualproduced','actual','output','completedqty'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortageqty','shortqty','shortage','short','shortquantity','shortagequantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['warehouse','plant','location'],available:['availableqty','available','stock','qty','quantity','freestock'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
 const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function excelDate(v){ if(v==null||v==='') return ''; if(v instanceof Date) return v.toISOString().slice(0,10); if(typeof v==='number'){ const d=XLSX.SSF.parse_date_code(v); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } const s=String(v).trim(); const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(m){ let y=m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; } const d=new Date(s); return isNaN(d)?s:d.toISOString().slice(0,10); }
 const DATE_FIELDS = new Set(['orderDate','suppliedDate','eta','stockDate']);
@@ -747,9 +744,9 @@ function parseSheet(file, sheet){
       if(!raw.length) return reject(new Error('The first sheet is empty'));
       const headers=Object.keys(raw[0]); const map={};
       COLS[sheet].forEach(([field])=>{ const al=[norm(COLS[sheet].find(c=>c[0]===field)[1]), ...(ALIASES[field]||[])]; const h=headers.find(h=>al.includes(norm(h))); if(h) map[field]=h; });
-      const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['fgCode','matCode'],stock:['fgCode','available'],priority:['country','priority'],shortage:['fgCode','shortQty']}[sheet];
+      const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['matCode'],stock:['fgCode','available'],priority:['country','priority'],shortage:['fgCode','shortQty']}[sheet];
       const missing=required.filter(f=>!map[f]); if(missing.length) return reject(new Error('Missing columns: '+missing.map(f=>COLS[sheet].find(c=>c[0]===f)[1]).join(', ')+'. Found: '+headers.join(', ')));
-      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v=Number(String(v).replace(/,/g,''))||0; else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : o.fgCode);
+      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v=Number(String(v).replace(/,/g,''))||0; else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } return o; }).filter(o=> sheet==='priority'? o.country : sheet==='rmpm'? o.matCode : o.fgCode);
       resolve(rows);
     }catch(err){ reject(err); } };
     fr.onerror=()=>reject(new Error('Could not read the file'));
