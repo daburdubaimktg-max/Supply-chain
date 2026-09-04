@@ -233,7 +233,8 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
       <div class="toolbar">
         <label class="btn filelabel">Upload Excel<input type="file" id="upOrders" accept=".xlsx,.xls,.csv"></label>
         <button class="btn" data-template="orders">Blank template</button>
-        <button class="btn" id="exportOrders">Export current</button>
+        <button class="btn" data-download="orders">Download uploaded tracker</button>
+        <span class="small muted" data-src="orders"></span>
         <span class="spacer"></span>
         <span class="small muted" id="ordersCount"></span>
       </div>
@@ -272,6 +273,8 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
           <div class="toolbar">
             <label class="btn filelabel sm">Upload plan<input type="file" id="upProd" accept=".xlsx,.xls,.csv"></label>
             <button class="btn sm" data-template="production">Blank template</button>
+            <button class="btn sm" data-download="production">Download uploaded plan</button>
+            <span class="small muted" data-src="production"></span>
             <span class="spacer"></span>
             <span class="small muted" id="pendingHint"></span>
           </div>
@@ -289,6 +292,8 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
           <div class="toolbar">
             <label class="btn filelabel sm">Upload shortages<input type="file" id="upRmpm" accept=".xlsx,.xls,.csv"></label>
             <button class="btn sm" data-template="rmpm">Blank template</button>
+            <button class="btn sm" data-download="rmpm">Download uploaded shortages</button>
+            <span class="small muted" data-src="rmpm"></span>
           </div>
           <form class="form" id="formRmpm">
             <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
@@ -323,17 +328,20 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
         <div class="toolbar">
           <label class="btn filelabel sm">Upload FG stock<input type="file" id="upStock" accept=".xlsx,.xls,.csv"></label>
           <button class="btn sm" data-template="stock">Stock template</button>
+          <button class="btn sm" data-download="stock">Download stock</button>
           <label class="btn filelabel sm">Upload country priority<input type="file" id="upPriority" accept=".xlsx,.xls,.csv"></label>
           <button class="btn sm" data-template="priority">Priority template</button>
+          <button class="btn sm" data-download="priority">Download priority</button>
           <label class="btn filelabel sm">Upload FG shortage list<input type="file" id="upShortage" accept=".xlsx,.xls,.csv"></label>
           <button class="btn sm" data-template="shortage">Shortage template</button>
+          <button class="btn sm" data-download="shortage">Download shortage list</button>
           <span class="spacer"></span>
           <button class="btn sm danger" id="resetData">Reset to example data</button>
         </div>
         <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:16px">
-          <div><h3>FG stock on hand</h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
-          <div><h3>Country priority</h3><div class="tablewrap" style="margin-top:6px"><table id="tblPriority"></table></div></div>
-          <div><h3>FG shortage list (from supply)</h3><div class="tablewrap" style="margin-top:6px"><table id="tblShortage"></table></div></div>
+          <div><h3>FG stock on hand <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="stock"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
+          <div><h3>Country priority <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="priority"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblPriority"></table></div></div>
+          <div><h3>FG shortage list <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-src="shortage"></span></h3><div class="tablewrap" style="margin-top:6px"><table id="tblShortage"></table></div></div>
         </div>
       </div>
 
@@ -384,6 +392,7 @@ details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);m
    ===================================================================== */
 const SHEETS = ['orders','production','rmpm','stock','priority','shortage'];
 const DATA = {orders:[],production:[],rmpm:[],stock:[],priority:[],shortage:[]};
+const SOURCE = {}; // per sheet: {fileName, uploadedAt}
 let db = null, downloads = null, storeMode = 'local';
 const PLANNER = {RM:'Saurav Nagrale', PM:'Maslekar Purushottam Parth'};
 const $ = s => document.querySelector(s);
@@ -433,16 +442,16 @@ function exampleData(){
    ===================================================================== */
 const LS_KEY = 'oms-tracker-v1';
 function loadLocal(){
-  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const o = JSON.parse(raw); SHEETS.forEach(s=>{ if(Array.isArray(o[s])) DATA[s]=o[s]; }); return true; } }catch(e){}
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const o = JSON.parse(raw); SHEETS.forEach(s=>{ if(Array.isArray(o[s])) DATA[s]=o[s]; }); if(o.__source) Object.assign(SOURCE,o.__source); return true; } }catch(e){}
   return false;
 }
-function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DATA)); }catch(e){} }
-function setExample(){ const ex = exampleData(); SHEETS.forEach(s=>DATA[s]=ex[s]); }
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({...DATA,__source:SOURCE})); }catch(e){} }
+function setExample(){ const ex = exampleData(); SHEETS.forEach(s=>{ DATA[s]=ex[s]; delete SOURCE[s]; }); }
 
 async function persist(sheet){
   DATA[sheet] = DATA[sheet].map(r => ({...r, id: r.id || uid()}));
   if(db){
-    try{ await db.doc('oms/'+sheet).set({rows: DATA[sheet], updatedAt: new Date().toISOString()}); }
+    try{ await db.doc('oms/'+sheet).set({rows: DATA[sheet], updatedAt: new Date().toISOString(), source: SOURCE[sheet]||null}); }
     catch(e){ toast('Could not save '+sheet+' to the shared store: '+(e.message||e.code)); }
   } else saveLocal();
   recompute();
@@ -467,7 +476,7 @@ async function initStore(){
   let firstLoad = SHEETS.map(()=>false);
   SHEETS.forEach((s,i)=>{
     db.doc('oms/'+s).onSnapshot(snap=>{
-      if(snap.exists){ const rows = snap.data().rows; if(Array.isArray(rows)) DATA[s]=rows; }
+      if(snap.exists){ const d=snap.data(); if(Array.isArray(d.rows)) DATA[s]=d.rows; if(d.source) SOURCE[s]=d.source; else delete SOURCE[s]; }
       else if(!firstLoad[i]){ DATA[s]=[]; }
       firstLoad[i]=true;
       setStoreLabel(); recompute();
@@ -558,7 +567,8 @@ $('#clearFilters').addEventListener('click',()=>{ F.month=F.country=F.brand=F.fg
    RENDER
    ===================================================================== */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); }
+function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); renderSources(); }
+function renderSources(){ document.querySelectorAll('[data-src]').forEach(el=>{ const m=SOURCE[el.dataset.src]; el.textContent = m ? `Last upload: ${m.fileName} · ${new Date(m.uploadedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}` : ''; }); }
 
 function renderDash(){
   const rows = CALC.orders.filter(passes);
@@ -754,6 +764,7 @@ function bindUpload(inputId, sheet, merge){
       let added=0,updated=0; rows.forEach(r=>{ const k=norm(r.orderNo)+'|'+key(r.fgCode); const ex=idx[k]; if(ex){ Object.assign(ex,{...r,id:ex.id, reserved:r.reserved||ex.reserved, supplied:r.supplied||ex.supplied, suppliedDate:r.suppliedDate||ex.suppliedDate, ref:r.ref||ex.ref}); updated++; } else { DATA.orders.push(r); idx[k]=r; added++; } });
       toast(`Tracker uploaded: ${added} new, ${updated} updated`);
     } else { DATA[sheet]=rows; toast(`${file.name}: ${rows.length} rows loaded into ${sheet}`); }
+    SOURCE[sheet]={fileName:file.name, uploadedAt:new Date().toISOString()};
     await persist(sheet);
   }catch(err){ toast('Upload failed: '+err.message); } e.target.value=''; });
 }
@@ -771,7 +782,7 @@ async function offerFile(filename, data){
   catch(e){ if(e.code!=='declined') toast('Could not save: '+(e.message||e.code)); }
 }
 document.querySelectorAll('[data-template]').forEach(b=>b.addEventListener('click',()=>{ const s=b.dataset.template; offerFile(`oms-${s}-template.xlsx`, buildWorkbook(s, [])); }));
-$('#exportOrders').addEventListener('click',()=>offerFile(`oms-order-tracker-${todayStr()}.xlsx`, buildWorkbook('orders', DATA.orders)));
+document.querySelectorAll('[data-download]').forEach(b=>b.addEventListener('click',()=>{ const sh=b.dataset.download; const m=SOURCE[sh]; const base = m ? m.fileName.replace(/\.(xlsx|xls|csv)$/i,'') : 'oms-'+sh; if(!DATA[sh].length){ toast('Nothing to download: the '+sh+' sheet is empty'); return; } offerFile(`${base}-${todayStr()}.xlsx`, buildWorkbook(sh, DATA[sh])); }));
 $('#exportSummary').addEventListener('click',()=>{
   const rows=CALC.orders.filter(passes).map(o=>({country:o.country,priority:'P'+o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,orderNo:o.orderNo,orderDate:o.orderDate,qty:o.qty,supplied:o.supplied,suppliedDate:o.suppliedDate,reserved:o.reserved,pending:o.pending,planned:(CALC.fg[o.k]||{}).plannedGross||0,produced:(CALC.fg[o.k]||{}).produced||0,status:o.status,expected:o.expected}));
   const cols=[['country','Country'],['priority','Priority'],['brand','Brand'],['fgCode','FG Code'],['fgName','Description'],['orderNo','Order No'],['orderDate','Order Date'],['qty','Ordered'],['supplied','Supplied'],['suppliedDate','Supplied Date'],['reserved','Reserved'],['pending','Pending to Produce'],['planned','Production Planned (FG total)'],['produced','Produced (FG total)'],['status','Status'],['expected','Next']];
