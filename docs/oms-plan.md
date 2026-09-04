@@ -25,6 +25,17 @@ All data is country wise, brand wise, FG code wise.
 9. Order status: Supplied, Reserved ready, Production planned or In production, Partly planned, FG short on RMPM (driven by the FG shortage list from supply, since the RMPM sheet is material level), Not planned.
 10. Next step: supplied date, or "ready to dispatch", or planned and produced quantities, or "after" the latest procurement ETA. An order reads "In production" when produced is above zero but below planned.
 
+## Supply Chain Inputs tab
+
+Every file is uploaded from one tab. Each card shows the file name, its owner, the expected columns, refresh cadence and the last upload. Owner names are stored in an admin-only area of the shared store and can be changed only by the page owner (admin); editors and viewers see them as text.
+
+Sheets: Order Tracker, Production Plan, RM/PM Shortages, FG Ageing File, FG SLOB File, Country Priority & Norms, FG Shortage List, FG Master, Bill of Materials, In-Transit Plan, Sales Forecast.
+
+- FG Master fills brand and description from the FG code on orders, plans and SLOB lines.
+- Bill of Materials links the material-level RMPM sheet back to FG codes, so an open material shortage marks the orders it blocks, with the material ETA. A short FG takes precedence over a production plan, because the plan cannot run without materials.
+- In-Transit Plan adds dispatch date, mode and arrival ETA to the order timeline.
+- Sales Forecast feeds the forecast vs orders table on the dashboard, by country, brand, FG code and month, with ordered minus forecast, ordered as a percentage of forecast, and a read of Under, On or Over forecast (80 to 120 percent band).
+
 ## Dashboard
 
 - Filters: order month, country, brand, FG code. Dropdowns cascade from the data.
