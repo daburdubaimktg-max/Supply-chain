@@ -1,0 +1,792 @@
+<title>OMS Order Tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3f4f1; --surface:#ffffff; --surface-2:#eaece7; --surface-3:#dfe3dc;
+  --ink:#172026; --ink-2:#55606a; --muted:#8a949c; --line:#d9ded9; --line-2:#c4cbc5;
+  --accent:#1c3f63; --accent-ink:#ffffff; --accent-soft:#e3ebf4; --gold:#b8892b; --gold-soft:#f5ecd6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --good-text:#006300; --warn:#fab219; --warn-text:#7a5200; --serious:#ec835a; --serious-text:#8a3a16; --crit:#d03b3b; --crit-text:#9b1c1c;
+  --grid:#e4e7e3; --axis:#c4cbc5;
+  --font-display:"Archivo",system-ui,sans-serif; --font-body:"IBM Plex Sans",system-ui,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --shadow:0 1px 2px rgba(23,32,38,.06),0 4px 14px rgba(23,32,38,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121517; --surface:#1b1f22; --surface-2:#23282c; --surface-3:#2b3135;
+    --ink:#f2f4f3; --ink-2:#b9c1c4; --muted:#858e93; --line:#2d3337; --line-2:#3a4146;
+    --accent:#7fb0e6; --accent-ink:#0f1a26; --accent-soft:#1f2c3a; --gold:#d4a84b; --gold-soft:#332a17;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --good-text:#3fc23f; --warn-text:#f2c04e; --serious-text:#f19a76; --crit-text:#ef6b6b;
+    --grid:#262b2f; --axis:#3a4146;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121517; --surface:#1b1f22; --surface-2:#23282c; --surface-3:#2b3135;
+  --ink:#f2f4f3; --ink-2:#b9c1c4; --muted:#858e93; --line:#2d3337; --line-2:#3a4146;
+  --accent:#7fb0e6; --accent-ink:#0f1a26; --accent-soft:#1f2c3a; --gold:#d4a84b; --gold-soft:#332a17;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good-text:#3fc23f; --warn-text:#f2c04e; --serious-text:#f19a76; --crit-text:#ef6b6b;
+  --grid:#262b2f; --axis:#3a4146;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.45}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:20px;font-weight:700}
+h2{font-size:16px;font-weight:600}
+h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+p{margin:0}
+a{color:var(--accent)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.rail{background:var(--accent);color:var(--accent-ink);display:flex;flex-direction:column;padding:20px 14px;gap:6px;position:sticky;top:0;height:100vh}
+.rail .brand{padding:4px 8px 18px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:10px}
+.rail .brand h1{color:inherit;font-size:18px;line-height:1.15}
+.rail .brand .sub{opacity:.7;font-size:12px;margin-top:4px}
+.rail .brand .gold{display:inline-block;width:36px;height:3px;background:var(--gold);margin-bottom:10px}
+.nav-btn{display:flex;align-items:center;gap:10px;background:transparent;border:0;color:inherit;text-align:left;padding:9px 10px;border-radius:6px;font-weight:500;opacity:.82}
+.nav-btn:hover{background:rgba(255,255,255,.1);opacity:1}
+.nav-btn.active{background:rgba(255,255,255,.16);opacity:1;box-shadow:inset 3px 0 0 var(--gold)}
+.nav-btn .k{font-family:var(--font-mono);font-size:11px;opacity:.7;width:14px}
+.rail .foot{margin-top:auto;font-size:11.5px;opacity:.75;line-height:1.5;padding:0 8px}
+.rail .foot .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-right:6px;vertical-align:middle}
+.main{min-width:0;padding:22px 28px 60px}
+.topbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin-bottom:20px}
+.topbar .title{flex:1 1 260px}
+.topbar .title h1{font-size:22px}
+.topbar .title p{color:var(--ink-2);margin-top:2px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.field select,.field input{background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:7px 10px;min-width:140px;height:36px}
+.field input[type=date]{min-width:150px}
+.btn{background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:7px 12px;font-weight:500;height:36px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{height:30px;padding:4px 10px;font-size:12.5px}
+.btn.danger{color:var(--crit-text)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* ---------- panels ---------- */
+.view{display:none}
+.view.active{display:block}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(8,minmax(0,1fr))}
+@media (max-width:1300px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-height:96px}
+.kpi .label{font-size:12px;color:var(--ink-2)}
+.kpi .value{font-family:var(--font-display);font-size:26px;font-weight:600;line-height:1.05}
+.kpi .sub{font-size:12px;color:var(--muted)}
+.kpi.hero{grid-column:span 2;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.kpi.hero .label,.kpi.hero .sub{color:inherit;opacity:.8}
+.kpi.hero .value{font-size:44px}
+.kpi .mark{width:22px;height:4px;border-radius:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.panel-h p{color:var(--muted);font-size:12.5px}
+.two{grid-template-columns:3fr 2fr}
+@media (max-width:1100px){.two{grid-template-columns:1fr}.app{grid-template-columns:1fr}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}.rail .brand{border:0;padding:4px 8px;margin:0}.rail .foot{display:none}.kpi.hero{grid-column:span 1}.kpi.hero .value{font-size:30px}}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);background:var(--surface-2);position:sticky;top:0;font-weight:600}
+td.r,th.r{text-align:right}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.group td{background:var(--accent-soft);font-weight:600}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+td input,td select{background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 6px;width:100%;min-width:70px}
+td input:focus,td select:focus{border-color:var(--line-2);background:var(--surface)}
+td input.n{text-align:right}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.good{color:var(--good-text);background:color-mix(in srgb,var(--good) 12%,var(--surface));border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+.pill.warn{color:var(--warn-text);background:color-mix(in srgb,var(--warn) 16%,var(--surface));border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.pill.serious{color:var(--serious-text);background:color-mix(in srgb,var(--serious) 16%,var(--surface));border-color:color-mix(in srgb,var(--serious) 45%,transparent)}
+.pill.crit{color:var(--crit-text);background:color-mix(in srgb,var(--crit) 12%,var(--surface));border-color:color-mix(in srgb,var(--crit) 40%,transparent)}
+.pill.info{color:var(--accent);background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.pill.neutral{color:var(--ink-2);background:var(--surface-2);border-color:var(--line-2)}
+.prio{display:inline-block;font-family:var(--font-mono);font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--gold-soft);color:var(--gold);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent)}
+.prio.p1{background:var(--gold);color:#fff}
+.bar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--s3);border-radius:3px}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar .spacer{flex:1}
+.filelabel{position:relative;overflow:hidden}
+.filelabel input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border-left:3px solid var(--gold);padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:12px}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;max-width:420px}
+.toast.show{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* ---------- charts ---------- */
+.chart{width:100%;height:auto;display:block;font-family:var(--font-body)}
+.chart text{fill:var(--ink-2);font-size:11px}
+.chart .grid line{stroke:var(--grid);stroke-width:1}
+.chart .axis{stroke:var(--axis);stroke-width:1}
+.chart .lbl{fill:var(--ink);font-weight:600;font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;box-shadow:var(--shadow);opacity:0;transition:opacity .12s;z-index:20;white-space:nowrap}
+.tip.show{opacity:1}
+.tip b{font-weight:600}
+.hit{fill:transparent}
+.hit:hover + rect, rect.bar-mark:hover{filter:brightness(.92)}
+
+/* ---------- process ---------- */
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.step{background:var(--surface-2);border-radius:8px;padding:12px 14px;border-top:3px solid var(--accent);min-height:120px}
+.step.alt{border-top-color:var(--gold)}
+.step .who{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.step .what{font-weight:600;margin:4px 0 6px;font-family:var(--font-display)}
+.step .how{font-size:12.5px;color:var(--ink-2)}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:900px){.spec{grid-template-columns:1fr}}
+.spec .panel h2{margin-bottom:4px}
+.spec ul{margin:8px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px}
+.spec li{margin:3px 0}
+.spec code{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--ink)}
+.req{border-left:3px solid var(--crit);padding-left:10px}
+.opt{border-left:3px solid var(--line-2);padding-left:10px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px;padding:12px;background:var(--surface-2);border-radius:8px}
+.form .field select,.form .field input{min-width:0;width:100%;height:34px}
+.form .actions{display:flex;align-items:flex-end;gap:8px}
+details summary{cursor:pointer;font-weight:600;font-family:var(--font-display);margin-bottom:8px}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <span class="gold"></span>
+      <h1>OMS Order Tracker</h1>
+      <div class="sub">Country · Brand · FG code</div>
+    </div>
+    <button class="nav-btn active" data-view="dash"><span class="k">1</span>Dashboard</button>
+    <button class="nav-btn" data-view="orders"><span class="k">2</span>Order Tracker</button>
+    <button class="nav-btn" data-view="summary"><span class="k">3</span>Order Summary</button>
+    <button class="nav-btn" data-view="prod"><span class="k">4</span>Production &amp; RMPM</button>
+    <button class="nav-btn" data-view="inputs"><span class="k">5</span>Supply Inputs</button>
+    <div class="foot"><span class="dot"></span><span id="storeState">Loading shared data…</span><br><span id="lastRefresh"></span></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title">
+        <h1 id="viewTitle">Dashboard</h1>
+        <p id="viewSub">Finished goods available, planned in production, and pending to produce.</p>
+      </div>
+      <div class="filters">
+        <div class="field"><label for="fMonth">Order month</label><select id="fMonth"><option value="">All months</option></select></div>
+        <div class="field"><label for="fCountry">Country</label><select id="fCountry"><option value="">All countries</option></select></div>
+        <div class="field"><label for="fBrand">Brand</label><select id="fBrand"><option value="">All brands</option></select></div>
+        <div class="field"><label for="fFg">FG code</label><select id="fFg"><option value="">All FG codes</option></select></div>
+        <button class="btn" id="clearFilters" title="Clear all filters">Clear</button>
+      </div>
+    </div>
+
+    <!-- ================= DASHBOARD ================= -->
+    <section class="view active" id="view-dash">
+      <div class="grid kpis" id="kpis"></div>
+      <div class="grid two" style="margin-top:16px">
+        <div class="panel">
+          <div class="panel-h"><h2>Ordered vs supplied vs pending, by month</h2><p>Cases · month of order date</p></div>
+          <div id="chartMonth"></div>
+          <div class="legend"><span><i style="background:var(--s1)"></i>Ordered</span><span><i style="background:var(--s2)"></i>Supplied</span><span><i style="background:var(--s3)"></i>Pending to produce</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>Pending to produce, by country</h2><p>Sorted by supply priority</p></div>
+          <div id="chartCountry"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Country · Brand · FG position</h2><p>Available = central FG stock for the code, not country-specific</p></div>
+        <div class="tablewrap"><table id="tblPosition"></table></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-h"><h2>Order to supply timeline</h2><p>When each order was placed and when it was supplied</p></div>
+        <div class="tablewrap"><table id="tblTimeline"></table></div>
+      </div>
+    </section>
+
+    <!-- ================= ORDER TRACKER ================= -->
+    <section class="view" id="view-orders">
+      <div class="note"><b>Logistics team.</b> Enter distributor orders here as they arrive, or upload the Excel tracker. When stock is reserved or an order is supplied, update the reserved and supplied columns so the dashboard shows the supply date.</div>
+      <div class="toolbar">
+        <label class="btn filelabel">Upload Excel<input type="file" id="upOrders" accept=".xlsx,.xls,.csv"></label>
+        <button class="btn" data-template="orders">Blank template</button>
+        <button class="btn" id="exportOrders">Export current</button>
+        <span class="spacer"></span>
+        <span class="small muted" id="ordersCount"></span>
+      </div>
+      <details open><summary>Add an order</summary>
+      <form class="form" id="formOrder">
+        <div class="field"><label>Order no</label><input name="orderNo" required placeholder="PO-UAE-1041"></div>
+        <div class="field"><label>Order date</label><input name="orderDate" type="date" required></div>
+        <div class="field"><label>Country</label><input name="country" required list="dlCountry"></div>
+        <div class="field"><label>Distributor</label><input name="distributor" placeholder="Distributor name"></div>
+        <div class="field"><label>Brand</label><input name="brand" required list="dlBrand"></div>
+        <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
+        <div class="field"><label>FG description</label><input name="fgName"></div>
+        <div class="field"><label>Order qty (cases)</label><input name="qty" type="number" min="1" required></div>
+        <div class="actions"><button class="btn primary" type="submit">Add order</button></div>
+      </form></details>
+      <div class="tablewrap"><table id="tblOrders"></table></div>
+    </section>
+
+    <!-- ================= ORDER SUMMARY ================= -->
+    <section class="view" id="view-summary">
+      <div class="note"><b>Planning team.</b> This sheet is computed from the tracker, FG stock, the country priority list and the production plan. Stock is allocated to orders by priority 1 → 2 → 3, then by order date. Share the pending rows with Production; share the timeline back to all stakeholders.</div>
+      <div class="toolbar">
+        <button class="btn" id="exportSummary">Export summary</button>
+        <span class="spacer"></span>
+        <span class="small muted">Allocation runs automatically whenever any sheet changes.</span>
+      </div>
+      <div class="tablewrap"><table id="tblSummary"></table></div>
+    </section>
+
+    <!-- ================= PRODUCTION & RMPM ================= -->
+    <section class="view" id="view-prod">
+      <div class="note"><b>Production team.</b> For every FG with a pending quantity, either plan production and give the timeline, or log the raw material (RM) or packing material (PM) shortage. RM shortages route to Saurav Nagrale; PM shortages route to Maslekar Purushottam Parth. They add the procurement ETA, and production is then planned to the connectivity date.</div>
+      <div class="grid" style="grid-template-columns:1fr;gap:16px">
+        <div class="panel">
+          <div class="panel-h"><h2>Production plan</h2><p>What is planned, when it starts and finishes</p></div>
+          <div class="toolbar">
+            <label class="btn filelabel sm">Upload plan<input type="file" id="upProd" accept=".xlsx,.xls,.csv"></label>
+            <button class="btn sm" data-template="production">Blank template</button>
+            <span class="spacer"></span>
+            <span class="small muted" id="pendingHint"></span>
+          </div>
+          <form class="form" id="formProd">
+            <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
+            <div class="field"><label>Planned qty</label><input name="plannedQty" type="number" min="1" required></div>
+            <div class="field"><label>Start</label><input name="start" type="date" required></div>
+            <div class="field"><label>Finish</label><input name="finish" type="date" required></div>
+            <div class="field"><label>Status</label><select name="status"><option>Planned</option><option>In progress</option><option>Blocked - RMPM</option><option>Completed</option></select></div>
+            <div class="actions"><button class="btn primary" type="submit">Add plan</button></div>
+          </form>
+          <div class="tablewrap"><table id="tblProd"></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>RM / PM shortages and connectivity</h2><p>Planner is assigned from the material type; ETA comes from procurement</p></div>
+          <div class="toolbar">
+            <label class="btn filelabel sm">Upload shortages<input type="file" id="upRmpm" accept=".xlsx,.xls,.csv"></label>
+            <button class="btn sm" data-template="rmpm">Blank template</button>
+          </div>
+          <form class="form" id="formRmpm">
+            <div class="field"><label>FG code</label><input name="fgCode" required list="dlFg" class="mono"></div>
+            <div class="field"><label>Material code</label><input name="matCode" required class="mono"></div>
+            <div class="field"><label>Material</label><input name="matName"></div>
+            <div class="field"><label>Type</label><select name="type"><option>RM</option><option>PM</option></select></div>
+            <div class="field"><label>Short qty</label><input name="shortQty" type="number" min="0" required></div>
+            <div class="field"><label>UOM</label><input name="uom" placeholder="kg / pcs"></div>
+            <div class="field"><label>Procurement ETA</label><input name="eta" type="date"></div>
+            <div class="actions"><button class="btn primary" type="submit">Add shortage</button></div>
+          </form>
+          <div class="tablewrap"><table id="tblRmpm"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SUPPLY INPUTS ================= -->
+    <section class="view" id="view-inputs">
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-h"><h2>How the platform runs</h2><p>Each team owns one sheet; the dashboard reads all of them</p></div>
+        <div class="flow">
+          <div class="step"><div class="who">1 · Logistics</div><div class="what">Order Tracker</div><div class="how">Log each distributor order: country, brand, FG code, quantity, date. Update reserved and supplied when stock moves.</div></div>
+          <div class="step alt"><div class="who">2 · Planning</div><div class="what">Order Summary</div><div class="how">Allocation runs by country priority. Pending quantities go to Production; timelines come back and are shared with all stakeholders.</div></div>
+          <div class="step"><div class="who">3 · Production</div><div class="what">Plan or flag shortage</div><div class="how">If RM and PM are available, plan and enter the timeline. Otherwise log the RMPM shortage.</div></div>
+          <div class="step alt"><div class="who">4 · RM / PM planners</div><div class="what">Connectivity ETA</div><div class="how">Saurav Nagrale (RM) and Maslekar Purushottam Parth (PM) enter the procurement ETA against each shortage.</div></div>
+          <div class="step"><div class="who">5 · Production</div><div class="what">Plan to connectivity</div><div class="how">Once materials are connected, production is planned from the ETA and the order summary updates automatically.</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-h"><h2>Supply-side inputs</h2><p>Upload these to keep the dashboard current. Refresh cadence in brackets.</p></div>
+        <div class="toolbar">
+          <label class="btn filelabel sm">Upload FG stock<input type="file" id="upStock" accept=".xlsx,.xls,.csv"></label>
+          <button class="btn sm" data-template="stock">Stock template</button>
+          <label class="btn filelabel sm">Upload country priority<input type="file" id="upPriority" accept=".xlsx,.xls,.csv"></label>
+          <button class="btn sm" data-template="priority">Priority template</button>
+          <label class="btn filelabel sm">Upload FG shortage list<input type="file" id="upShortage" accept=".xlsx,.xls,.csv"></label>
+          <button class="btn sm" data-template="shortage">Shortage template</button>
+          <span class="spacer"></span>
+          <button class="btn sm danger" id="resetData">Reset to example data</button>
+        </div>
+        <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:16px">
+          <div><h3>FG stock on hand</h3><div class="tablewrap" style="margin-top:6px"><table id="tblStock"></table></div></div>
+          <div><h3>Country priority</h3><div class="tablewrap" style="margin-top:6px"><table id="tblPriority"></table></div></div>
+          <div><h3>FG shortage list (from supply)</h3><div class="tablewrap" style="margin-top:6px"><table id="tblShortage"></table></div></div>
+        </div>
+      </div>
+
+      <div class="spec">
+        <div class="panel req"><h2>Required from the supply end</h2>
+          <ul>
+            <li><b>FG stock on hand</b> by FG code, warehouse or plant, free vs reserved, with stock date <span class="muted">[daily]</span>. Columns: <code>FG Code</code>, <code>Warehouse</code>, <code>Available Qty</code>, <code>Stock Date</code>.</li>
+            <li><b>Country priority list</b> <span class="muted">[monthly or when changed]</span>. Columns: <code>Country</code>, <code>Priority</code> (1, 2 or 3).</li>
+            <li><b>FG shortage list</b>: what FG will be short and by how much <span class="muted">[weekly]</span>. Columns: <code>FG Code</code>, <code>Short Qty</code>, <code>Reason</code>.</li>
+            <li><b>Production plan</b> with planned quantity, start and finish date per FG <span class="muted">[weekly, and on every change]</span>.</li>
+            <li><b>RM and PM shortage list</b> per FG with required and short quantity, material type <span class="muted">[weekly]</span>.</li>
+            <li><b>Procurement ETA</b> per short material, entered by the RM or PM planner <span class="muted">[as received]</span>.</li>
+            <li><b>Supply confirmation</b>: supplied quantity, supply date and invoice or dispatch reference against each order <span class="muted">[as dispatched]</span>. This is what sets the supplied date on the dashboard.</li>
+          </ul>
+        </div>
+        <div class="panel opt"><h2>Recommended, improves accuracy</h2>
+          <ul>
+            <li><b>FG master</b>: FG code, description, brand, category, cases per pallet, MOQ, shelf life. Lets the tracker auto-fill brand and description from the code.</li>
+            <li><b>Production lead time</b> per FG or line, in days, to estimate a supply date when only an RMPM ETA exists.</li>
+            <li><b>Bill of materials</b> mapping FG to RM and PM codes, so a material ETA automatically flags every FG it blocks.</li>
+            <li><b>In-transit and dispatch plan</b>: vessel or truck date, ETA at destination, so country managers see arrival, not just dispatch.</li>
+            <li><b>Batch and expiry</b> on FG stock, for markets with minimum remaining shelf-life rules.</li>
+            <li><b>Sales forecast or open purchase orders</b> by country to show pending against plan, not only against orders received.</li>
+          </ul>
+          <h2 style="margin-top:14px">Refresh routine</h2>
+          <ul>
+            <li>Logistics updates the tracker as orders and dispatches happen.</li>
+            <li>Supply uploads stock every morning; planning re-checks the summary after the upload.</li>
+            <li>Production and RMPM sheets refresh weekly at the planning meeting and on every ETA change.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<datalist id="dlCountry"></datalist><datalist id="dlBrand"></datalist><datalist id="dlFg"></datalist>
+<div class="toast" id="toast"></div>
+<div class="tip" id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+'use strict';
+/* =====================================================================
+   DATA MODEL
+   sheets: orders, production, rmpm, stock, priority, shortage
+   Each sheet is one shared document {rows:[...], updatedAt}
+   ===================================================================== */
+const SHEETS = ['orders','production','rmpm','stock','priority','shortage'];
+const DATA = {orders:[],production:[],rmpm:[],stock:[],priority:[],shortage:[]};
+let db = null, downloads = null, storeMode = 'local';
+const PLANNER = {RM:'Saurav Nagrale', PM:'Maslekar Purushottam Parth'};
+const $ = s => document.querySelector(s);
+const fmt = n => (n==null||isNaN(n)) ? '–' : Math.round(n).toLocaleString('en-US');
+const uid = () => Math.random().toString(36).slice(2,9);
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+/* ---------- example data (fallback only; shared store is seeded separately) ---------- */
+function exampleData(){
+  const d = (m,day) => `2026-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  return {
+    priority:[{country:'UAE',priority:1},{country:'KSA',priority:1},{country:'Kuwait',priority:2},{country:'Oman',priority:2},{country:'Qatar',priority:3},{country:'Bahrain',priority:3}],
+    stock:[{fgCode:'FG-VAT-200',warehouse:'Jebel Ali',available:1800,stockDate:d(9,3)},{fgCode:'FG-VAT-300',warehouse:'Jebel Ali',available:400,stockDate:d(9,3)},{fgCode:'FG-AML-200',warehouse:'Jebel Ali',available:2600,stockDate:d(9,3)},{fgCode:'FG-HRB-100',warehouse:'Jebel Ali',available:0,stockDate:d(9,3)},{fgCode:'FG-RED-150',warehouse:'Jebel Ali',available:950,stockDate:d(9,3)},{fgCode:'FG-MSW-100',warehouse:'Jebel Ali',available:300,stockDate:d(9,3)}],
+    orders:[
+      {id:uid(),orderNo:'PO-UAE-1041',orderDate:d(7,6),country:'UAE',distributor:'Al Seer',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1200,reserved:1200,supplied:1200,suppliedDate:d(7,18),ref:'INV-77021'},
+      {id:uid(),orderNo:'PO-KSA-2210',orderDate:d(7,9),country:'KSA',distributor:'Binzagr',brand:'Vatika',fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',qty:900,reserved:900,supplied:900,suppliedDate:d(7,29),ref:'INV-77104'},
+      {id:uid(),orderNo:'PO-KWT-0311',orderDate:d(7,14),country:'Kuwait',distributor:'Al Yasra',brand:'Amla',fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',qty:800,reserved:800,supplied:800,suppliedDate:d(8,2),ref:'INV-77230'},
+      {id:uid(),orderNo:'PO-UAE-1052',orderDate:d(8,4),country:'UAE',distributor:'Al Seer',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1500,reserved:1500,supplied:1500,suppliedDate:d(8,15),ref:'INV-77390'},
+      {id:uid(),orderNo:'PO-KSA-2231',orderDate:d(8,6),country:'KSA',distributor:'Binzagr',brand:'Herbal',fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',qty:1100,reserved:600,supplied:600,suppliedDate:d(8,20),ref:'INV-77412'},
+      {id:uid(),orderNo:'PO-OMN-0508',orderDate:d(8,11),country:'Oman',distributor:'Khimji',brand:'Amla',fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',qty:700,reserved:700,supplied:700,suppliedDate:d(8,27),ref:'INV-77488'},
+      {id:uid(),orderNo:'PO-QAT-0119',orderDate:d(8,19),country:'Qatar',distributor:'Ali Bin Ali',brand:'Red',fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',qty:600,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-UAE-1067',orderDate:d(8,25),country:'UAE',distributor:'Al Seer',brand:'Herbal',fgCode:'FG-HRB-100',fgName:'Dabur Herbal Toothpaste 100ml x72',qty:900,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-KSA-2244',orderDate:d(9,1),country:'KSA',distributor:'Binzagr',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:1400,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-KWT-0324',orderDate:d(9,2),country:'Kuwait',distributor:'Al Yasra',brand:'Vatika',fgCode:'FG-VAT-300',fgName:'Vatika Coconut Hair Oil 300ml x24',qty:750,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-BHR-0077',orderDate:d(9,2),country:'Bahrain',distributor:'Jawad',brand:'Amla',fgCode:'FG-AML-200',fgName:'Dabur Amla Hair Oil 200ml x24',qty:500,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-UAE-1071',orderDate:d(9,3),country:'UAE',distributor:'Al Seer',brand:'Meswak',fgCode:'FG-MSW-100',fgName:'Dabur Meswak Toothpaste 100g x72',qty:650,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-QAT-0124',orderDate:d(9,3),country:'Qatar',distributor:'Ali Bin Ali',brand:'Vatika',fgCode:'FG-VAT-200',fgName:'Vatika Coconut Hair Oil 200ml x24',qty:800,reserved:0,supplied:0,suppliedDate:'',ref:''},
+      {id:uid(),orderNo:'PO-OMN-0519',orderDate:d(9,4),country:'Oman',distributor:'Khimji',brand:'Red',fgCode:'FG-RED-150',fgName:'Dabur Red Toothpaste 150g x48',qty:700,reserved:0,supplied:0,suppliedDate:'',ref:''}
+    ],
+    production:[
+      {id:uid(),fgCode:'FG-VAT-200',plannedQty:1000,start:d(9,8),finish:d(9,12),status:'Planned',remarks:'Line 2'},
+      {id:uid(),fgCode:'FG-VAT-300',plannedQty:400,start:d(9,15),finish:d(9,17),status:'Planned',remarks:''},
+      {id:uid(),fgCode:'FG-HRB-100',plannedQty:1400,start:'',finish:'',status:'Blocked - RMPM',remarks:'Awaiting tube laminate'},
+      {id:uid(),fgCode:'FG-RED-150',plannedQty:350,start:d(9,10),finish:d(9,11),status:'In progress',remarks:''}
+    ],
+    rmpm:[
+      {id:uid(),fgCode:'FG-HRB-100',matCode:'PM-LAM-100',matName:'Laminate tube 100ml Herbal',type:'PM',shortQty:180000,uom:'pcs',eta:d(9,22),status:'ETA received'},
+      {id:uid(),fgCode:'FG-HRB-100',matCode:'RM-NEEM-EX',matName:'Neem extract',type:'RM',shortQty:120,uom:'kg',eta:'',status:'Awaiting ETA'},
+      {id:uid(),fgCode:'FG-MSW-100',matCode:'PM-CTN-MSW',matName:'Outer carton Meswak 100g',type:'PM',shortQty:9000,uom:'pcs',eta:d(9,18),status:'ETA received'}
+    ],
+    shortage:[{fgCode:'FG-HRB-100',shortQty:1400,reason:'PM laminate + neem extract'},{fgCode:'FG-MSW-100',shortQty:350,reason:'Outer carton'},{fgCode:'FG-VAT-200',shortQty:1500,reason:'Capacity - Line 2 full till 12 Sep'}]
+  };
+}
+
+/* =====================================================================
+   STORAGE: shared db when available, localStorage otherwise
+   ===================================================================== */
+const LS_KEY = 'oms-tracker-v1';
+function loadLocal(){
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const o = JSON.parse(raw); SHEETS.forEach(s=>{ if(Array.isArray(o[s])) DATA[s]=o[s]; }); return true; } }catch(e){}
+  return false;
+}
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DATA)); }catch(e){} }
+function setExample(){ const ex = exampleData(); SHEETS.forEach(s=>DATA[s]=ex[s]); }
+
+async function persist(sheet){
+  DATA[sheet] = DATA[sheet].map(r => ({...r, id: r.id || uid()}));
+  if(db){
+    try{ await db.doc('oms/'+sheet).set({rows: DATA[sheet], updatedAt: new Date().toISOString()}); }
+    catch(e){ toast('Could not save '+sheet+' to the shared store: '+(e.message||e.code)); }
+  } else saveLocal();
+  recompute();
+}
+
+function setStoreLabel(){
+  const el = $('#storeState');
+  el.textContent = storeMode==='db' ? 'Shared live data · all viewers' : storeMode==='local' ? 'Saved in this browser only' : 'Example data';
+  $('#lastRefresh').textContent = 'Refreshed '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function initStore(){
+  // Render immediately from whatever is local, then light up the shared store.
+  if(!loadLocal()){ setExample(); storeMode='example'; }
+  setStoreLabel(); recompute();
+  try{
+    downloads = await window.claude?.use?.('downloads');
+  }catch(e){ downloads=null; }
+  try{ db = await window.claude?.use?.('db'); }catch(e){ db=null; }
+  if(!db) return;
+  storeMode='db';
+  let firstLoad = SHEETS.map(()=>false);
+  SHEETS.forEach((s,i)=>{
+    db.doc('oms/'+s).onSnapshot(snap=>{
+      if(snap.exists){ const rows = snap.data().rows; if(Array.isArray(rows)) DATA[s]=rows; }
+      else if(!firstLoad[i]){ DATA[s]=[]; }
+      firstLoad[i]=true;
+      setStoreLabel(); recompute();
+    }, err=>{ toast('Shared data error on '+s+': '+err.code); });
+  });
+}
+
+/* =====================================================================
+   ALLOCATION ALGORITHM
+   ===================================================================== */
+let CALC = null;
+function computeAll(){
+  const prioOf = {}; DATA.priority.forEach(p=>{ if(p.country) prioOf[String(p.country).trim().toLowerCase()] = Number(p.priority)||3; });
+  const getPrio = c => prioOf[String(c||'').trim().toLowerCase()] || 3;
+  const stockOf = {}; DATA.stock.forEach(s=>{ const k=key(s.fgCode); stockOf[k]=(stockOf[k]||0)+(Number(s.available)||0); });
+  const plannedOf = {}, planRows = {};
+  DATA.production.forEach(p=>{ const k=key(p.fgCode); if(!k) return; if(p.status!=='Completed'){ plannedOf[k]=(plannedOf[k]||0)+(Number(p.plannedQty)||0); (planRows[k]=planRows[k]||[]).push(p);} });
+  const rmpmOf = {}; DATA.rmpm.forEach(r=>{ const k=key(r.fgCode); if(!k) return; (rmpmOf[k]=rmpmOf[k]||[]).push(r); });
+  const shortOf = {}; DATA.shortage.forEach(s=>{ const k=key(s.fgCode); if(k) shortOf[k]=(shortOf[k]||0)+(Number(s.shortQty)||0); });
+
+  // Sort open orders by priority then order date, allocate free stock.
+  const orders = DATA.orders.map(o=>({...o, qty:Number(o.qty)||0, reservedIn:Number(o.reserved)||0, supplied:Number(o.supplied)||0, prio:getPrio(o.country), month:(o.orderDate||'').slice(0,7), k:key(o.fgCode)}));
+  const manualReserved = {};
+  orders.forEach(o=>{ const open=Math.max(0,o.qty-o.supplied); o.reservedNet=Math.min(Math.max(0,o.reservedIn-o.supplied),open); if(o.reservedNet>0) manualReserved[o.k]=(manualReserved[o.k]||0)+o.reservedNet; });
+  const free = {}; Object.keys(stockOf).forEach(k=>free[k]=Math.max(0,stockOf[k]-(manualReserved[k]||0)));
+  const sorted = [...orders].sort((a,b)=> a.prio-b.prio || (a.orderDate||'').localeCompare(b.orderDate||'') || a.orderNo.localeCompare(b.orderNo));
+  sorted.forEach(o=>{
+    const open = Math.max(0,o.qty-o.supplied);
+    let reserved = o.reservedNet;
+    if(reserved<open){ const need=open-reserved; const take=Math.min(need, free[o.k]||0); reserved+=take; free[o.k]=(free[o.k]||0)-take; }
+    o.open=open; o.reserved=reserved; o.pending=open-reserved; o.autoReserved = reserved - o.reservedNet;
+  });
+  // Per FG roll-up: pending vs planned; coverage assigned in the same priority order.
+  const fg = {};
+  const remainingPlan = {...plannedOf};
+  sorted.forEach(o=>{
+    const f = fg[o.k] = fg[o.k] || {fgCode:o.fgCode, fgName:o.fgName, brand:o.brand, stock:stockOf[o.k]||0, planned:plannedOf[o.k]||0, ordered:0, supplied:0, reserved:0, pending:0, covered:0, rmpm:rmpmOf[o.k]||[], plans:planRows[o.k]||[], shortage:shortOf[o.k]||0};
+    f.ordered+=o.qty; f.supplied+=o.supplied; f.reserved+=o.reserved; f.pending+=o.pending;
+    const cover = Math.min(o.pending, remainingPlan[o.k]||0); remainingPlan[o.k]=(remainingPlan[o.k]||0)-cover; o.covered=cover; f.covered+=cover;
+    // status + expected date
+    const blocked = (rmpmOf[o.k]||[]).filter(r=>r.status!=='Connected');
+    const plans = (planRows[o.k]||[]).filter(p=>p.status!=='Completed').sort((a,b)=>(a.finish||'9999').localeCompare(b.finish||'9999'));
+    const eta = blocked.map(r=>r.eta).filter(Boolean).sort().pop() || '';
+    const awaitingEta = blocked.some(r=>!r.eta);
+    if(o.qty>0 && o.supplied>=o.qty){ o.status='Supplied'; o.level='good'; o.expected=o.suppliedDate||''; }
+    else if(o.pending===0 && o.reserved>0){ o.status=o.supplied>0?'Part supplied · rest reserved':'Reserved, ready'; o.level='info'; o.expected='Ready to dispatch'; }
+    else if(blocked.length && o.pending>0 && o.covered<o.pending || (plans.length && plans.every(p=>p.status==='Blocked - RMPM') && o.pending>0)){ o.status= awaitingEta?'RMPM shortage · awaiting ETA':'RMPM shortage · ETA '+eta; o.level=awaitingEta?'crit':'serious'; o.expected= eta? 'After '+eta : 'No ETA yet'; }
+    else if(o.pending>0 && o.covered>=o.pending){ const p=plans.find(p=>p.status!=='Blocked - RMPM')||plans[0]; o.status = (p&&p.status==='In progress')?'In production':'Production planned'; o.level='warn'; o.expected = p&&p.finish ? 'From '+p.finish : 'Timeline pending'; }
+    else if(o.pending>0 && o.covered>0){ o.status='Partly planned'; o.level='warn'; o.expected= plans[0]&&plans[0].finish ? 'Part from '+plans[0].finish : 'Timeline pending'; }
+    else { o.status='Not planned'; o.level='crit'; o.expected='Needs production plan'; }
+  });
+  Object.values(fg).forEach(f=>{ f.gap=Math.max(0,f.pending-f.planned); f.blocked=f.rmpm.filter(r=>r.status!=='Connected'); });
+  return {orders:sorted, fg, getPrio, stockOf};
+}
+function key(s){ return String(s||'').trim().toUpperCase(); }
+
+/* =====================================================================
+   FILTERS
+   ===================================================================== */
+const F = {month:'',country:'',brand:'',fg:''};
+function fillSelect(sel, values, current, allLabel){
+  const s=$(sel); const cur=current; s.innerHTML='';
+  const o=document.createElement('option'); o.value=''; o.textContent=allLabel; s.appendChild(o);
+  values.forEach(v=>{ const op=document.createElement('option'); op.value=v; op.textContent=v; s.appendChild(op); });
+  s.value = values.includes(cur)?cur:'';
+}
+function refreshFilterOptions(){
+  const os = DATA.orders;
+  const inScope = o => (!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg));
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  fillSelect('#fMonth', uniq(os.filter(o=>inScope(o)).map(o=>(o.orderDate||'').slice(0,7))).reverse(), F.month, 'All months');
+  fillSelect('#fCountry', uniq(os.filter(o=>(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg))).map(o=>o.country)), F.country, 'All countries');
+  fillSelect('#fBrand', uniq(os.filter(o=>(!F.country||o.country===F.country)&&(!F.fg||key(o.fgCode)===key(F.fg))).map(o=>o.brand)), F.brand, 'All brands');
+  fillSelect('#fFg', uniq(os.filter(o=>(!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)).map(o=>o.fgCode)), F.fg, 'All FG codes');
+  F.month=$('#fMonth').value; F.country=$('#fCountry').value; F.brand=$('#fBrand').value; F.fg=$('#fFg').value;
+  // datalists
+  const dl=(id,vals)=>{ $(id).innerHTML=vals.map(v=>`<option value="${esc(v)}">`).join(''); };
+  dl('#dlCountry', uniq([...os.map(o=>o.country), ...DATA.priority.map(p=>p.country)]));
+  dl('#dlBrand', uniq(os.map(o=>o.brand)));
+  dl('#dlFg', uniq([...os.map(o=>o.fgCode), ...DATA.stock.map(s=>s.fgCode), ...DATA.production.map(p=>p.fgCode)]));
+}
+const passes = o => (!F.month||o.month===F.month)&&(!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg));
+['fMonth','fCountry','fBrand','fFg'].forEach(id=>$('#'+id).addEventListener('change',e=>{ F[{fMonth:'month',fCountry:'country',fBrand:'brand',fFg:'fg'}[id]]=e.target.value; recompute(); }));
+$('#clearFilters').addEventListener('click',()=>{ F.month=F.country=F.brand=F.fg=''; recompute(); });
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function recompute(){ refreshFilterOptions(); CALC=computeAll(); renderDash(); renderOrders(); renderSummary(); renderProd(); renderInputs(); }
+
+function renderDash(){
+  const rows = CALC.orders.filter(passes);
+  const fgKeys = new Set(rows.map(o=>o.k));
+  // FG available honours brand / fg filter (stock is central, not by country/month)
+  const fgScope = Object.values(CALC.fg).filter(f=>(!F.brand||f.brand===F.brand)&&(!F.fg||key(f.fgCode)===key(F.fg)));
+  const sum = (a,k)=>a.reduce((t,x)=>t+(Number(x[k])||0),0);
+  const ordered=sum(rows,'qty'), supplied=sum(rows,'supplied'), reserved=sum(rows,'reserved'), pending=sum(rows,'pending'), covered=sum(rows,'covered');
+  const available = fgScope.reduce((t,f)=>t+f.stock,0);
+  const plannedTotal = fgScope.reduce((t,f)=>t+f.planned,0);
+  const blockedQty = rows.filter(o=>o.level==='crit'||o.level==='serious').reduce((t,o)=>t+o.pending,0);
+  const lead = rows.filter(o=>o.suppliedDate&&o.orderDate).map(o=>(new Date(o.suppliedDate)-new Date(o.orderDate))/864e5);
+  const avgLead = lead.length? lead.reduce((a,b)=>a+b,0)/lead.length : null;
+  const fill = ordered? Math.round(100*supplied/ordered):0;
+  $('#kpis').innerHTML = `
+    <div class="kpi hero"><div class="label">Pending to produce</div><div class="value">${fmt(pending)}</div><div class="sub">cases across ${rows.filter(o=>o.pending>0).length} open orders · ${fmt(covered)} covered by the plan, ${fmt(pending-covered)} not yet planned</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--s1)"></div><div class="label">Ordered</div><div class="value">${fmt(ordered)}</div><div class="sub">${rows.length} orders</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--s2)"></div><div class="label">Supplied</div><div class="value">${fmt(supplied)}</div><div class="sub">${fill}% of ordered</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--surface-3)"></div><div class="label">FG available</div><div class="value">${fmt(available)}</div><div class="sub">${fmt(reserved)} reserved against orders</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--s3)"></div><div class="label">Planned in production</div><div class="value">${fmt(plannedTotal)}</div><div class="sub">${fgScope.filter(f=>f.planned>0).length} FG codes scheduled</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--crit)"></div><div class="label">Blocked by RMPM</div><div class="value">${fmt(blockedQty)}</div><div class="sub">${fgScope.filter(f=>f.blocked.length).length} FG codes short on RM or PM</div></div>
+    <div class="kpi"><div class="mark" style="background:var(--gold)"></div><div class="label">Order to supply</div><div class="value">${avgLead==null?'–':Math.round(avgLead)+'d'}</div><div class="sub">average, ${lead.length} supplied orders</div></div>`;
+
+  // monthly chart
+  const byMonth = {};
+  CALC.orders.filter(o=>(!F.country||o.country===F.country)&&(!F.brand||o.brand===F.brand)&&(!F.fg||key(o.fgCode)===key(F.fg))).forEach(o=>{ const m=byMonth[o.month]=byMonth[o.month]||{m:o.month,ordered:0,supplied:0,pending:0}; m.ordered+=o.qty; m.supplied+=o.supplied; m.pending+=o.pending; });
+  const months = Object.values(byMonth).sort((a,b)=>a.m.localeCompare(b.m));
+  $('#chartMonth').innerHTML = groupedColumns(months, ['ordered','supplied','pending'], ['Ordered','Supplied','Pending'], m=>monthLabel(m.m), F.month);
+
+  // by country
+  const byC = {}; rows.forEach(o=>{ const c=byC[o.country]=byC[o.country]||{country:o.country,prio:o.prio,pending:0,ordered:0}; c.pending+=o.pending; c.ordered+=o.qty; });
+  const cs = Object.values(byC).sort((a,b)=>a.prio-b.prio||b.pending-a.pending);
+  $('#chartCountry').innerHTML = hbars(cs);
+
+  // position table
+  const pos = {};
+  rows.forEach(o=>{ const id=o.country+'|'+o.brand+'|'+o.k; const p=pos[id]=pos[id]||{country:o.country,prio:o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,ordered:0,supplied:0,reserved:0,pending:0,covered:0,f:CALC.fg[o.k]}; p.ordered+=o.qty;p.supplied+=o.supplied;p.reserved+=o.reserved;p.pending+=o.pending;p.covered+=o.covered; });
+  const pr = Object.values(pos).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country)||a.brand.localeCompare(b.brand)||a.fgCode.localeCompare(b.fgCode));
+  $('#tblPosition').innerHTML = `<thead><tr><th>Country</th><th>Pr.</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending</th><th class="r">FG available</th><th class="r">Planned</th><th>Coverage</th><th>Position</th></tr></thead><tbody>`+
+    (pr.length? pr.map(p=>{ const st = p.pending===0?['good','Fulfilled or reserved']: p.f.blocked.length&&p.covered<p.pending?['serious','RMPM shortage']: p.covered>=p.pending?['warn','In production plan']: p.covered>0?['warn','Partly planned']:['crit','Not planned']; const pct=p.pending? Math.round(100*p.covered/p.pending):100;
+      return `<tr><td>${esc(p.country)}</td><td><span class="prio p${p.prio}">P${p.prio}</span></td><td>${esc(p.brand)}</td><td class="mono">${esc(p.fgCode)}</td><td class="muted">${esc(p.fgName||'')}</td><td class="r num">${fmt(p.ordered)}</td><td class="r num">${fmt(p.supplied)}</td><td class="r num">${fmt(p.reserved)}</td><td class="r num"><b>${fmt(p.pending)}</b></td><td class="r num">${fmt(p.f.stock)}</td><td class="r num">${fmt(p.f.planned)}</td><td><div class="bar" title="${pct}% of pending covered"><i style="width:${pct}%"></i></div></td><td><span class="pill ${st[0]}">${st[1]}</span></td></tr>`; }).join('') : `<tr><td colspan="13" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
+
+  // timeline table
+  const tl = [...rows].sort((a,b)=>(b.orderDate||'').localeCompare(a.orderDate||''));
+  $('#tblTimeline').innerHTML = `<thead><tr><th>Order no</th><th>Order placed</th><th>Country</th><th>Brand</th><th>FG code</th><th class="r">Qty</th><th class="r">Supplied</th><th>Supplied on</th><th class="r">Days</th><th>Status</th><th>Expected</th></tr></thead><tbody>`+
+    (tl.length? tl.map(o=>{ const days=o.suppliedDate&&o.orderDate? Math.round((new Date(o.suppliedDate)-new Date(o.orderDate))/864e5):null;
+      return `<tr><td>${esc(o.orderNo)}</td><td>${esc(o.orderDate)}</td><td>${esc(o.country)} <span class="prio p${o.prio}">P${o.prio}</span></td><td>${esc(o.brand)}</td><td class="mono">${esc(o.fgCode)}</td><td class="r num">${fmt(o.qty)}</td><td class="r num">${fmt(o.supplied)}</td><td>${esc(o.suppliedDate)||'<span class="muted">–</span>'}</td><td class="r num">${days==null?'–':days}</td><td><span class="pill ${o.level}">${esc(o.status)}</span></td><td class="muted">${esc(o.expected)}</td></tr>`; }).join('') : `<tr><td colspan="11" class="empty">No orders match these filters.</td></tr>`)+`</tbody>`;
+}
+
+function monthLabel(m){ if(!m) return '–'; const [y,mo]=m.split('-'); return new Date(Number(y),Number(mo)-1,1).toLocaleString('en-GB',{month:'short',year:'2-digit'}); }
+function niceMax(v){ if(v<=0) return 10; const p=Math.pow(10,Math.floor(Math.log10(v))); const n=v/p; const s = n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10; return s*p; }
+
+function groupedColumns(data, keys, names, labelFn, highlight){
+  if(!data.length) return `<div class="empty">No orders in scope.</div>`;
+  const W=640,H=260,mL=52,mR=12,mT=14,mB=34; const pw=W-mL-mR, ph=H-mT-mB;
+  const max=niceMax(Math.max(...data.flatMap(d=>keys.map(k=>d[k]))));
+  const ticks=[0,.25,.5,.75,1].map(t=>t*max);
+  const gw=pw/data.length; const inner=Math.min(gw*.72, 90); const bw=Math.max(6,Math.min(22,(inner-2*(keys.length-1))/keys.length)); const gapx=2;
+  const colors=['var(--s1)','var(--s2)','var(--s3)'];
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Ordered, supplied and pending cases by month"><g class="grid">`;
+  ticks.forEach(t=>{ const y=mT+ph-(t/max)*ph; s+=`<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}"/><text x="${mL-8}" y="${y+4}" text-anchor="end" class="num">${fmt(t)}</text>`; });
+  s+=`</g><line class="axis" x1="${mL}" x2="${W-mR}" y1="${mT+ph}" y2="${mT+ph}"/>`;
+  data.forEach((d,i)=>{ const x0=mL+i*gw+(gw-(bw*keys.length+gapx*(keys.length-1)))/2;
+    const hl = highlight && d.m===highlight;
+    keys.forEach((k,j)=>{ const v=d[k]; const h=(v/max)*ph; const x=x0+j*(bw+gapx); const y=mT+ph-h;
+      s+=`<rect class="bar-mark" x="${x}" y="${y}" width="${bw}" height="${h}" fill="${colors[j]}" rx="4" ry="4" data-tip="${esc(labelFn(d))} · ${names[j]}: ${fmt(v)} cases"/>`;
+      if(h>0) s+=`<rect x="${x}" y="${mT+ph-Math.min(4,h)}" width="${bw}" height="${Math.min(4,h)}" fill="${colors[j]}"/>`;
+      if(j===keys.length-1 && v>0) s+=`<text class="lbl" x="${x+bw/2}" y="${y-4}" text-anchor="middle">${fmt(v)}</text>`;
+    });
+    s+=`<text x="${mL+i*gw+gw/2}" y="${H-12}" text-anchor="middle" ${hl?'class="lbl"':''}>${esc(labelFn(d))}</text>`;
+    if(hl) s+=`<rect x="${mL+i*gw+2}" y="${mT}" width="${gw-4}" height="${ph}" fill="var(--gold)" opacity=".08" pointer-events="none"/>`;
+  });
+  return s+'</svg>';
+}
+function hbars(cs){
+  if(!cs.length) return `<div class="empty">No orders in scope.</div>`;
+  const W=420, rowH=30, mL=96, mR=56, mT=6; const H=mT+cs.length*rowH+8; const pw=W-mL-mR;
+  const max=niceMax(Math.max(...cs.map(c=>c.pending),1));
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pending to produce by country">`;
+  cs.forEach((c,i)=>{ const y=mT+i*rowH; const w=(c.pending/max)*pw; const pct=c.ordered?Math.round(100*c.pending/c.ordered):0;
+    s+=`<text x="${mL-10}" y="${y+18}" text-anchor="end" class="lbl">${esc(c.country)}</text>`;
+    s+=`<rect x="${mL}" y="${y+6}" width="${pw}" height="16" fill="var(--surface-2)" rx="4"/>`;
+    s+=`<rect class="bar-mark" x="${mL}" y="${y+6}" width="${w}" height="16" fill="${c.prio===1?'var(--s3)':c.prio===2?'color-mix(in srgb,var(--s3) 70%,var(--surface))':'color-mix(in srgb,var(--s3) 45%,var(--surface))'}" rx="4" data-tip="${esc(c.country)} · P${c.prio} · pending ${fmt(c.pending)} of ${fmt(c.ordered)} ordered (${pct}%)"/>`;
+    s+=`<text x="${mL+w+6}" y="${y+18}" class="num">${fmt(c.pending)}</text>`;
+    s+=`<text x="${W-4}" y="${y+18}" text-anchor="end" style="font-family:var(--font-mono);font-size:10px;fill:var(--gold);font-weight:600">P${c.prio}</text>`;
+  });
+  return s+'</svg>';
+}
+// tooltips
+const tip=$('#tip');
+document.addEventListener('mousemove',e=>{ const t=e.target.closest&&e.target.closest('[data-tip]'); if(t){ tip.innerHTML=t.getAttribute('data-tip'); tip.classList.add('show'); tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; } else tip.classList.remove('show'); });
+
+/* ---------- Order tracker ---------- */
+function renderOrders(){
+  const rows=[...CALC.orders].filter(passes).sort((a,b)=>(b.orderDate||'').localeCompare(a.orderDate||''));
+  $('#ordersCount').textContent = `${rows.length} of ${DATA.orders.length} orders shown`;
+  $('#tblOrders').innerHTML = `<thead><tr><th>Order no</th><th>Order date</th><th>Country</th><th>Distributor</th><th>Brand</th><th>FG code</th><th>Description</th><th class="r">Order qty</th><th class="r" title="Total stock reserved against the order, including what has since been supplied">Stock reserved</th><th class="r">Supplied qty</th><th>Supplied date</th><th>Invoice / ref</th><th>Status</th><th></th></tr></thead><tbody>`+
+    (rows.length? rows.map(o=>`<tr data-id="${o.id}"><td><input data-f="orderNo" value="${esc(o.orderNo)}"></td><td><input type="date" data-f="orderDate" value="${esc(o.orderDate)}"></td><td><input data-f="country" list="dlCountry" value="${esc(o.country)}"></td><td><input data-f="distributor" value="${esc(o.distributor||'')}"></td><td><input data-f="brand" list="dlBrand" value="${esc(o.brand)}"></td><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(o.fgCode)}"></td><td><input data-f="fgName" value="${esc(o.fgName||'')}"></td><td><input class="n num" type="number" data-f="qty" value="${o.qty}"></td><td><input class="n num" type="number" data-f="reserved" value="${o.reservedIn}" title="${o.autoReserved>0?'Algorithm allocated a further '+fmt(o.autoReserved)+' from free stock':''}">${o.autoReserved>0?`<div class="small muted" style="text-align:right">+${fmt(o.autoReserved)} auto</div>`:''}</td><td><input class="n num" type="number" data-f="supplied" value="${o.supplied}"></td><td><input type="date" data-f="suppliedDate" value="${esc(o.suppliedDate||'')}"></td><td><input data-f="ref" value="${esc(o.ref||'')}"></td><td><span class="pill ${o.level}">${esc(o.status)}</span></td><td><button class="btn sm danger" data-del="orders" data-id="${o.id}" title="Delete order">✕</button></td></tr>`).join('') : `<tr><td colspan="14" class="empty">No orders yet. Add one above or upload the Excel tracker.</td></tr>`)+`</tbody>`;
+}
+function bindInlineEdits(tableSel, sheet){
+  $(tableSel).addEventListener('change',e=>{ const inp=e.target.closest('[data-f]'); if(!inp) return; const tr=inp.closest('tr'); const row=DATA[sheet].find(r=>r.id===tr.dataset.id); if(!row) return; const f=inp.dataset.f; row[f]= inp.type==='number'? Number(inp.value)||0 : inp.value; if(sheet==='rmpm' && f==='type') row.planner=PLANNER[row.type]||''; if(sheet==='rmpm' && f==='eta' && row.eta && row.status==='Awaiting ETA') row.status='ETA received'; persist(sheet); });
+  $(tableSel).addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(!b) return; const s=b.dataset.del; DATA[s]=DATA[s].filter(r=>r.id!==b.dataset.id); persist(s); toast('Row removed'); });
+}
+bindInlineEdits('#tblOrders','orders'); bindInlineEdits('#tblProd','production'); bindInlineEdits('#tblRmpm','rmpm');
+$('#formOrder').addEventListener('submit',e=>{ e.preventDefault(); const fd=new FormData(e.target); const o=Object.fromEntries(fd.entries()); o.id=uid(); o.qty=Number(o.qty)||0; o.reserved=0; o.supplied=0; o.suppliedDate=''; o.ref=''; DATA.orders.push(o); e.target.reset(); persist('orders'); toast('Order added'); });
+
+/* ---------- Order summary ---------- */
+function renderSummary(){
+  const rows=CALC.orders.filter(passes);
+  const groups={};
+  rows.forEach(o=>{ const g=groups[o.country]=groups[o.country]||{country:o.country,prio:o.prio,items:{}}; const it=g.items[o.brand+'|'+o.k]=g.items[o.brand+'|'+o.k]||{brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,f:CALC.fg[o.k],ordered:0,supplied:0,reserved:0,pending:0,covered:0,orders:[]}; it.ordered+=o.qty;it.supplied+=o.supplied;it.reserved+=o.reserved;it.pending+=o.pending;it.covered+=o.covered;it.orders.push(o); });
+  const gs=Object.values(groups).sort((a,b)=>a.prio-b.prio||a.country.localeCompare(b.country));
+  let html=`<thead><tr><th>Country / FG</th><th>Brand</th><th>Description</th><th class="r">Ordered</th><th class="r">Supplied</th><th class="r">Reserved</th><th class="r">Pending to produce</th><th class="r">Planned</th><th class="r">Gap</th><th>Status</th><th>Timeline / next step</th><th>Owner</th></tr></thead><tbody>`;
+  if(!gs.length) html+=`<tr><td colspan="12" class="empty">No orders match these filters.</td></tr>`;
+  gs.forEach(g=>{ const its=Object.values(g.items); const t=k=>its.reduce((a,x)=>a+x[k],0);
+    html+=`<tr class="group"><td>${esc(g.country)} <span class="prio p${g.prio}">P${g.prio}</span></td><td colspan="2" class="muted">${its.length} FG codes</td><td class="r num">${fmt(t('ordered'))}</td><td class="r num">${fmt(t('supplied'))}</td><td class="r num">${fmt(t('reserved'))}</td><td class="r num">${fmt(t('pending'))}</td><td colspan="5"></td></tr>`;
+    its.sort((a,b)=>b.pending-a.pending).forEach(it=>{ const f=it.f; const plan=f.plans.filter(p=>p.status!=='Completed').sort((a,b)=>(a.finish||'9999').localeCompare(b.finish||'9999'))[0];
+      let st,next,owner;
+      if(it.pending===0){ st=['good', it.supplied>=it.ordered?'Supplied':'Reserved, ready']; next= it.supplied>=it.ordered? 'Done' : 'Dispatch from stock'; owner='Logistics'; }
+      else if(f.blocked.length && it.covered<it.pending){ const eta=f.blocked.map(r=>r.eta).filter(Boolean).sort().pop(); const wait=f.blocked.filter(r=>!r.eta); st=[wait.length?'crit':'serious', wait.length?'RMPM shortage · awaiting ETA':'RMPM shortage · ETA '+eta]; next = f.blocked.map(r=>`${r.type} ${esc(r.matCode)}${r.eta?' · '+r.eta:' · no ETA'}`).join('<br>'); owner=[...new Set(f.blocked.map(r=>PLANNER[r.type]||r.type))].join(' / '); }
+      else if(it.covered>=it.pending){ st=['warn', plan&&plan.status==='In progress'?'In production':'Production planned']; next= plan&&plan.finish? `${plan.start||'?'} → ${plan.finish}` : 'Timeline pending'; owner='Production'; }
+      else if(it.covered>0){ st=['warn','Partly planned']; next=`${fmt(it.covered)} planned${plan&&plan.finish?' by '+plan.finish:''}, ${fmt(it.pending-it.covered)} not yet`; owner='Production'; }
+      else { st=['crit','Not planned']; next='Share with Production'; owner='Planning'; }
+      html+=`<tr><td class="mono" style="padding-left:26px">${esc(it.fgCode)}</td><td>${esc(it.brand)}</td><td class="muted">${esc(it.fgName||'')}</td><td class="r num">${fmt(it.ordered)}</td><td class="r num">${fmt(it.supplied)}</td><td class="r num">${fmt(it.reserved)}</td><td class="r num"><b>${fmt(it.pending)}</b></td><td class="r num">${fmt(f.planned)}</td><td class="r num ${f.gap>0?'':'muted'}">${f.gap>0?fmt(f.gap):'0'}</td><td><span class="pill ${st[0]}">${st[1]}</span></td><td class="small">${next}</td><td class="small">${esc(owner)}</td></tr>`;
+    });
+  });
+  $('#tblSummary').innerHTML=html+'</tbody>';
+}
+
+/* ---------- Production & RMPM ---------- */
+function renderProd(){
+  const fgFilter = p => (!F.fg||key(p.fgCode)===key(F.fg)) && (!F.brand || (CALC.fg[key(p.fgCode)]||{}).brand===F.brand || !CALC.fg[key(p.fgCode)]);
+  const prods=DATA.production.filter(fgFilter);
+  const pendingFg=Object.values(CALC.fg).filter(f=>f.gap>0);
+  $('#pendingHint').textContent = pendingFg.length? `${pendingFg.length} FG codes have pending qty above the plan: ${pendingFg.map(f=>f.fgCode+' ('+fmt(f.gap)+')').join(', ')}` : 'Every pending quantity is covered by the plan.';
+  $('#tblProd').innerHTML=`<thead><tr><th>FG code</th><th>Description</th><th class="r">Pending</th><th class="r">Planned qty</th><th>Start</th><th>Finish</th><th>Status</th><th>Remarks</th><th></th></tr></thead><tbody>`+
+    (prods.length? prods.map(p=>{ const f=CALC.fg[key(p.fgCode)]; return `<tr data-id="${p.id}"><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(p.fgCode)}"></td><td class="muted">${esc(f?f.fgName||'':'')}</td><td class="r num">${f?fmt(f.pending):'–'}</td><td><input class="n num" type="number" data-f="plannedQty" value="${p.plannedQty}"></td><td><input type="date" data-f="start" value="${esc(p.start||'')}"></td><td><input type="date" data-f="finish" value="${esc(p.finish||'')}"></td><td><select data-f="status">${['Planned','In progress','Blocked - RMPM','Completed'].map(s=>`<option ${p.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><input data-f="remarks" value="${esc(p.remarks||'')}"></td><td><button class="btn sm danger" data-del="production" data-id="${p.id}">✕</button></td></tr>`; }).join('') : `<tr><td colspan="9" class="empty">No production plan yet.</td></tr>`)+'</tbody>';
+  const rm=DATA.rmpm.filter(fgFilter);
+  $('#tblRmpm').innerHTML=`<thead><tr><th>FG code</th><th>Material code</th><th>Material</th><th>Type</th><th class="r">Short qty</th><th>UOM</th><th>Planner</th><th>Procurement ETA</th><th>Connectivity</th><th></th></tr></thead><tbody>`+
+    (rm.length? rm.map(r=>`<tr data-id="${r.id}"><td><input class="mono" data-f="fgCode" list="dlFg" value="${esc(r.fgCode)}"></td><td><input class="mono" data-f="matCode" value="${esc(r.matCode)}"></td><td><input data-f="matName" value="${esc(r.matName||'')}"></td><td><select data-f="type"><option ${r.type==='RM'?'selected':''}>RM</option><option ${r.type==='PM'?'selected':''}>PM</option></select></td><td><input class="n num" type="number" data-f="shortQty" value="${r.shortQty}"></td><td><input data-f="uom" value="${esc(r.uom||'')}" style="min-width:50px"></td><td>${esc(PLANNER[r.type]||'')}</td><td><input type="date" data-f="eta" value="${esc(r.eta||'')}"></td><td><select data-f="status">${['Awaiting ETA','ETA received','Connected'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn sm danger" data-del="rmpm" data-id="${r.id}">✕</button></td></tr>`).join('') : `<tr><td colspan="10" class="empty">No RM or PM shortages logged.</td></tr>`)+'</tbody>';
+}
+$('#formProd').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.plannedQty=Number(o.plannedQty)||0; o.remarks=''; DATA.production.push(o); e.target.reset(); persist('production'); toast('Production plan added'); });
+$('#formRmpm').addEventListener('submit',e=>{ e.preventDefault(); const o=Object.fromEntries(new FormData(e.target).entries()); o.id=uid(); o.shortQty=Number(o.shortQty)||0; o.planner=PLANNER[o.type]; o.status=o.eta?'ETA received':'Awaiting ETA'; DATA.rmpm.push(o); e.target.reset(); persist('rmpm'); toast('Shortage logged for '+o.planner); });
+
+/* ---------- Supply inputs ---------- */
+function renderInputs(){
+  $('#tblStock').innerHTML=`<thead><tr><th>FG code</th><th>Warehouse</th><th class="r">Available</th><th>Stock date</th></tr></thead><tbody>`+(DATA.stock.length? DATA.stock.map(s=>`<tr><td class="mono">${esc(s.fgCode)}</td><td>${esc(s.warehouse||'')}</td><td class="r num">${fmt(s.available)}</td><td class="muted">${esc(s.stockDate||'')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Upload FG stock</td></tr>`)+'</tbody>';
+  $('#tblPriority').innerHTML=`<thead><tr><th>Country</th><th>Priority</th></tr></thead><tbody>`+(DATA.priority.length? [...DATA.priority].sort((a,b)=>a.priority-b.priority).map(p=>`<tr><td>${esc(p.country)}</td><td><span class="prio p${p.priority}">P${p.priority}</span></td></tr>`).join(''):`<tr><td colspan="2" class="empty">Upload the priority list</td></tr>`)+'</tbody>';
+  $('#tblShortage').innerHTML=`<thead><tr><th>FG code</th><th class="r">Short qty</th><th>Reason</th></tr></thead><tbody>`+(DATA.shortage.length? DATA.shortage.map(s=>`<tr><td class="mono">${esc(s.fgCode)}</td><td class="r num">${fmt(s.shortQty)}</td><td class="muted">${esc(s.reason||'')}</td></tr>`).join(''):`<tr><td colspan="3" class="empty">Upload the FG shortage list</td></tr>`)+'</tbody>';
+}
+
+/* =====================================================================
+   EXCEL IN / OUT
+   ===================================================================== */
+const COLS = {
+  orders:[['orderNo','Order No'],['orderDate','Order Date'],['country','Country'],['distributor','Distributor'],['brand','Brand'],['fgCode','FG Code'],['fgName','FG Description'],['qty','Order Qty (cases)'],['reserved','Stock Reserved Qty'],['supplied','Supplied Qty'],['suppliedDate','Supplied Date'],['ref','Invoice / Ref']],
+  production:[['fgCode','FG Code'],['plannedQty','Planned Qty'],['start','Planned Start'],['finish','Planned Finish'],['status','Status'],['remarks','Remarks']],
+  rmpm:[['fgCode','FG Code'],['matCode','Material Code'],['matName','Material Description'],['type','RM/PM'],['shortQty','Short Qty'],['uom','UOM'],['eta','Procurement ETA'],['status','Connectivity Status']],
+  stock:[['fgCode','FG Code'],['warehouse','Warehouse'],['available','Available Qty'],['stockDate','Stock Date']],
+  priority:[['country','Country'],['priority','Priority']],
+  shortage:[['fgCode','FG Code'],['shortQty','Short Qty'],['reason','Reason']]
+};
+const ALIASES = {orderNo:['orderno','order','po','pono','ponumber','ordernumber'],orderDate:['orderdate','date','podate'],country:['country','market'],distributor:['distributor','customer'],brand:['brand'],fgCode:['fgcode','fg','sku','skucode','materialcode','itemcode','code'],fgName:['fgdescription','description','fgname','skuname','item'],qty:['orderqty','orderqtycases','qty','quantity','cases','orderquantity'],reserved:['stockreservedqty','stockreserved','reserved','reservedqty'],supplied:['suppliedqty','supplied','dispatchedqty','dispatched','invoicedqty'],suppliedDate:['supplieddate','dispatchdate','invoicedate','supplydate'],ref:['invoiceref','invoice','ref','reference','invoiceno'],plannedQty:['plannedqty','planned','planqty','quantity','qty'],start:['plannedstart','start','startdate'],finish:['plannedfinish','finish','enddate','finishdate','completiondate'],status:['status','connectivitystatus'],remarks:['remarks','remark','notes','comment'],matCode:['materialcode','matcode','material'],matName:['materialdescription','materialname','description'],type:['rmpm','type','materialtype'],shortQty:['shortqty','shortage','short','shortquantity'],uom:['uom','unit'],eta:['procurementeta','eta','connectivitydate','etadate'],warehouse:['warehouse','plant','location'],available:['availableqty','available','stock','qty','quantity','freestock'],stockDate:['stockdate','date','asof'],priority:['priority','prio','rank'],reason:['reason','remarks','comment']};
+const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function excelDate(v){ if(v==null||v==='') return ''; if(v instanceof Date) return v.toISOString().slice(0,10); if(typeof v==='number'){ const d=XLSX.SSF.parse_date_code(v); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } const s=String(v).trim(); const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); if(m){ let y=m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; } const d=new Date(s); return isNaN(d)?s:d.toISOString().slice(0,10); }
+const DATE_FIELDS = new Set(['orderDate','suppliedDate','start','finish','eta','stockDate']);
+const NUM_FIELDS = new Set(['qty','reserved','supplied','plannedQty','shortQty','available','priority']);
+
+function parseSheet(file, sheet){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=e=>{ try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!raw.length) return reject(new Error('The first sheet is empty'));
+      const headers=Object.keys(raw[0]); const map={};
+      COLS[sheet].forEach(([field])=>{ const al=[norm(COLS[sheet].find(c=>c[0]===field)[1]), ...(ALIASES[field]||[])]; const h=headers.find(h=>al.includes(norm(h))); if(h) map[field]=h; });
+      const required = {orders:['orderNo','fgCode','qty'],production:['fgCode','plannedQty'],rmpm:['fgCode','matCode'],stock:['fgCode','available'],priority:['country','priority'],shortage:['fgCode','shortQty']}[sheet];
+      const missing=required.filter(f=>!map[f]); if(missing.length) return reject(new Error('Missing columns: '+missing.map(f=>COLS[sheet].find(c=>c[0]===f)[1]).join(', ')+'. Found: '+headers.join(', ')));
+      const rows=raw.map(r=>{ const o={id:uid()}; COLS[sheet].forEach(([f])=>{ let v=map[f]? r[map[f]] : ''; if(DATE_FIELDS.has(f)) v=excelDate(v); else if(NUM_FIELDS.has(f)) v=Number(String(v).replace(/,/g,''))||0; else v=String(v??'').trim(); o[f]=v; }); if(sheet==='rmpm'){ o.type=(o.type||'').toUpperCase().includes('P')&&!(o.type||'').toUpperCase().startsWith('R')?'PM':'RM'; o.planner=PLANNER[o.type]; o.status=o.status||(o.eta?'ETA received':'Awaiting ETA'); } if(sheet==='production'&&!o.status) o.status='Planned'; return o; }).filter(o=> sheet==='priority'? o.country : o.fgCode);
+      resolve(rows);
+    }catch(err){ reject(err); } };
+    fr.onerror=()=>reject(new Error('Could not read the file'));
+    fr.readAsArrayBuffer(file);
+  });
+}
+function bindUpload(inputId, sheet, merge){
+  $(inputId).addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file) return; try{
+    const rows=await parseSheet(file,sheet);
+    if(merge==='orders'){ // upsert by order no + fg code; keep existing reserved/supplied when the upload leaves them blank
+      const idx={}; DATA.orders.forEach(o=>idx[norm(o.orderNo)+'|'+key(o.fgCode)]=o);
+      let added=0,updated=0; rows.forEach(r=>{ const k=norm(r.orderNo)+'|'+key(r.fgCode); const ex=idx[k]; if(ex){ Object.assign(ex,{...r,id:ex.id, reserved:r.reserved||ex.reserved, supplied:r.supplied||ex.supplied, suppliedDate:r.suppliedDate||ex.suppliedDate, ref:r.ref||ex.ref}); updated++; } else { DATA.orders.push(r); idx[k]=r; added++; } });
+      toast(`Tracker uploaded: ${added} new, ${updated} updated`);
+    } else { DATA[sheet]=rows; toast(`${file.name}: ${rows.length} rows loaded into ${sheet}`); }
+    await persist(sheet);
+  }catch(err){ toast('Upload failed: '+err.message); } e.target.value=''; });
+}
+bindUpload('#upOrders','orders','orders'); bindUpload('#upProd','production'); bindUpload('#upRmpm','rmpm'); bindUpload('#upStock','stock'); bindUpload('#upPriority','priority'); bindUpload('#upShortage','shortage');
+
+function buildWorkbook(sheet, rows){
+  const cols=COLS[sheet]; const aoa=[cols.map(c=>c[1]), ...rows.map(r=>cols.map(c=>r[c[0]]??''))];
+  const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=cols.map(c=>({wch:Math.max(14,c[1].length+2)}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,{orders:'Order Tracker',production:'Production Plan',rmpm:'RMPM Shortages',stock:'FG Stock',priority:'Country Priority',shortage:'FG Shortage'}[sheet]);
+  return XLSX.write(wb,{bookType:'xlsx',type:'array'});
+}
+async function offerFile(filename, data){
+  if(!downloads){ toast('Downloads are not available in this view. Open the artifact in claude.ai to save files.'); return; }
+  try{ await downloads.save({filename, data}); toast('Saved '+filename); }
+  catch(e){ if(e.code!=='declined') toast('Could not save: '+(e.message||e.code)); }
+}
+document.querySelectorAll('[data-template]').forEach(b=>b.addEventListener('click',()=>{ const s=b.dataset.template; offerFile(`oms-${s}-template.xlsx`, buildWorkbook(s, [])); }));
+$('#exportOrders').addEventListener('click',()=>offerFile(`oms-order-tracker-${todayStr()}.xlsx`, buildWorkbook('orders', DATA.orders)));
+$('#exportSummary').addEventListener('click',()=>{
+  const rows=CALC.orders.filter(passes).map(o=>({country:o.country,priority:'P'+o.prio,brand:o.brand,fgCode:o.fgCode,fgName:o.fgName,orderNo:o.orderNo,orderDate:o.orderDate,qty:o.qty,supplied:o.supplied,suppliedDate:o.suppliedDate,reserved:o.reserved,pending:o.pending,planned:(CALC.fg[o.k]||{}).planned||0,status:o.status,expected:o.expected}));
+  const cols=[['country','Country'],['priority','Priority'],['brand','Brand'],['fgCode','FG Code'],['fgName','Description'],['orderNo','Order No'],['orderDate','Order Date'],['qty','Ordered'],['supplied','Supplied'],['suppliedDate','Supplied Date'],['reserved','Reserved'],['pending','Pending to Produce'],['planned','Planned (FG total)'],['status','Status'],['expected','Expected']];
+  const ws=XLSX.utils.aoa_to_sheet([cols.map(c=>c[1]),...rows.map(r=>cols.map(c=>r[c[0]]??''))]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Order Summary');
+  offerFile(`oms-order-summary-${todayStr()}.xlsx`, XLSX.write(wb,{bookType:'xlsx',type:'array'}));
+});
+$('#resetData').addEventListener('click',async()=>{ if(!confirm('Replace all sheets with the example data set?')) return; setExample(); for(const s of SHEETS) await persist(s); toast('Example data restored'); });
+
+/* ---------- nav ---------- */
+const TITLES={dash:['Dashboard','Finished goods available, planned in production, and pending to produce.'],orders:['Order Tracker','Logistics input: every order from a distributor, with reserved and supplied quantities.'],summary:['Order Summary','Planning view: stock allocated by country priority, pending quantities and the production timeline.'],prod:['Production & RMPM','Production plan, raw and packing material shortages, and procurement connectivity.'],inputs:['Supply Inputs','What the supply end must provide, and how the sheets connect.']};
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.nav-btn').forEach(x=>x.classList.toggle('active',x===b)); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+b.dataset.view)); $('#viewTitle').textContent=TITLES[b.dataset.view][0]; $('#viewSub').textContent=TITLES[b.dataset.view][1]; try{localStorage.setItem('oms-view',b.dataset.view);}catch(e){} }));
+try{ const v=localStorage.getItem('oms-view'); if(v&&document.querySelector(`.nav-btn[data-view="${v}"]`)) document.querySelector(`.nav-btn[data-view="${v}"]`).click(); }catch(e){}
+
+let toastT; function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
+
+initStore();
+})();
+</script>
