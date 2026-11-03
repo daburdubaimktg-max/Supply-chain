@@ -1,5 +1,7 @@
 # NPD Gate Tracker
 
+> **New: `gantt-dashboard.html`** is a dashboard and editable Gantt built only from `Gant_Chart_Updated.xlsx` (see [Transition Gantt Dashboard](#transition-gantt-dashboard-gantt-dashboardhtml) below).
+
 A project management tool for New Product Development (NPD) across functions: Marketing, R&D, Packaging, Supply Chain, Regulatory, Quality, Manufacturing, Finance and Sales. It tracks many brands, with many projects per brand, through stage gates up to the **FPR (First Production Run)** and launch. It also emails escalations through Outlook.
 
 It is a single file, `index.html`. There is nothing to install: open it in Chrome or Edge. Data is saved in your browser, and the **Excel workbook is the master data**. Keep that workbook in OneDrive.
@@ -83,3 +85,25 @@ For automatic daily emails, use `automailer/npd_automailer.py`. It reads the wor
 The mailer keeps `NPD_Automailer_Log.csv` next to the workbook in OneDrive. An escalation is repeated every `repeat_every_days` (default 2). A move up to a new level is mailed straight away.
 
 If no PC can run it, `mode = smtp` sends through Office 365 SMTP instead. Set `smtp_user` in the config and the password in the `NPD_SMTP_PASSWORD` environment variable. Your IT team may need to allow SMTP AUTH for that mailbox.
+
+---
+
+## Transition Gantt Dashboard (`gantt-dashboard.html`)
+
+A separate dashboard built only from what is in `templates/Gant_Chart_Updated.xlsx` (Settings + Gantt sheets). Open the file in Chrome or Edge; it loads with that workbook's data.
+
+**Views**
+- **Dashboard.** Project details (title, PM, priority, NPPF, brief, timespan, duration, *Updates on*), overall %, overdue items as of *Updates on*, ⚠ issues, next milestone, end vs base plan, workstream timelines, milestone track, department and team-member load, needs-attention list.
+- **Gantt.** The same columns as the sheet (#, Description, Role, Team Member, ⚠, Ind Start/End, d. Id, Conn, Lag, Work Days, Start, End, %) on a Mon–Fri timeline. It has the four *Color* modes (Project Structure, Team Roles, Issues, Default), base-plan bars, dependency links and the *Updates on* line.
+- **Settings.** Project details, departments with codes, team members with roles, base plan, and the admin PIN.
+
+**Dates are calculated exactly like the workbook.** Ind Start wins, then Ind End, then the d. Id link (FS/SS/FF/SF + lag) with `WORKDAY`/`NETWORKDAYS`. Rows linked to Settings dates (Product Brief, NPPF, Project Start) move when those dates change. Stages summarise every row beneath them.
+
+**Admin-only editing**
+- Everyone sees a read-only dashboard. **Admin sign in** (default PIN `admin`; change it under Settings → Admin access) turns on editing.
+- On the Gantt, admins drag a bar to set a new start, drag the bar's right edge to change work days, or click a row to edit any field, insert, delete or move rows. Every change re-plans the linked rows and offers **Undo**.
+- The PIN is a soft lock inside the page. For hard access control, give only admins edit rights to the OneDrive/SharePoint workbook.
+
+**Excel / OneDrive.** *Import Excel* (admin) reads a workbook in the `Gant_Chart_Updated.xlsx` layout from your OneDrive folder. *Export Excel* writes the same Settings and Gantt layout back, with calculated dates as values, Settings-date and d. Id links kept as formulas, and the admin PIN hash included.
+
+**Note on the source file.** In the Gantt sheet the *Procurement* stage formulas (`K49 =MIN(S50:S52)`, `R49 …MAX(T50:T52)`) stop one row short and miss *Material Delivered* (row 53), so Excel shows the stage ending 29-Apr-26. The dashboard includes that row and shows 30-Apr-26.

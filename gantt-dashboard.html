@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transition Gantt Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: one project, three views (Dashboard, Gantt, Settings). Status date drives every status.
+   Workstream colours follow the workbook's "Project Structure" palette. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --surface2:#F5F7F9; --ink:#17202A; --muted:#5B6873; --line:#D6DDE3; --grid:#E6EBEF; --weekend:#F3F5F7;
+  --accent:#1F5F8B; --accent-ink:#FFFFFF; --mile:#17202A; --status:#C2410C;
+  --good:#2E7D4F; --warn:#B7791F; --crit:#C2372B; --shadow:0 2px 6px rgba(20,35,50,.07),0 12px 28px rgba(20,35,50,.08);
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E141A; --surface:#151E26; --surface2:#1A242D; --ink:#E3E9EE; --muted:#93A1AC; --line:#2A3641; --grid:#202B35; --weekend:#18222B;
+  --accent:#5AA7DA; --accent-ink:#06202F; --mile:#E3E9EE; --status:#F28C4B;
+  --good:#5DC08B; --warn:#E2AA4C; --crit:#EF6B5F; --shadow:0 2px 6px rgba(0,0,0,.3),0 12px 28px rgba(0,0,0,.3); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E141A; --surface:#151E26; --surface2:#1A242D; --ink:#E3E9EE; --muted:#93A1AC; --line:#2A3641; --grid:#202B35; --weekend:#18222B;
+  --accent:#5AA7DA; --accent-ink:#06202F; --mile:#E3E9EE; --status:#F28C4B;
+  --good:#5DC08B; --warn:#E2AA4C; --crit:#EF6B5F; --shadow:0 2px 6px rgba(0,0,0,.3),0 12px 28px rgba(0,0,0,.3); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1640px;margin:0 auto}
+header.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;font:700 19px/1 var(--f-display);letter-spacing:.03em;text-transform:uppercase;margin-right:auto}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs a{padding:10px 14px;text-decoration:none;color:var(--muted);font:600 15px/1 var(--f-display);letter-spacing:.05em;text-transform:uppercase;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding-block:20px 48px;display:grid;gap:18px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+h1{font-size:30px;font-weight:700;letter-spacing:.01em}
+h2{font-size:18px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+h3{font-size:16px;font-weight:600}
+.eyebrow{font:500 11px/1.3 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:6px;cursor:pointer;font-weight:500;white-space:nowrap;text-decoration:none}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--crit)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+input[type=text],input[type=date],input[type=number],input[type=password],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
+input:disabled,select:disabled,textarea:disabled{background:var(--surface2);color:var(--ink);opacity:1;cursor:default}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.phead{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px}
+.role-pill{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--f-mono);padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.role-pill.admin{border-color:var(--status);color:var(--status)}
+/* hero */
+.hero{display:grid;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.hero-top{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:flex-end;justify-content:space-between}
+.meta{display:flex;flex-wrap:wrap;gap:8px 26px}
+.meta div{display:grid;gap:2px}
+.meta b{font:500 14px var(--f-mono)}
+.prio{display:inline-flex;padding:2px 9px;border-radius:999px;font:600 12px var(--f-mono);background:color-mix(in srgb,var(--crit) 14%,transparent);color:var(--crit)}
+.prio.Medium{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.prio.Low{background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good)}
+.span-bar{position:relative;height:30px;margin-top:4px}
+.span-bar .track{position:absolute;left:0;right:0;top:12px;height:6px;border-radius:3px;background:var(--grid)}
+.span-bar .done{position:absolute;left:0;top:12px;height:6px;border-radius:3px;background:var(--accent)}
+.span-bar .sd{position:absolute;top:0;bottom:0;border-left:2px solid var(--status)}
+.span-bar .sd b{position:absolute;left:5px;top:-2px;font:500 10.5px var(--f-mono);color:var(--status);white-space:nowrap}
+.span-bar .ms{position:absolute;top:9px;width:11px;height:11px;margin-left:-5px;transform:rotate(45deg);background:var(--mile);border:2px solid var(--surface)}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;align-content:start}
+.kpi .v{font:600 30px/1.05 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.pos{color:var(--good)} .neg{color:var(--crit)} .wrn{color:var(--warn)}
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font:500 11.5px/1.5 var(--f-mono);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.c-done{color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+.c-prog{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
+.c-behind{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}
+.c-over{color:var(--crit);background:color-mix(in srgb,var(--crit) 13%,transparent)}
+.c-ns{color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
+.warn-ic{color:var(--crit);font-weight:700}
+/* workstreams */
+.ws{display:grid}
+.ws-row{display:grid;grid-template-columns:minmax(150px,220px) minmax(240px,1fr) 150px;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--grid);cursor:pointer}
+.ws-row:first-child{border-top:0}
+.ws-row:hover .ws-name{color:var(--accent)}
+.ws-name{font-weight:600;display:flex;gap:8px;align-items:center}
+.ws-sub{font-size:12px;color:var(--muted)}
+.ws-track{position:relative;height:22px;background:var(--surface2);border-radius:4px}
+.ws-track i{position:absolute;top:5px;height:12px;border-radius:3px}
+.ws-track i.p{opacity:.95}
+.ws-track i.b{opacity:.3}
+.ws-track .sd{position:absolute;top:-3px;bottom:-3px;border-left:2px solid var(--status)}
+.ws-stat{display:grid;gap:4px;justify-items:end;text-align:right}
+.pbar{display:inline-block;width:70px;height:5px;background:var(--grid);border-radius:3px;overflow:hidden;vertical-align:middle}
+.pbar i{display:block;height:100%;background:var(--accent)}
+/* milestones */
+.mtrack{position:relative;height:118px;margin:6px 6px 0}
+.mtrack .line{position:absolute;left:0;right:0;top:54px;height:2px;background:var(--line)}
+.mtrack .m{position:absolute;top:47px;width:16px;height:16px;margin-left:-8px;transform:rotate(45deg);border:2px solid var(--surface);cursor:pointer}
+.mtrack .lbl{position:absolute;width:120px;margin-left:-60px;text-align:center;font-size:12px;line-height:1.25}
+.mtrack .lbl.up{bottom:76px} .mtrack .lbl.dn{top:76px}
+.mtrack .sd{position:absolute;top:30px;height:50px;border-left:2px solid var(--status)}
+/* loads */
+.load{display:grid;gap:9px}
+.lrow{display:grid;grid-template-columns:150px minmax(0,1fr) 70px;gap:10px;align-items:center;font-size:13px}
+.lrow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:7px;align-items:center}
+.stack{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--grid)}
+.stack i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.list{display:grid}
+.li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;padding:9px 0;border-top:1px solid var(--grid);cursor:pointer;align-items:center}
+.li:first-child{border-top:0}
+.li .t{font-weight:500}
+.li .sub{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.li:hover .t{color:var(--accent)}
+/* tables */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface2)}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+/* Gantt */
+.gtools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 11px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.hint{font-size:13px;color:var(--muted);margin:10px 0 0}
+.gscroll{overflow:auto;max-height:76vh;border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-top:12px}
+.ghead{position:sticky;top:0;z-index:3;display:flex;background:var(--surface);border-bottom:1px solid var(--line)}
+.gbody{display:flex}
+.gleft{position:sticky;left:0;z-index:2;flex:none;background:var(--surface);border-right:1px solid var(--line)}
+.ghead .gleft{z-index:4}
+.gl-row{display:grid;align-items:center;height:28px;border-bottom:1px solid var(--grid);font-size:12.5px;cursor:pointer}
+.gl-row>span{padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gl-row.hd{height:58px;align-items:end;padding-bottom:6px;cursor:default;font:500 10.5px/1.2 var(--f-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.gl-row.hd>span{white-space:normal}
+.gl-row.stage{background:var(--surface2);font-weight:600}
+.gl-row.stage .desc{font-family:var(--f-display);font-size:14px;letter-spacing:.02em}
+.gl-row:not(.hd):hover{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.gl-row .desc{display:flex;gap:6px;align-items:center}
+.gl-row .ty{font:11px var(--f-mono);color:var(--muted)}
+.gl-row .num{text-align:right;font-family:var(--f-mono)}
+.gl-row .dt{font-family:var(--f-mono);font-size:12px}
+.gl-row .lk{color:#7C3AED}
+svg text{font-family:var(--f-mono)}
+.g-wk{fill:var(--weekend)}
+.g-grid{stroke:var(--grid)}
+.g-wkline{stroke:var(--line)}
+.g-lbl{fill:var(--muted);font-size:10px}
+.g-mlbl{fill:var(--ink);font-size:11px;font-weight:500}
+.g-stage{opacity:.95}
+.g-base{fill:var(--muted);opacity:.45}
+.g-pct{fill:var(--ink);opacity:.25}
+.g-txt{fill:var(--muted);font-size:10px}
+.g-arrow{fill:none;stroke:var(--muted);stroke-width:1.1;opacity:.7}
+.g-ah{fill:var(--muted)}
+.g-sd{stroke:var(--status);stroke-width:2}
+.g-sdl{fill:var(--status);font-size:10.5px;font-weight:500}
+.g-bar.issue rect.o{stroke:var(--crit);stroke-width:2}
+.g-rh{fill:transparent}
+body:not(.viewer) .g-bar{cursor:grab}
+body:not(.viewer) .g-bar.drag{cursor:grabbing}
+body:not(.viewer) .g-rh{cursor:ew-resize}
+body:not(.viewer) .g-bar:hover .g-rh{fill:var(--ink);fill-opacity:.22}
+body.viewer .g-rh{display:none}
+/* drawer + modal */
+.scrim{position:fixed;inset:0;background:rgba(8,16,24,.45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(470px,100%);background:var(--surface);z-index:21;box-shadow:var(--shadow);display:grid;grid-template-rows:auto 1fr auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.drawer .dh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.drawer .db{padding:16px 18px;overflow:auto;display:grid;gap:13px;align-content:start}
+.drawer .df{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.fld{display:grid;gap:5px}
+.fld>span{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fld small{color:var(--muted);font-size:12px}
+.fld2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fld3{display:grid;grid-template-columns:1.3fr .8fr .7fr;gap:12px}
+.calc{background:var(--surface2);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px}
+.calc b{font:500 13px var(--f-mono)}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 32px));max-height:calc(100% - 48px);overflow:auto;background:var(--surface);border-radius:12px;z-index:22;box-shadow:var(--shadow);padding:20px;display:grid;gap:14px}
+.frow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.err{color:var(--crit);font-size:13px;margin:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;z-index:30;max-width:calc(100% - 32px);box-shadow:var(--shadow);font-size:13.5px;display:flex;gap:12px;align-items:center}
+.toast button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:5px;padding:2px 9px;cursor:pointer}
+body.viewer .adm{display:none!important}
+body:not(.viewer) .vw{display:none!important}
+.settings{display:grid;gap:18px}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;max-width:980px}
+@media (max-width:700px){
+  h1{font-size:24px}
+  .ws-row{grid-template-columns:1fr;gap:6px}
+  .ws-stat{justify-items:start;text-align:left;grid-auto-flow:column;justify-content:start;gap:10px}
+  .lrow{grid-template-columns:100px minmax(0,1fr) 58px}
+  .fld2,.fld3{grid-template-columns:1fr}
+  .mtrack .lbl{width:84px;margin-left:-42px;font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="viewer">
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="3" width="9" height="4" rx="1" fill="#2E5AAC"/><rect x="6" y="9" width="11" height="4" rx="1" fill="#B8327F"/><rect x="12" y="15" width="8" height="4" rx="1" fill="#1E8C3A"/><rect x="17" y="3" width="5" height="5" rx="1" transform="rotate(45 19.5 5.5)" fill="var(--ink)"/></svg><span id="brandTitle">Transition Gantt</span></div>
+    <div class="actions">
+      <span class="role-pill" id="rolePill">View only</span>
+      <button class="btn adm" type="button" id="btnImport">Import Excel</button>
+      <button class="btn" type="button" id="btnExport">Export Excel</button>
+      <button class="btn primary" type="button" id="btnAdmin">Admin sign in</button>
+    </div>
+  </div>
+  <nav class="wrap tabs" id="tabs" aria-label="Views"><a href="#dashboard">Dashboard</a><a href="#gantt">Gantt</a><a href="#setup">Settings</a></nav>
+</header>
+<main class="wrap" id="view"></main>
+<div id="layer"></div>
+<script>
+"use strict";
+/* ===== data from Gant_Chart_Updated.xlsx (Settings + Gantt sheets) ===== */
+const FILE_DATA = {"project":{"title":"Miswak Fresh n up - Transition","manager":"Hem","priority":"High","nppf":"2026-02-09","start":"2026-02-09","brief":"2026-02-09","statusDate":"2026-02-28","colorBy":"Project Structure","baseSavedOn":null},"departments":[{"name":"Marketing","code":"Mark"},{"name":"Packaging","code":"Pack"},{"name":"Production","code":"Prod"},{"name":"Planning","code":"Plan"},{"name":"Procurement","code":"Proc"},{"name":"Research & Development","code":"R&D"},{"name":"Quality","code":"QA"},{"name":"Warehouse","code":"WH"}],"team":[{"name":"Saloni","role":"Marketing"},{"name":"Bharath","role":"Marketing"},{"name":"Priyamvada","role":"Marketing"},{"name":"Deepak","role":"Marketing"},{"name":"Shrestha","role":"Marketing"},{"name":"Seema","role":"Marketing"},{"name":"Rijita","role":"Marketing"},{"name":"Abhimanyu","role":"Marketing"},{"name":"Aishwarya","role":"Marketing"},{"name":"Prateek","role":"Marketing"},{"name":"Niraj","role":"Marketing"},{"name":"Sameer","role":"Marketing"},{"name":"Hem","role":"Marketing"},{"name":"Alisha","role":"Packaging"},{"name":"Mayuresh","role":"Packaging"},{"name":"Basheer","role":"Packaging"},{"name":"Asim","role":"Planning"},{"name":"Parth","role":"Planning"},{"name":"Arun","role":"Planning"},{"name":"Saurav","role":"Planning"},{"name":"Atharva","role":"Procurement"},{"name":"Chirag","role":"Procurement"},{"name":"Kamlesh","role":"Procurement"},{"name":"Hulyan","role":"Production"},{"name":"Pranjal","role":"Production"},{"name":"Sushil","role":"Production"},{"name":"Manjeet","role":"Production"},{"name":"Rohit","role":"Production"},{"name":"Nasir / Rahul","role":"Research & Development"},{"name":"Arun Radhakrishnan","role":"Quality"},{"name":"Swain Tukuna","role":"Quality"},{"name":"Baddi","role":"Research & Development"},{"name":"Bobby","role":"Packaging"},{"name":"Vineesh","role":"Warehouse"}],"rows":[{"u":"r0","type":"Stage","desc":"Marketing","member":"Hem","issue":false,"indStart":null,"ref":null,"indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-02-27","dep":null},{"u":"r1","type":"Task","desc":"Product Breif","member":"Bharath","issue":false,"indStart":null,"ref":"brief","indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-02-09","dep":null},{"u":"r2","type":"Task","desc":"NPPF","member":"Bharath","issue":false,"indStart":null,"ref":"nppf","indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-02-09","dep":null},{"u":"r3","type":"Task","desc":"Project Start Date","member":"Bharath","issue":false,"indStart":null,"ref":"start","indEnd":null,"conn":"SS","lag":0,"wd":1,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-02-09","dep":"r2"},{"u":"r4","type":"Task","desc":"FG Code","member":"Bharath","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"SS","lag":0,"wd":5,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-02-13","dep":"r2"},{"u":"r5","type":"Task","desc":"Canvas AW Initiate","member":"Bharath","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":3,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-16","_e":"2026-02-18","dep":"r4"},{"u":"r6","type":"Task","desc":"CFT - Approval","member":"Bharath","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":6,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-19","_e":"2026-02-26","dep":"r5"},{"u":"r7","type":"Milestone","desc":"Completed From Marketing","member":"Bharath","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-27","_e":"2026-02-27","dep":"r6"},{"u":"r8","type":"Stage","desc":"Packaging","member":"Bobby","issue":false,"indStart":null,"ref":null,"indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-04-30","dep":null},{"u":"r9","type":"Task","desc":"Packaging Closure","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"SS","lag":0,"wd":20,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-09","_e":"2026-03-06","dep":"r2"},{"u":"r10","type":"Task","desc":"Mould Development","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":20,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-09","_e":"2026-04-03","dep":"r9"},{"u":"r11","type":"Task","desc":"PM Trial / Line Trails","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":15,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-06","_e":"2026-04-24","dep":"r10"},{"u":"r12","type":"Task","desc":"TT","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-27","_e":"2026-04-28","dep":"r11"},{"u":"r13","type":"Task","desc":"KLD Report","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":1,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-29","_e":"2026-04-29","dep":"r12"},{"u":"r14","type":"Task","desc":"Barcodes","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":5,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-16","_e":"2026-02-20","dep":"r4"},{"u":"r15","type":"Task","desc":"PM Code","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":10,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-16","_e":"2026-02-27","dep":"r4"},{"u":"r16","type":"Task","desc":"Bill of Material (BOM) Update","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":6,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-02","_e":"2026-03-09","dep":"r15"},{"u":"r17","type":"Task","desc":"Specification","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":5,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-10","_e":"2026-03-16","dep":"r16"},{"u":"r18","type":"Task","desc":"Costing from Supplier","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":5,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-17","_e":"2026-03-23","dep":"r17"},{"u":"r19","type":"Task","desc":"AW Sending to vendor","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-19","_e":"2026-02-20","dep":"r5"},{"u":"r20","type":"Task","desc":"Vendor Proof Approval","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":5,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-23","_e":"2026-02-27","dep":"r19"},{"u":"r21","type":"Task","desc":"Proofing","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":8,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-02","_e":"2026-03-11","dep":"r20"},{"u":"r22","type":"Task","desc":"Updating For Routing","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":3,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-10","_e":"2026-03-12","dep":"r16"},{"u":"r23","type":"Milestone","desc":"Completed From Packaging","member":"Mayuresh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-30","_e":"2026-04-30","dep":"r13"},{"u":"r24","type":"Stage","desc":"Research & Development","member":"Baddi","issue":false,"indStart":null,"ref":null,"indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-10","_e":"2026-02-18","dep":null},{"u":"r25","type":"Task","desc":"Stability Start","member":"Nasir / Rahul","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-10","_e":"2026-02-10","dep":"r2"},{"u":"r26","type":"Task","desc":"Stability End","member":"Nasir / Rahul","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":0,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-11","_e":"2026-02-11","dep":"r25"},{"u":"r27","type":"Task","desc":"Bulk Code","member":"Nasir / Rahul","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":4,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-12","_e":"2026-02-17","dep":"r26"},{"u":"r28","type":"Milestone","desc":"Completed From R&D","member":"Nasir / Rahul","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-18","_e":"2026-02-18","dep":"r27"},{"u":"r29","type":"Stage","desc":"Planning","member":"Arun","issue":false,"indStart":null,"ref":null,"indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-10","_e":"2026-03-24","dep":null},{"u":"r30","type":"Task","desc":"PR Generation","member":"Parth","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FF","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-11","_e":"2026-03-12","dep":"r40"},{"u":"r31","type":"Task","desc":"Sharing Demand PM","member":"Parth","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-13","_e":"2026-03-16","dep":"r30"},{"u":"r32","type":"Task","desc":"Old Stock - Coverage","member":"Saurav","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":30,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-02-10","_e":"2026-03-23","dep":"r2"},{"u":"r33","type":"Milestone","desc":"Initiating Procurement","member":"Parth","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":1,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-24","_e":"2026-03-24","dep":"r32"},{"u":"r34","type":"Stage","desc":"Procurement","member":"Chirag","issue":false,"indStart":null,"ref":null,"indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-24","_e":"2026-04-29","dep":null},{"u":"r35","type":"Task","desc":"GPA Approval","member":"Atharva","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":4,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-24","_e":"2026-03-27","dep":"r18"},{"u":"r36","type":"Task","desc":"Purchase Order","member":"Kamlesh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-30","_e":"2026-03-31","dep":"r35"},{"u":"r37","type":"Task","desc":"PM Delivery Date","member":"Atharva","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":21,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-01","_e":"2026-04-29","dep":"r36"},{"u":"r38","type":"Milestone","desc":"Material Delivered","member":"Pranjal","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":1,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-30","_e":"2026-04-30","dep":"r37"},{"u":"r39","type":"Stage","desc":"Factory","member":"Rohit","issue":false,"indStart":null,"ref":null,"indEnd":null,"did":null,"conn":"FS","lag":0,"wd":null,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-10","_e":"2026-05-08","dep":null},{"u":"r40","type":"Task","desc":"Routing","member":"Pranjal","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":3,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-03-10","_e":"2026-03-12","dep":"r16"},{"u":"r41","type":"Task","desc":"PM Quality Clearence","member":"Swain Tukuna","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-05-01","_e":"2026-05-04","dep":"r38"},{"u":"r42","type":"Task","desc":"Production Plan","member":"Hulyan","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":5,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-04-29","_e":"2026-05-05","dep":"r12"},{"u":"r43","type":"Task","desc":"FG Quality Clearence","member":"Arun Radhakrishnan","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":2,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-05-06","_e":"2026-05-07","dep":"r42"},{"u":"r44","type":"Milestone","desc":"Ready to Disptach","member":"Vineesh","issue":false,"indStart":null,"ref":null,"indEnd":null,"conn":"FS","lag":0,"wd":1,"pct":0,"bs":null,"be":null,"bp":null,"_s":"2026-05-08","_e":"2026-05-08","dep":"r43"}]};
+
+/* ===== engine: same rules as the workbook (WORKDAY / NETWORKDAYS, Mon–Fri) ===== */
+/* ---- Excel-compatible engine (WORKDAY / NETWORKDAYS, Mon-Fri) ---- */
+const DAY = 86400000;
+const pd = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s||""); return m ? Date.UTC(+m[1], +m[2]-1, +m[3]) : NaN; };
+const iso = t => new Date(t).toISOString().slice(0,10);
+const isWk = t => { const d = new Date(t).getUTCDay(); return d!==0 && d!==6; };
+function WORKDAY(t, n){ n = Math.trunc(n||0); if(!n) return t; const st = n>0 ? DAY : -DAY; let k = Math.abs(n); while(k){ t += st; if(isWk(t)) k--; } return t; }
+function NETWORKDAYS(a, b){ if(!isFinite(a)||!isFinite(b)) return 0; const sg = b>=a ? 1 : -1; let [x,y] = sg>0 ? [a,b] : [b,a], c = 0;
+  const full = Math.floor((y-x)/DAY/7); c += full*5; x += full*7*DAY; for(let t = x; t <= y; t += DAY) if(isWk(t)) c++; return c*sg; }
+
+/* Mirrors the sheet: ind.start > ind.end > dependency (FS/SS/FF/SF + lag) ; stages summarise the rows beneath them */
+function compute(D){
+  const P = D.project, rows = D.rows, by = new Map(rows.map(r => [r.u, r])), out = new Map();
+  const refDate = r => r.ref ? pd(P[r.ref]) : pd(r.indStart);
+  // stage membership
+  let stage = null, sIdx = 0; const kids = new Map();
+  rows.forEach((r,i) => { r._pos = i+1; if(r.type==="Stage"){ stage = r; sIdx++; kids.set(r.u, []); r._stage = sIdx; } else { r._stage = stage ? sIdx : 0; r._parent = stage ? stage.u : null; if(stage) kids.get(stage.u).push(r); } });
+  const busy = new Set();
+  function calc(r){
+    if(out.has(r.u)) return out.get(r.u);
+    if(busy.has(r.u)){ const z = {s:NaN, e:NaN, wd:0, cyc:true}; out.set(r.u, z); return z; }
+    busy.add(r.u); let res;
+    if(r.type==="Stage"){
+      const ks = kids.get(r.u).map(calc).filter(k => isFinite(k.s));
+      const s = ks.length ? Math.min(...ks.map(k=>k.s)) : NaN, e = ks.length ? Math.max(...ks.map(k=>k.e)) : NaN;
+      res = {s, e, wd: NETWORKDAYS(s, e)};
+    } else {
+      const wd = Math.max(+r.wd||0, 1), is = refDate(r), ie = pd(r.indEnd); let s, e, how;
+      if(isFinite(is)){ s = is; e = WORKDAY(s, wd-1); how = "fixed"; }
+      else if(isFinite(ie)){ e = ie; s = WORKDAY(e, -wd+1); how = "fixedEnd"; }
+      else if(r.dep && by.has(r.dep)){ const p = calc(by.get(r.dep)), lag = +r.lag||0, c = r.conn||"FS"; how = "dep";
+        if(c==="SS"){ s = WORKDAY(p.s, lag); e = WORKDAY(s, wd-1); }
+        else if(c==="FF"){ e = WORKDAY(p.e, lag); s = WORKDAY(e, -wd+1); }
+        else if(c==="SF"){ e = WORKDAY(p.s, -1+lag); s = WORKDAY(e, -wd+1); }
+        else { s = WORKDAY(p.e, 1+lag); e = WORKDAY(s, wd-1); }
+        if(p.cyc) how = "cycle"; }
+      else { s = pd(P.start); e = WORKDAY(s, wd-1); how = "unlinked"; }
+      res = {s, e, wd, how};
+    }
+    busy.delete(r.u); out.set(r.u, res); return res;
+  }
+  rows.forEach(calc);
+  let ps = Infinity, pe = -Infinity; out.forEach(v => { if(isFinite(v.s) && v.s<ps) ps = v.s; if(isFinite(v.e) && v.e>pe) pe = v.e; });
+  return {map: out, start: ps, end: pe, duration: NETWORKDAYS(ps, pe)};
+}
+
+
+/* ===== helpers ===== */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmt = t => { if(!isFinite(t)) return "—"; const d = new Date(t); return String(d.getUTCDate()).padStart(2,"0")+"-"+MON[d.getUTCMonth()]+"-"+String(d.getUTCFullYear()).slice(2); };
+const fmtS = t => { if(!isFinite(t)) return "—"; const d = new Date(t); return String(d.getUTCDate()).padStart(2,"0")+" "+MON[d.getUTCMonth()]; };
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const todayT = () => { const n = new Date(); return Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()); };
+const KEY = "transition-gantt-v1";
+const REF_LABEL = {nppf:"NPPF date", start:"Project Start Date", brief:"Project Brief"};
+const COLOR_MODES = ["Project Structure","Team Roles","Issues","Default"];
+// Palette follows the workbook's 8 "Project Structure" colour groups: [stage, task]
+const PAL = [["#2E5AAC","#6C95DD"],["#B8327F","#E06AAE"],["#7B4FD6","#A88BEB"],["#D9480F","#F07167"],["#D9731F","#F4A261"],["#C99700","#F2C94C"],["#1E8C3A","#5CC46E"],["#2A7F8F","#6BB8C4"]];
+// small, non-cryptographic hash for the admin PIN (soft lock)
+function hashPin(str){ let h1 = 0xdeadbeef ^ 7, h2 = 0x41c6ce57 ^ 7; for(let i=0;i<str.length;i++){ const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909); h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+  return (4294967296*(2097151 & h2) + (h1>>>0)).toString(16); }
+const DEFAULT_PIN_HASH = hashPin("admin");
+
+/* ===== state ===== */
+let D, C;                        // data, computed schedule
+const ui = {zoom:"day", plan:false, base:true, deps:true, colorBy:null};
+function fresh(){ const d = JSON.parse(JSON.stringify(FILE_DATA)); d.rows.forEach(r => { delete r._s; delete r._e; }); d.adminHash = DEFAULT_PIN_HASH; return d; }
+function load(){ try { const s = localStorage.getItem(KEY); if(s) D = JSON.parse(s); } catch(e){}
+  if(!D || !Array.isArray(D.rows)) D = fresh(); if(!D.adminHash) D.adminHash = DEFAULT_PIN_HASH;
+  try { Object.assign(ui, JSON.parse(localStorage.getItem(KEY+"-ui")||"{}")); } catch(e){} }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(D)); localStorage.setItem(KEY+"-ui", JSON.stringify(ui)); } catch(e){} }
+function isAdmin(){ try { return sessionStorage.getItem(KEY+"-admin") === D.adminHash; } catch(e){ return window.__adm === D.adminHash; } }
+function setAdmin(on){ try { on ? sessionStorage.setItem(KEY+"-admin", D.adminHash) : sessionStorage.removeItem(KEY+"-admin"); } catch(e){} window.__adm = on ? D.adminHash : null; }
+
+/* ===== derived ===== */
+const deptOf = name => (D.team.find(t => t.name===name) || {}).role || "";
+const codeOf = dept => (D.departments.find(d => d.name===dept) || {}).code || "";
+const roleIdx = dept => D.departments.findIndex(d => d.name===dept);
+const rowById = u => D.rows.find(r => r.u===u);
+const posOf = u => D.rows.findIndex(r => r.u===u) + 1;
+function statusDate(){ const t = pd(D.project.statusDate); return isFinite(t) ? t : todayT(); }
+function st(r){
+  const c = C.map.get(r.u), sd = statusDate(), pct = r.type==="Stage" ? stagePct(r) : (+r.pct||0);
+  if(pct >= 100) return {k:"done", l:"Complete"};
+  if(c.e < sd) return {k:"over", l:"Overdue"};
+  if(c.s <= sd){ const exp = clamp(NETWORKDAYS(c.s, sd)/Math.max(1,c.wd)*100, 0, 100); return exp - pct > 25 ? {k:"behind", l:"Behind"} : {k:"prog", l:"In progress"}; }
+  return {k:"ns", l:"Not started"};
+}
+function childrenOf(stage){ const i = D.rows.indexOf(stage), out = []; for(let j=i+1; j<D.rows.length && D.rows[j].type!=="Stage"; j++) out.push(D.rows[j]); return out; }
+function stagePct(stage){ const ks = childrenOf(stage); const w = ks.reduce((a,k)=>a+Math.max(1,C.map.get(k.u).wd),0)||1; return Math.round(ks.reduce((a,k)=>a+Math.max(1,C.map.get(k.u).wd)*(+k.pct||0),0)/w); }
+function colorOf(r){
+  const mode = ui.colorBy || D.project.colorBy || "Project Structure";
+  if(mode==="Issues") return r.issue ? "#D7263D" : (r.type==="Stage" ? "#5B6770" : "#9AA5AE");
+  if(mode==="Default") return r.type==="Stage" ? "#5B6770" : r.type==="Milestone" ? "var(--mile)" : "#9AA5AE";
+  if(mode==="Team Roles"){ if(r.type==="Stage") return "#5B6770"; const i = roleIdx(deptOf(r.member)); if(i<0) return "#9AA5AE"; const p = PAL[i % 8]; return r.type==="Milestone" ? p[0] : p[1]; }
+  const p = PAL[((r._stage||1)-1) % 8]; return r.type==="Task" ? p[1] : p[0];
+}
+function recompute(){ C = compute(D); }
+function baseOf(r){ const s = pd(r.bs), e = pd(r.be); return isFinite(s) && isFinite(e) ? {s, e} : null; }
+
+/* ===== render ===== */
+function render(){
+  recompute();
+  const adm = isAdmin();
+  document.body.classList.toggle("viewer", !adm);
+  $("#rolePill").textContent = adm ? "Admin · editing on" : "View only"; $("#rolePill").classList.toggle("admin", adm);
+  $("#btnAdmin").textContent = adm ? "Sign out" : "Admin sign in";
+  $("#brandTitle").textContent = D.project.title || "Transition Gantt";
+  let v = (location.hash||"#dashboard").slice(1); if(!VIEWS[v]) v = "dashboard";
+  document.querySelectorAll("#tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href")==="#"+v ? "page" : "false"));
+  $("#view").innerHTML = VIEWS[v]();
+  if(v==="gantt") drawGantt();
+  if(!adm) $("#view").querySelectorAll("input,select,textarea").forEach(el => { if(!el.closest(".gtools")) el.disabled = true; });
+  save();
+}
+
+function hero(){
+  const P = D.project, sd = statusDate(), span = Math.max(1, C.end - C.start);
+  const work = D.rows.filter(r => r.type!=="Stage"), wsum = work.reduce((a,r)=>a+Math.max(1,C.map.get(r.u).wd),0)||1;
+  const pct = Math.round(work.reduce((a,r)=>a+Math.max(1,C.map.get(r.u).wd)*(+r.pct||0),0)/wsum);
+  const pos = t => clamp((t - C.start)/span*100, 0, 100);
+  const ms = D.rows.filter(r => r.type==="Milestone").map(r => `<i class="ms" style="left:${pos(C.map.get(r.u).s)}%" title="${esc(r.desc)} · ${fmt(C.map.get(r.u).s)}"></i>`).join("");
+  return `<section class="hero"><div class="hero-top"><div style="display:grid;gap:5px;min-width:0"><div class="eyebrow">Project · Priority <span class="prio ${esc(P.priority)}">${esc(P.priority||"—")}</span></div><h1>${esc(P.title)}</h1></div>
+    <div class="meta"><div><span class="eyebrow">Project manager</span><b>${esc(P.manager)}</b></div><div><span class="eyebrow">NPPF date</span><b>${fmt(pd(P.nppf))}</b></div>
+    <div><span class="eyebrow">Project brief</span><b>${fmt(pd(P.brief))}</b></div><div><span class="eyebrow">Project timespan</span><b>${fmt(C.start)} – ${fmt(C.end)}</b></div>
+    <div><span class="eyebrow">Duration</span><b>${C.duration} work days</b></div><div><span class="eyebrow">Updates on</span><b style="color:var(--status)">${fmt(sd)}</b></div></div></div>
+    <div class="span-bar" aria-label="Project timespan"><span class="track"></span><span class="done" style="width:${pct}%"></span>${ms}${sd>=C.start&&sd<=C.end?`<span class="sd" style="left:${pos(sd)}%"><b>Updates on ${fmtS(sd)}</b></span>`:""}</div></section>`;
+}
+
+const VIEWS = {
+dashboard(){
+  const sd = statusDate(), work = D.rows.filter(r => r.type!=="Stage");
+  const S = work.map(r => ({r, c:C.map.get(r.u), s:st(r)}));
+  const wsum = S.reduce((a,x)=>a+Math.max(1,x.c.wd),0)||1, pct = Math.round(S.reduce((a,x)=>a+Math.max(1,x.c.wd)*(+x.r.pct||0),0)/wsum);
+  const n = k => S.filter(x => x.s.k===k).length, done = n("done"), over = n("over"), issues = D.rows.filter(r => r.issue).length;
+  const anyPct = work.some(r => +r.pct > 0);
+  const nextM = S.filter(x => x.r.type==="Milestone" && x.s.k!=="done" && x.c.s >= sd).sort((a,b)=>a.c.s-b.c.s)[0], lateM = S.filter(x => x.r.type==="Milestone" && x.s.k==="over").length;
+  const baseEnd = Math.max(...D.rows.map(r => (baseOf(r)||{e:-Infinity}).e)); const bVar = isFinite(baseEnd) ? NETWORKDAYS(baseEnd, C.end) - (C.end>=baseEnd?1:-1) : null;
+  // workstreams
+  const span = Math.max(1, C.end - C.start + DAY), pos = t => (t - C.start)/span*100;
+  const stages = D.rows.filter(r => r.type==="Stage");
+  const wsRows = stages.map(sg => { const c = C.map.get(sg.u), ks = childrenOf(sg), kp = stagePct(sg), col = colorOf(sg);
+    const ov = ks.filter(k => st(k).k==="over").length, s = st(sg), b = baseOf(sg);
+    const bars = ks.map(k => { const kc = C.map.get(k.u); return `<i class="p" style="left:${pos(kc.s)}%;width:${Math.max(.6,pos(kc.e+DAY)-pos(kc.s))}%;background:${colorOf(k)};opacity:.35"></i>`; }).join("");
+    return `<div class="ws-row" data-row="${sg.u}"><div><div class="ws-name"><span class="sw" style="background:${col}"></span>${esc(sg.desc)}</div><div class="ws-sub">${esc(sg.member||"")} · ${ks.length} items · ${c.wd} work days</div></div>
+      <div class="ws-track" title="${fmt(c.s)} – ${fmt(c.e)}">${b?`<i class="b" style="left:${pos(b.s)}%;width:${pos(b.e+DAY)-pos(b.s)}%;background:var(--muted);top:17px;height:3px"></i>`:""}${bars}<i class="p" style="left:${pos(c.s)}%;width:${pos(c.e+DAY)-pos(c.s)}%;background:${col};height:4px;top:2px"></i>${sd>=C.start&&sd<=C.end?`<span class="sd" style="left:${pos(sd)}%"></span>`:""}</div>
+      <div class="ws-stat"><span class="mono" style="font-size:12px">${fmtS(c.s)} → ${fmtS(c.e)}</span><span><span class="pbar"><i style="width:${kp}%"></i></span> <span class="mono" style="font-size:12px">${kp}%</span></span><span>${ov?`<span class="chip c-over">${ov} overdue</span>`:`<span class="chip c-${s.k}">${s.l}</span>`}</span></div></div>`; }).join("");
+  // milestones
+  const msx = S.filter(x => x.r.type==="Milestone").sort((a,b)=>a.c.s-b.c.s);
+  const mPos = t => clamp((t - C.start)/Math.max(1,C.end - C.start)*100, 0, 100);
+  const mt = msx.map((x,i) => `<span class="m" style="left:${mPos(x.c.s)}%;background:${x.s.k==="done"?"var(--good)":colorOf(x.r)}" data-row="${x.r.u}" title="${esc(x.r.desc)}"></span>
+    <span class="lbl ${i%2?"dn":"up"}" style="left:${mPos(x.c.s)}%;${mPos(x.c.s)>88?"margin-left:-116px;text-align:right":mPos(x.c.s)<8?"margin-left:-4px;text-align:left":""}"><b>${esc(x.r.desc)}</b><br><span class="mono muted">${fmt(x.c.s)}</span></span>`).join("");
+  // departments
+  const depRows = D.departments.map(d => { const xs = S.filter(x => deptOf(x.r.member)===d.name); if(!xs.length) return "";
+    const c = k => xs.filter(x => x.s.k===k).length, N = xs.length, seg = (k,col) => c(k) ? `<i style="width:${c(k)/N*100}%;background:${col}" title="${c(k)}"></i>` : "";
+    return `<div class="lrow"><span class="nm"><span class="sw" style="background:${PAL[roleIdx(d.name)%8][1]}"></span>${esc(d.name)} <span class="muted mono">${esc(d.code)}</span></span><div class="stack">${seg("done","var(--good)")}${seg("prog","var(--accent)")}${seg("behind","var(--warn)")}${seg("over","var(--crit)")}${seg("ns","color-mix(in srgb,var(--muted) 35%,transparent)")}</div><span class="mono muted" style="text-align:right">${N} items</span></div>`; }).join("");
+  // team
+  const team = {}; S.forEach(x => { const m = x.r.member || "Unassigned"; team[m] = team[m] || {n:0, wd:0, over:0, issue:0, done:0}; const t = team[m]; t.n++; t.wd += Math.max(1,x.c.wd); if(x.s.k==="over") t.over++; if(x.s.k==="done") t.done++; if(x.r.issue) t.issue++; });
+  const teamRows = Object.entries(team).sort((a,b) => b[1].wd - a[1].wd).map(([m,t]) => `<tr><td>${esc(m)}</td><td>${esc(deptOf(m))} <span class="muted mono">${esc(codeOf(deptOf(m)))}</span></td><td class="num">${t.n}</td><td class="num">${t.wd}</td><td class="num">${t.done}</td><td class="num ${t.over?"neg":""}">${t.over}</td><td class="num ${t.issue?"neg":""}">${t.issue||""}</td></tr>`).join("");
+  const attn = S.filter(x => x.s.k==="over" || x.s.k==="behind" || x.r.issue).sort((a,b) => (b.r.issue-a.r.issue) || a.c.e-b.c.e);
+  return `${hero()}
+  <section class="kpis">
+    <div class="kpi"><span class="eyebrow">Overall complete</span><span class="v">${pct}%</span><span class="s">${anyPct?"Weighted by work days":"No % updates in the file yet"}</span></div>
+    <div class="kpi"><span class="eyebrow">Items complete</span><span class="v">${done}<span class="muted" style="font-size:18px"> / ${S.length}</span></span><span class="s">Tasks and milestones</span></div>
+    <div class="kpi"><span class="eyebrow">Overdue on ${fmtS(sd)}</span><span class="v ${over?"neg":""}">${over}</span><span class="s">End date passed, not 100%</span></div>
+    <div class="kpi"><span class="eyebrow">Issues ⚠</span><span class="v ${issues?"neg":""}">${issues}</span><span class="s">Rows flagged in the ⚠ column</span></div>
+    <div class="kpi"><span class="eyebrow">Next milestone</span><span class="v" style="font-size:20px;line-height:1.2">${nextM?esc(nextM.r.desc):"All done"}</span><span class="s">${nextM?`${fmt(nextM.c.s)} · ${Math.max(0,NETWORKDAYS(sd, nextM.c.s)-1)} work days away`:""}${lateM?` <span class="neg">· ${lateM} milestone${lateM>1?"s":""} overdue</span>`:""}</span></div>
+    <div class="kpi"><span class="eyebrow">Project end vs base plan</span><span class="v ${bVar>0?"neg":bVar<0?"pos":""}">${bVar===null?"—":bVar===0?"On plan":(bVar>0?"+":"")+bVar+"d"}</span><span class="s">${bVar===null?"No base plan saved yet":`Base end ${fmt(baseEnd)} · saved ${fmt(pd(D.project.baseSavedOn))}`}</span></div>
+  </section>
+  <section class="panel"><div class="phead"><h2>Workstreams</h2><div class="legend"><span><i class="sw" style="background:var(--status);width:2px;height:12px"></i>Updates on</span>${D.rows.some(baseOf)?`<span><i class="sw" style="background:var(--muted);height:3px"></i>Base plan</span>`:""}</div></div><div class="ws">${wsRows}</div></section>
+  <section class="panel"><div class="phead"><h2>Milestones</h2><span class="muted">${msx.filter(x=>x.s.k==="done").length} of ${msx.length} complete</span></div>
+    <div style="overflow-x:auto"><div class="mtrack" style="min-width:620px"><span class="line"></span>${mt}${sd>=C.start&&sd<=C.end?`<span class="sd" style="left:${mPos(sd)}%"></span>`:""}</div></div></section>
+  <div class="grid2">
+    <section class="panel"><div class="phead"><h2>By department</h2><div class="legend"><span><i class="sw" style="background:var(--good)"></i>Complete</span><span><i class="sw" style="background:var(--accent)"></i>In progress</span><span><i class="sw" style="background:var(--warn)"></i>Behind</span><span><i class="sw" style="background:var(--crit)"></i>Overdue</span><span><i class="sw" style="background:color-mix(in srgb,var(--muted) 35%,transparent)"></i>Not started</span></div></div><div class="load">${depRows}</div></section>
+    <section class="panel"><div class="phead"><h2>Needs attention</h2><span class="muted">Overdue, behind or flagged ⚠ on ${fmtS(sd)}</span></div>
+      <div class="list" style="max-height:340px;overflow:auto">${attn.map(x => `<div class="li" data-row="${x.r.u}"><span class="t">${x.r.issue?`<span class="warn-ic">⚠</span> `:""}#${posOf(x.r.u)} ${esc(x.r.desc)}</span><span class="chip c-${x.s.k}">${x.s.l}</span>
+        <span class="sub"><span>${esc(x.r.member||"Unassigned")} · ${esc(codeOf(deptOf(x.r.member)))}</span><span class="mono">${fmtS(x.c.s)} → ${fmtS(x.c.e)}</span><span class="mono">${+x.r.pct||0}%</span></span></div>`).join("") || `<p class="muted">Nothing overdue or flagged.</p>`}</div></section>
+  </div>
+  <section class="panel"><div class="phead"><h2>Team members</h2><span class="muted">Work days assigned per person</span></div>
+    <div class="tblwrap"><table><thead><tr><th>Team member</th><th>Role</th><th class="num">Items</th><th class="num">Work days</th><th class="num">Complete</th><th class="num">Overdue</th><th class="num">⚠</th></tr></thead><tbody>${teamRows}</tbody></table></div></section>`;
+},
+gantt(){
+  const mode = ui.colorBy || D.project.colorBy;
+  return `<section class="panel"><div class="phead"><h2>Gantt</h2>
+    <div class="gtools">
+      <label class="chk">Color <select id="gColor">${COLOR_MODES.map(m => `<option${m===mode?" selected":""}>${m}</option>`).join("")}</select></label>
+      <div class="seg" role="group" aria-label="Zoom">${[["day","Days"],["week","Weeks"],["fit","Overview"]].map(([z,l]) => `<button type="button" data-zoom="${z}" aria-pressed="${ui.zoom===z}">${l}</button>`).join("")}</div>
+      <label class="chk"><input type="checkbox" id="gPlan" ${ui.plan?"checked":""}> Plan columns</label>
+      <label class="chk"><input type="checkbox" id="gBase" ${ui.base?"checked":""}> Base plan</label>
+      <label class="chk"><input type="checkbox" id="gDeps" ${ui.deps?"checked":""}> Links</label>
+      <button class="btn sm adm" type="button" id="addRow">Add row</button>
+    </div></div>
+    <p class="hint adm">Editing is on. Drag a bar to set a new start, drag its right edge to change work days, or click a row to edit every field. Each change re-plans the linked rows.</p>
+    <p class="hint vw">View only. Sign in as admin to change the plan.</p>
+    <div class="gscroll" id="gscroll"></div></section>`;
+},
+setup(){
+  const P = D.project;
+  return `<div class="settings">
+  <section class="panel"><div class="phead"><h2>Project details</h2><span class="muted vw">Admin sign-in needed to edit</span></div>
+    <form id="projForm" class="formgrid">
+      <label class="fld" style="grid-column:1/-1"><span>Project title</span><input type="text" id="sTitle" value="${esc(P.title)}"></label>
+      <label class="fld"><span>Project manager</span><select id="sPM">${D.team.map(t => `<option${t.name===P.manager?" selected":""}>${esc(t.name)}</option>`).join("")}</select></label>
+      <label class="fld"><span>Project priority</span><select id="sPrio">${["High","Medium","Low"].map(p => `<option${p===P.priority?" selected":""}>${p}</option>`).join("")}</select></label>
+      <label class="fld"><span>Updates on (status date)</span><input type="date" id="sStatus" value="${esc(P.statusDate||"")}"></label>
+      <label class="fld"><span>NPPF date</span><input type="date" id="sNppf" value="${esc(P.nppf||"")}"></label>
+      <label class="fld"><span>Project start date</span><input type="date" id="sStart" value="${esc(P.start||"")}"></label>
+      <label class="fld"><span>Project brief</span><input type="date" id="sBrief" value="${esc(P.brief||"")}"></label>
+      <label class="fld"><span>Gantt colour</span><select id="sColor">${COLOR_MODES.map(m => `<option${m===P.colorBy?" selected":""}>${m}</option>`).join("")}</select></label>
+      <div class="adm" style="grid-column:1/-1"><button class="btn primary" type="submit">Save project details</button></div>
+    </form></section>
+  <div class="grid2">
+    <section class="panel"><div class="phead"><h2>Departments</h2><button class="btn sm adm" type="button" id="addDept">Add department</button></div>
+      <div class="tblwrap"><table><thead><tr><th>Department</th><th>Code</th><th class="num">#</th><th class="adm"></th></tr></thead><tbody>
+      ${D.departments.map((d,i) => `<tr><td><input type="text" data-dept="${i}:name" value="${esc(d.name)}" aria-label="Department"></td><td><input type="text" data-dept="${i}:code" value="${esc(d.code)}" style="width:80px" aria-label="Code"></td><td class="num">${D.team.filter(t=>t.role===d.name).length}</td><td class="adm"><button class="btn sm danger" type="button" data-deldept="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div></section>
+    <section class="panel"><div class="phead"><h2>Project role type</h2><button class="btn sm adm" type="button" id="addMember">Add team member</button></div>
+      <div class="tblwrap" style="max-height:520px;overflow:auto"><table><thead><tr><th>Name</th><th>Role</th><th>Code</th><th class="adm"></th></tr></thead><tbody>
+      ${D.team.map((t,i) => `<tr><td><input type="text" data-mem="${i}:name" value="${esc(t.name)}" aria-label="Name"></td><td><select data-mem="${i}:role" aria-label="Role">${D.departments.map(d => `<option${d.name===t.role?" selected":""}>${esc(d.name)}</option>`).join("")}</select></td><td class="mono">${esc(codeOf(t.role))}</td><td class="adm"><button class="btn sm danger" type="button" data-delmem="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div></section>
+  </div>
+  <section class="panel"><div class="phead"><h2>Base plan</h2></div>
+    <p class="muted" style="margin-top:0;max-width:70ch">Saving the base plan copies today's Start, End and % into the Base Plan columns, so later changes show as variance on the dashboard and as grey bars on the Gantt. ${D.project.baseSavedOn?`Saved on ${fmt(pd(D.project.baseSavedOn))}.`:"Not saved yet."}</p>
+    <div class="frow adm"><button class="btn" type="button" id="saveBase">${D.project.baseSavedOn?"Re-save base plan":"Save base plan"}</button>${D.project.baseSavedOn?`<button class="btn" type="button" id="clearBase">Clear base plan</button>`:""}</div></section>
+  <section class="panel adm"><div class="phead"><h2>Admin access</h2></div>
+    <form id="pinForm" class="formgrid" style="max-width:640px"><label class="fld"><span>New admin PIN</span><input type="password" id="pin1" autocomplete="new-password" minlength="4" required></label><label class="fld"><span>Repeat PIN</span><input type="password" id="pin2" autocomplete="new-password" required></label>
+      <div style="grid-column:1/-1" class="frow"><button class="btn primary" type="submit">Change PIN</button><span class="muted" style="font-size:12.5px">The PIN travels with the exported Excel file, so every copy of the dashboard uses it.</span></div></form>
+    <div class="frow" style="margin-top:14px"><button class="btn danger" type="button" id="resetData">Reset to the original file data</button></div></section>
+  </div>`;
+}
+};
+
+/* ===== Gantt ===== */
+let G = null;
+function drawGantt(){
+  const box = $("#gscroll"); if(!box) return;
+  const adm = isAdmin(), RH = 28, HH = 58, sd = statusDate();
+  // columns: work days only (as in the workbook)
+  let a = WORKDAY(C.start, -2), b = WORKDAY(C.end, 8);
+  D.rows.forEach(r => { const bb = baseOf(r); if(bb && ui.base){ if(bb.s < a) a = WORKDAY(bb.s,-2); if(bb.e > b) b = WORKDAY(bb.e,4); } });
+  if(sd > b) b = WORKDAY(sd, 3);
+  const days = []; for(let t = a; t <= b; t += DAY) if(isWk(t)) days.push(t);
+  const cw = ui.zoom==="day" ? 22 : ui.zoom==="week" ? 9 : Math.max(3, Math.floor((box.clientWidth - 420)/days.length));
+  const col = t => { let lo = 0, hi = days.length; while(lo < hi){ const m = (lo+hi)>>1; if(days[m] < t) lo = m+1; else hi = m; } return lo; };
+  const W = days.length*cw, H = D.rows.length*RH;
+  // left columns
+  const cols = [["#","34px","num"],["Description","minmax(170px,1fr)",""],["Role","48px",""],["Team member","110px",""],["⚠","22px",""]];
+  if(ui.plan) cols.push(["Ind start","80px",""],["Ind end","80px",""],["d. Id","38px","num"],["Conn","38px",""],["Lag","32px","num"]);
+  cols.push(["Work days","42px","num"],["Start","80px",""],["End","80px",""],["%","40px","num"]);
+  const narrow = window.innerWidth < 700;
+  const LW = narrow ? 190 : (ui.plan ? 940 : 660);
+  const tmpl = narrow ? "30px minmax(0,1fr) 44px" : cols.map(c => c[1]).join(" ");
+  const show = narrow ? ["#","Description","%"] : cols.map(c => c[0]);
+  const head = `<div class="gl-row hd" style="grid-template-columns:${tmpl}">${cols.filter(c => show.includes(c[0])).map(c => `<span class="${c[2]}">${c[0]}</span>`).join("")}</div>`;
+  let left = "", bars = "", grid = "", arrows = "", hd = "";
+  // header
+  let lastM = -1;
+  days.forEach((t,i) => { const d = new Date(t), x = i*cw, mo = d.getUTCMonth(), dow = d.getUTCDay();
+    if(mo !== lastM){ lastM = mo; hd += `<line x1="${x}" y1="0" x2="${x}" y2="${HH}" class="g-wkline"/><text x="${x+4}" y="14" class="g-mlbl">${MON[mo]} ${d.getUTCFullYear()}</text>`; grid += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="g-wkline"/>`; }
+    if(dow===1){ grid += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="g-grid"/>`; if(ui.zoom!=="day") hd += `<text x="${x+2}" y="38" class="g-lbl">${d.getUTCDate()}</text>`; }
+    if(ui.zoom==="day"){ hd += `<text x="${x+cw/2}" y="41" text-anchor="middle" class="g-lbl">${d.getUTCDate()}</text><text x="${x+cw/2}" y="54" text-anchor="middle" class="g-lbl">${"SMTWTFS"[dow]}</text>`; }
+  });
+  const pos = new Map(D.rows.map((r,i) => [r.u, i]));
+  D.rows.forEach((r,i) => {
+    const c = C.map.get(r.u), y = i*RH, color = colorOf(r), s = st(r), pc = r.type==="Stage" ? stagePct(r) : (+r.pct||0);
+    const dep = r.dep ? rowById(r.dep) : null, role = codeOf(deptOf(r.member));
+    const isRef = !!r.ref, ind = r.ref ? pd(D.project[r.ref]) : pd(r.indStart);
+    const cells = {"#":`<span class="num mono">${i+1}</span>`,
+      "Description":`<span class="desc">${r.type==="Milestone"?`<span class="ty">◊</span>`:r.type==="Task"?`<span class="ty" style="width:8px"></span>`:""}<span style="overflow:hidden;text-overflow:ellipsis">${esc(r.desc)}</span></span>`,
+      "Role":`<span class="mono" style="font-size:11.5px">${esc(role)}</span>`, "Team member":`<span>${esc(r.member)}</span>`, "⚠":`<span class="warn-ic">${r.issue?"⚠":""}</span>`,
+      "Ind start":`<span class="dt ${isRef||r.type==="Stage"?"lk":""}" title="${isRef?"Linked to Settings: "+REF_LABEL[r.ref]:""}">${r.type==="Stage"?fmt(c.s):isFinite(ind)?fmt(ind):""}</span>`, "Ind end":`<span class="dt">${r.indEnd?fmt(pd(r.indEnd)):""}</span>`,
+      "d. Id":`<span class="num mono lk">${dep?posOf(dep.u):""}</span>`, "Conn":`<span class="mono">${dep?esc(r.conn||"FS"):""}</span>`, "Lag":`<span class="num mono">${dep&&+r.lag?r.lag:""}</span>`,
+      "Work days":`<span class="num" style="${r.type==="Stage"?"color:var(--crit)":""}">${r.type==="Milestone"&&!r.wd?"":c.wd}</span>`, "Start":`<span class="dt">${fmt(c.s)}</span>`, "End":`<span class="dt">${fmt(c.e)}</span>`, "%":`<span class="num">${pc}%</span>`};
+    left += `<div class="gl-row ${r.type==="Stage"?"stage":""}" data-row="${r.u}" style="grid-template-columns:${tmpl}" title="${esc(r.desc)}">${show.map(k => cells[k]).join("")}</div>`;
+    if(!isFinite(c.s)) return;
+    const x1 = col(c.s)*cw, x2 = (col(c.e)+1)*cw, w = Math.max(cw*0.6, x2-x1);
+    const bb = ui.base && baseOf(r);
+    if(bb){ const bx = col(bb.s)*cw, bw = Math.max(3, (col(bb.e)+1)*cw - bx); bars += r.type==="Milestone" ? `<rect x="${bx+cw/2-3}" y="${y+20}" width="6" height="6" class="g-base" transform="rotate(45 ${bx+cw/2} ${y+23})"/>` : `<rect x="${bx}" y="${y+21}" width="${bw}" height="3" rx="1" class="g-base"/>`; }
+    const tip = `<title>#${i+1} ${esc(r.desc)}\n${esc(r.member)}${role?" ("+esc(role)+")":""}\n${fmt(c.s)} → ${fmt(c.e)} · ${c.wd} work days · ${pc}%\n${s.l}${r.issue?" · ⚠ issue":""}</title>`;
+    if(r.type==="Stage"){
+      bars += `<g data-row="${r.u}" style="cursor:pointer">${tip}<rect x="${x1}" y="${y+9}" width="${w}" height="8" rx="2" fill="${color}" class="g-stage"/><path d="M${x1},${y+17} l0,5 l5,-5z M${x1+w},${y+17} l0,5 l-5,-5z" fill="${color}"/></g>`;
+    } else if(r.type==="Milestone"){
+      const mx = x1 + cw/2;
+      bars += `<g class="g-bar${r.issue?" issue":""}" data-row="${r.u}" data-drag="m">${tip}<rect class="o" x="${mx-6}" y="${y+8}" width="12" height="12" rx="1.5" transform="rotate(45 ${mx} ${y+14})" fill="${color}" ${r.issue?'stroke="var(--crit)" stroke-width="2"':""}/><text x="${mx+11}" y="${y+18}" class="g-txt">${esc(r.desc)} · ${fmtS(c.s)}</text></g>`;
+    } else {
+      bars += `<g class="g-bar${r.issue?" issue":""}" data-row="${r.u}" data-drag="t">${tip}<rect class="o" x="${x1}" y="${y+6}" width="${w}" height="15" rx="3" fill="${color}"/>${pc>0?`<rect x="${x1}" y="${y+6}" width="${w*clamp(pc,0,100)/100}" height="15" rx="3" class="g-pct"/>`:""}
+        <text x="${x1+w+4}" y="${y+18}" class="g-txt">${esc(r.member)}${pc?" · "+pc+"%":""}</text><rect class="g-rh" x="${x1+w-6}" y="${y+4}" width="10" height="19"/></g>`;
+    }
+    if(ui.deps && dep && pos.has(dep.u)){ const pc2 = C.map.get(dep.u), pi = pos.get(dep.u), conn = r.conn||"FS";
+      const fromS = conn==="SS"||conn==="SF", toE = conn==="FF"||conn==="SF";
+      const sx = fromS ? col(pc2.s)*cw : (col(pc2.e)+1)*cw, sy = pi*RH+14, tx = toE ? (col(c.e)+1)*cw : col(c.s)*cw, ty = y+14;
+      const out = fromS ? sx-6 : sx+6, inn = toE ? tx+6 : tx-6, mid = ty > sy ? ty-RH/2 : ty+RH/2;
+      const d = (!fromS && !toE && inn >= out) ? `M${sx},${sy} H${inn} V${ty} H${tx}` : (fromS && !toE) ? `M${sx},${sy} H${Math.min(out,inn)} V${ty} H${tx}` : (!fromS && toE) ? `M${sx},${sy} H${Math.max(out,inn)} V${ty} H${tx}` : `M${sx},${sy} H${out} V${mid} H${inn} V${ty} H${tx}`;
+      arrows += `<path d="${d}" class="g-arrow" marker-end="url(#ah)"/>`; }
+    grid += `<line x1="0" y1="${y+RH}" x2="${W}" y2="${y+RH}" class="g-grid"/>`;
+  });
+  let sdl = "";
+  if(sd >= days[0] && sd <= days[days.length-1]){ const x = col(sd)*cw + (isWk(sd) ? cw : 0); sdl = `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="g-sd"/>`; hd += `<line x1="${x}" y1="20" x2="${x}" y2="${HH}" class="g-sd"/><rect x="${x+2}" y="19" width="104" height="13" rx="2" fill="var(--surface)"/><text x="${x+5}" y="29" class="g-sdl">Updates on ${fmtS(sd)}</text>`; }
+  const sl = box.scrollLeft, stp = box.scrollTop;
+  box.innerHTML = `<div class="ghead" style="width:${LW+W}px"><div class="gleft" style="width:${LW}px">${head}</div><svg width="${W}" height="${HH}" style="display:block;flex:none">${hd}</svg></div>
+    <div class="gbody" style="width:${LW+W}px"><div class="gleft" style="width:${LW}px">${left}</div>
+    <svg width="${W}" height="${H}" style="display:block;flex:none" id="gsvg"><defs><marker id="ah" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" class="g-ah"/></marker></defs>${grid}${sdl}${arrows}${bars}</svg></div>`;
+  box.scrollLeft = sl; box.scrollTop = stp;
+  G = {cw, days, col};
+}
+
+/* drag to move / resize (admin only) */
+let drag = null, lastDrag = 0;
+document.addEventListener("pointerdown", e => {
+  const g = e.target.closest && e.target.closest("#gsvg .g-bar"); if(!g || !isAdmin() || e.button !== 0) return;
+  drag = {u:g.dataset.row, rs:!!e.target.closest(".g-rh"), x0:e.clientX, g, moved:false, o:g.querySelector("rect.o"), w0:+(g.querySelector("rect.o").getAttribute("width")), h:g.querySelector(".g-rh")};
+  try { g.setPointerCapture(e.pointerId); } catch(_){} e.preventDefault();
+});
+document.addEventListener("pointermove", e => { if(!drag) return; const dx = e.clientX - drag.x0; if(Math.abs(dx) > 3) drag.moved = true; if(!drag.moved) return;
+  const n = Math.round(dx / G.cw), r = rowById(drag.u), c = C.map.get(drag.u); drag.g.classList.add("drag");
+  const lab = drag.g.querySelector("text");
+  if(drag.rs && drag.o && r.type==="Task"){ const w = Math.max(G.cw, drag.w0 + n*G.cw); drag.o.setAttribute("width", w); if(drag.h) drag.h.setAttribute("x", +drag.o.getAttribute("x") + w - 6);
+    if(lab) lab.textContent = `${Math.max(1, c.wd + n)} work days → ends ${fmtS(WORKDAY(c.s, Math.max(1, c.wd+n)-1))}`; }
+  else { drag.g.setAttribute("transform", `translate(${n*G.cw},0)`); if(lab) lab.textContent = `Start ${fmt(WORKDAY(c.s, n))}`; }
+});
+document.addEventListener("pointerup", e => { if(!drag) return; const d = drag; drag = null; if(!d.moved) return; lastDrag = Date.now();
+  const n = Math.round((e.clientX - d.x0) / G.cw); if(!n){ render(); return; }
+  const r = rowById(d.u), c = C.map.get(d.u), before = snapshot(), oldEnd = C.end;
+  if(d.rs && r.type==="Task"){ r.wd = Math.max(1, c.wd + n); }
+  else { const linked = r.dep && !r.indStart && !r.ref && !r.indEnd; r.indStart = iso(WORKDAY(c.s, n)); r.ref = null; r.indEnd = null;
+    if(linked) d.note = ` It now has a fixed Ind Start, so its link to #${posOf(r.dep)} no longer moves it. Clear Ind Start to relink.`; }
+  render(); toast(`#${posOf(r.u)} ${r.desc}: ${fmt(C.map.get(r.u).s)} → ${fmt(C.map.get(r.u).e)}.${endShift(oldEnd)}${d.note||""}`, () => restore(before));
+});
+function snapshot(){ return JSON.stringify(D); }
+function restore(s){ D = JSON.parse(s); render(); toast("Change undone."); }
+function endShift(oldEnd){ const d = C.end===oldEnd ? 0 : (C.end > oldEnd ? NETWORKDAYS(oldEnd, C.end)-1 : -(NETWORKDAYS(C.end, oldEnd)-1)); return d ? ` Project end moved ${d>0?"+":""}${d} work days to ${fmt(C.end)}.` : ""; }
+
+/* ===== row editor ===== */
+function openRow(u, insertAfter){
+  const adm = isAdmin(), isNew = !u, r = isNew ? {u:"r"+Date.now().toString(36), type:"Task", desc:"", member:"", issue:false, indStart:null, ref:null, indEnd:null, dep:insertAfter && rowById(insertAfter)?.type!=="Stage" ? insertAfter : null, conn:"FS", lag:0, wd:1, pct:0} : rowById(u);
+  const c = isNew ? null : C.map.get(u), stage = r.type==="Stage";
+  const opts = D.rows.filter(x => x.u!==r.u).map(x => `<option value="${x.u}"${x.u===r.dep?" selected":""}>#${posOf(x.u)} ${x.type==="Milestone"?"◊ ":x.type==="Stage"?"▸ ":""}${esc(x.desc)}</option>`).join("");
+  const members = D.departments.map(d => `<optgroup label="${esc(d.name)} (${esc(d.code)})">${D.team.filter(t=>t.role===d.name).map(t => `<option${t.name===r.member?" selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`).join("");
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="rT">
+    <div class="dh"><div><div class="eyebrow">${isNew?"New row":`Row #${posOf(u)} · ${esc(r.type)}`}${adm?"":" · view only"}</div><h3 id="rT">${isNew?"Add a row":esc(r.desc)}</h3></div><button class="btn sm" type="button" data-close="1">Close</button></div>
+    <form class="db" id="rForm">
+      <div class="fld2"><label class="fld"><span>Type</span><select id="fType">${["Stage","Task","Milestone"].map(t => `<option${t===r.type?" selected":""}>${t}</option>`).join("")}</select></label>
+        <label class="fld"><span>Team member</span><select id="fMem"><option value="">—</option>${members}</select><small id="fRole">Role: ${esc(codeOf(deptOf(r.member)))||"—"}</small></label></div>
+      <label class="fld"><span>Description</span><input type="text" id="fDesc" value="${esc(r.desc)}" required></label>
+      <div id="planBox" ${stage?"hidden":""}>
+      <div class="fld2"><label class="fld"><span>Ind start</span><input type="date" id="fIS" value="${esc(r.indStart||"")}"><select id="fRef" aria-label="Link Ind start to a Settings date"><option value="">Or link to a Settings date…</option>${Object.entries(REF_LABEL).map(([k,l]) => `<option value="${k}"${r.ref===k?" selected":""}>${l} (${fmt(pd(D.project[k]))})</option>`).join("")}</select></label>
+        <label class="fld"><span>Ind end</span><input type="date" id="fIE" value="${esc(r.indEnd||"")}"></label></div>
+      <small class="muted" style="display:block;margin:6px 0 12px">As in the workbook: Ind start wins, then Ind end, then the dependency below.</small>
+      <div class="fld3"><label class="fld"><span>Depends on (d. Id)</span><select id="fDep"><option value="">None</option>${opts}</select></label>
+        <label class="fld"><span>Conn</span><select id="fConn">${["FS","SS","FF","SF"].map(k => `<option${k===(r.conn||"FS")?" selected":""}>${k}</option>`).join("")}</select></label>
+        <label class="fld"><span>Lag</span><input type="number" id="fLag" value="${+r.lag||0}"></label></div>
+      <div class="fld2" style="margin-top:12px"><label class="fld"><span>Work days</span><input type="number" id="fWD" min="0" value="${r.wd??""}"></label>
+        <label class="fld"><span>% complete</span><input type="number" id="fPct" min="0" max="100" step="5" value="${+r.pct||0}"></label></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="fIssue" ${r.issue?"checked":""}> ⚠ Flag as an issue</label>
+      ${c?`<div class="calc"><span class="muted">Start</span><b>${fmt(c.s)}</b><span class="muted">End</span><b>${fmt(c.e)}</b><span class="muted">Work days</span><b>${c.wd}</b>${stage?`<span class="muted">% complete</span><b>${stagePct(r)}% (from its rows)</b>`:`<span class="muted">Scheduled by</span><b>${{fixed:r.ref?"Settings date: "+REF_LABEL[r.ref]:"Ind start",fixedEnd:"Ind end",dep:"Dependency",unlinked:"Project start (no date or link)",cycle:"Circular link, please fix"}[c.how]||""}</b>`}
+        ${baseOf(r)?`<span class="muted">Base plan</span><b>${fmt(baseOf(r).s)} → ${fmt(baseOf(r).e)}</b>`:""}<span class="muted">Status on ${fmtS(statusDate())}</span><b>${st(r).l}</b></div>`:""}
+      <p class="err" id="fErr" hidden></p>
+    </form>
+    <div class="df adm"><div class="frow">${isNew?"":`<button class="btn danger" type="button" id="fDel">Delete</button><button class="btn sm" type="button" data-move="-1">Move up</button><button class="btn sm" type="button" data-move="1">Move down</button>`}</div>
+      <div class="frow">${isNew?"":`<button class="btn" type="button" id="fIns">Insert row below</button>`}<button class="btn primary" type="submit" form="rForm">${isNew?"Add row":"Save"}</button></div></div>
+  </aside>`;
+  if(!adm){ document.querySelectorAll("#rForm input,#rForm select").forEach(el => el.disabled = true); return; }
+  $("#fType").onchange = () => { $("#planBox").hidden = $("#fType").value==="Stage"; };
+  $("#fMem").onchange = () => { $("#fRole").textContent = "Role: " + (codeOf(deptOf($("#fMem").value)) || "—"); };
+  $("#fRef").onchange = () => { if($("#fRef").value) $("#fIS").value = ""; };
+  $("#fIS").oninput = () => { if($("#fIS").value) $("#fRef").value = ""; };
+  $("#fDesc").focus();
+  $("#rForm").onsubmit = e => { e.preventDefault(); const before = snapshot(), oldEnd = C.end;
+    const upd = {type:$("#fType").value, desc:$("#fDesc").value.trim()||"Untitled", member:$("#fMem").value, issue:$("#fIssue").checked};
+    if(upd.type!=="Stage") Object.assign(upd, {indStart:$("#fIS").value||null, ref:$("#fRef").value||null, indEnd:$("#fIE").value||null, dep:$("#fDep").value||null, conn:$("#fConn").value, lag:parseInt($("#fLag").value,10)||0,
+      wd: $("#fWD").value==="" ? null : Math.max(0, parseInt($("#fWD").value,10)||0), pct: clamp(parseInt($("#fPct").value,10)||0, 0, 100)});
+    else Object.assign(upd, {indStart:null, ref:null, indEnd:null, dep:null, wd:null});
+    if(isNew){ const at = insertAfter ? D.rows.findIndex(x => x.u===insertAfter)+1 : D.rows.length; D.rows.splice(at, 0, Object.assign(r, upd)); } else Object.assign(r, upd);
+    recompute(); if(C.map.get(r.u).cyc || [...C.map.values()].some(v => v.cyc)){ D = JSON.parse(before); recompute(); const er = $("#fErr"); er.textContent = "That link would make a loop. Pick a different d. Id."; er.hidden = false; return; }
+    closeLayer(); render(); toast(`${isNew?"Row added":"Saved"}: #${posOf(r.u)} ${fmt(C.map.get(r.u).s)} → ${fmt(C.map.get(r.u).e)}.${endShift(oldEnd)}`, () => restore(before)); };
+  const del = $("#fDel"); if(del) del.onclick = () => { const before = snapshot(), users = D.rows.filter(x => x.dep===r.u);
+    D.rows = D.rows.filter(x => x.u!==r.u); users.forEach(x => x.dep = null); closeLayer(); render(); toast(`Deleted #${posOf(r.u)||""} ${r.desc}.${users.length?` ${users.length} row(s) that depended on it now start at the project start.`:""}`, () => restore(before)); };
+  const ins = $("#fIns"); if(ins) ins.onclick = () => openRow(null, r.u);
+  document.querySelectorAll("[data-move]").forEach(b => b.onclick = () => { const i = D.rows.indexOf(r), j = i + +b.dataset.move; if(j<0 || j>=D.rows.length) return; const before = snapshot();
+    [D.rows[i], D.rows[j]] = [D.rows[j], D.rows[i]]; closeLayer(); render(); toast(`Moved to #${j+1}. Rows under a Stage belong to that stage.`, () => restore(before)); });
+}
+function closeLayer(){ $("#layer").innerHTML = ""; }
+let toastT;
+function toast(m, undo){ let el = $(".toast"); if(!el){ el = document.createElement("div"); el.className = "toast"; el.setAttribute("role","status"); document.body.appendChild(el); }
+  el.innerHTML = `<span>${esc(m)}</span>${undo?`<button type="button">Undo</button>`:""}`; if(undo) el.querySelector("button").onclick = () => { el.remove(); undo(); };
+  clearTimeout(toastT); toastT = setTimeout(() => el.remove(), undo ? 9000 : 5000); }
+
+/* ===== admin sign-in ===== */
+function signIn(){
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><form class="modal" id="siForm" role="dialog" aria-modal="true" aria-labelledby="siT"><h3 id="siT">Admin sign in</h3>
+    <p class="muted" style="margin:0">Admins can edit the plan, settings and base plan. Everyone else sees a read-only dashboard.</p>
+    <label class="fld"><span>Admin PIN</span><input type="password" id="siPin" autocomplete="current-password" required></label><p class="err" id="siErr" hidden></p>
+    <div class="frow" style="justify-content:flex-end"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="submit">Sign in</button></div></form>`;
+  $("#siPin").focus();
+  $("#siForm").onsubmit = e => { e.preventDefault(); if(hashPin($("#siPin").value) === D.adminHash){ setAdmin(true); closeLayer(); render(); toast(D.adminHash===DEFAULT_PIN_HASH ? "Signed in. You are still using the default PIN: change it under Settings → Admin access." : "Signed in as admin."); }
+    else { const er = $("#siErr"); er.textContent = "That PIN is not correct."; er.hidden = false; } };
+}
+
+/* ===== Excel: read the workbook layout (Settings + Gantt) and write it back ===== */
+function cellDate(c){ if(!c) return null; const v = c.v; if(v instanceof Date) return iso(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate())); if(typeof v==="number" && v>20000) return iso(Math.round((v-25569)*DAY)); if(typeof v==="string"){ const t = pd(v); if(isFinite(t)) return iso(t); } return null; }
+function importBook(wb){
+  const S = wb.Sheets[wb.SheetNames.find(n => n.trim().toLowerCase()==="settings")], Gs = wb.Sheets[wb.SheetNames.find(n => n.trim().toLowerCase()==="gantt")];
+  if(!S || !Gs) throw new Error('The workbook needs a "Settings" and a "Gantt" sheet, laid out like Gant_Chart_Updated.xlsx.');
+  const at = (sh, a) => sh[a], val = (sh, a) => sh[a] ? sh[a].v : null;
+  const project = {title: String(val(S,"D8")||"Project"), manager: String(val(S,"D10")||""), priority: String(val(S,"D12")||"High"), nppf: cellDate(at(S,"D14")), start: cellDate(at(S,"D16")), brief: cellDate(at(S,"D18")), statusDate:null, colorBy:"Project Structure", baseSavedOn:null};
+  const departments = [], team = [];
+  for(let r=9; r<200; r++){ const n = val(S,"H"+r); if(n) departments.push({name:String(n).trim(), code:String(val(S,"I"+r)||"").trim()}); }
+  for(let r=9; r<2000; r++){ const n = val(S,"N"+r); if(n) team.push({name:String(n).trim(), role:String(val(S,"O"+r)||"").trim()}); }
+  const ref = XLSX.utils.decode_range(Gs["!ref"]); let hr = -1;
+  for(let r=0; r<=Math.min(ref.e.r, 40) && hr<0; r++){ const c = Gs[XLSX.utils.encode_cell({r, c:4})]; if(c && String(c.v).trim()==="Type") hr = r; }
+  if(hr < 0) throw new Error('Could not find the "Type" header in column E of the Gantt sheet.');
+  const H = {}; for(let c=0; c<=Math.min(ref.e.c, 30); c++){ const cell = Gs[XLSX.utils.encode_cell({r:hr, c})]; if(cell) { const k = String(cell.v).replace(/\s+/g," ").trim().toLowerCase(); if(!(k in H)) H[k] = c; else H[k+"#2"] = c; } }
+  const col = (...ks) => { for(const k of ks) if(k in H) return H[k]; return -1; };
+  const cB = col("id"), cE = col("type"), cF = col("description"), cI = col("team member"), cJ = col("⚠"), cK = col("ind start"), cL = col("ind end"), cM = col("d. id"), cP = col("d. conn"), cQ = col("d. lag"), cR = col("work days"), cS = col("start date"), cT = col("end date"), cU = col("start#2","start"), cV = col("end#2","end"), cW = col("%");
+  const g = (r, c) => c < 0 ? null : Gs[XLSX.utils.encode_cell({r, c})];
+  // header metadata
+  for(let r=0; r<hr; r++) for(let c=0; c<=Math.min(ref.e.c, 60); c++){ const cell = Gs[XLSX.utils.encode_cell({r, c})]; if(!cell || typeof cell.v!=="string") continue; const t = cell.v.trim().toLowerCase();
+    if(t==="updates on:") project.statusDate = cellDate(Gs[XLSX.utils.encode_cell({r:r+1, c})]);
+    if(t==="saved on:") project.baseSavedOn = cellDate(Gs[XLSX.utils.encode_cell({r:r+1, c})]);
+    if(t==="color"){ const v = Gs[XLSX.utils.encode_cell({r:r+1, c})]; if(v && COLOR_MODES.includes(String(v.v).trim())) project.colorBy = String(v.v).trim(); } }
+  const refMap = {"$D$14":"nppf","$D$16":"start","$D$18":"brief"}, rows = [], idMap = new Map(), depIds = [];
+  for(let r=hr+2; r<=ref.e.r; r++){ const ty = g(r,cE); if(!ty || !ty.v) continue; const type = String(ty.v).trim(); if(!["Stage","Task","Milestone"].includes(type)) continue;
+    const k = g(r,cK); let indStart = null, rf = null;
+    if(type!=="Stage" && k){ const m = k.f && /Settings!(\$D\$\d+)/i.exec(k.f); if(m) rf = refMap[m[1].toUpperCase()] || null; if(!rf) indStart = cellDate(k); }
+    const rw = g(r,cR), pc = g(r,cW), pv = pc && typeof pc.v==="number" ? (pc.v<=1 ? pc.v*100 : pc.v) : 0;
+    const u = "r"+rows.length, idc = g(r,cB); if(idc && idc.v!=null) idMap.set(+idc.v, u);
+    const dm = g(r,cM); depIds.push(dm && dm.v!=null && dm.v!=="" ? +dm.v : null);
+    rows.push({u, type, desc:String(g(r,cF)?.v ?? "").trim(), member:String(g(r,cI)?.v ?? "").trim(), issue: !!(g(r,cJ) && String(g(r,cJ).v).trim()),
+      indStart, ref:rf, indEnd: type==="Stage" ? null : cellDate(g(r,cL)), dep:null, conn:String(g(r,cP)?.v || "FS").trim().toUpperCase(), lag: +(g(r,cQ)?.v) || 0,
+      wd: type==="Stage" ? null : (rw && typeof rw.v==="number" && !rw.f ? rw.v : (rw && typeof rw.v==="number" && type!=="Stage" ? rw.v : null)), pct: Math.round(pv),
+      bs: cellDate(g(r,cU)), be: cellDate(g(r,cV)), bp: null}); }
+  rows.forEach((x,i) => { if(x.type!=="Stage" && depIds[i]!=null) x.dep = idMap.get(depIds[i]) || null; });
+  if(!rows.length) throw new Error("No Stage, Task or Milestone rows were found in the Gantt sheet.");
+  const adminRow = (() => { for(let r=0; r<200; r++){ const c = val(S, "C"+r); if(c && String(c).trim().toLowerCase()==="admin pin hash") return String(val(S,"D"+r)||""); } return ""; })();
+  return {project, departments, team, rows, adminHash: adminRow || D.adminHash};
+}
+function exportBook(){
+  if(typeof XLSX==="undefined"){ toast("The Excel library did not load. Check the internet connection and reload."); return; }
+  recompute(); const P = D.project, wb = XLSX.utils.book_new(), dt = s => { const t = pd(s); return isFinite(t) ? new Date(t) : null; }, dT = t => isFinite(t) ? new Date(t) : null;
+  // Settings: same cells as the original workbook
+  const S = []; const put = (A, r, c, v) => { while(A.length <= r) A.push([]); A[r][c] = v; };
+  put(S,0,0,"Settings"); put(S,5,1,"Project Details"); put(S,5,6,"Project Role Type"); put(S,5,12,"Project Role Type");
+  put(S,7,2,"Project Title"); put(S,7,3,P.title); put(S,9,2,"Project Manager"); put(S,9,3,P.manager); put(S,11,2,"Project Priority"); put(S,11,3,P.priority);
+  put(S,13,2,"NPPF date"); put(S,13,3,dt(P.nppf)); put(S,15,2,"Project Start Date"); put(S,15,3,dt(P.start)); put(S,17,2,"Project Brief"); put(S,17,3,dt(P.brief));
+  put(S,21,2,"Admin PIN hash"); put(S,21,3,D.adminHash);
+  put(S,7,7,"Department"); put(S,7,8,"Code"); put(S,7,9,"#"); put(S,7,13,"Name"); put(S,7,14,"Role"); put(S,7,15,"Code");
+  D.departments.forEach((d,i) => { put(S,8+i,7,d.name); put(S,8+i,8,d.code); put(S,8+i,9,D.team.filter(t=>t.role===d.name).length); });
+  D.team.forEach((t,i) => { put(S,8+i,13,t.name); put(S,8+i,14,t.role); put(S,8+i,15,codeOf(t.role)); });
+  const ws1 = XLSX.utils.aoa_to_sheet(S, {cellDates:true}); ws1["!cols"] = [{wch:3},{wch:3},{wch:20},{wch:34},{},{},{},{wch:24},{wch:8},{wch:5},{},{},{},{wch:20},{wch:24},{wch:8}];
+  // Gantt: same columns (A–W), values instead of formulas
+  const Gt = []; put(Gt,0,0,P.title); put(Gt,1,23,"Project Timespan:"); put(Gt,1,31,dT(C.start)); put(Gt,1,35,"-"); put(Gt,1,36,dT(C.end)); put(Gt,1,40,C.duration); put(Gt,1,45,"Project Manager:"); put(Gt,1,52,P.manager);
+  put(Gt,4,29,"Color"); put(Gt,5,29,P.colorBy); put(Gt,9,10,"Action Plan"); put(Gt,9,20,"Base Plan"); put(Gt,10,10,"Updates on:"); put(Gt,10,20,"Saved on:"); put(Gt,11,10,dt(P.statusDate)); put(Gt,11,20,P.baseSavedOn?dt(P.baseSavedOn):"x-xxx-x");
+  put(Gt,11,1,"ID's"); put(Gt,11,4,"Item Details");
+  ["Color Code","id","s\nid","r\nid","Type","Description","x","Role","Team\nMember","⚠","Ind \nStart","Ind End","d.\nId","d. \nitem","","d.\nconn","d.\nLag","Work Days","Start Date","End Date","Start","End","%"].forEach((h,c) => put(Gt,12,c,h));
+  D.rows.forEach((r,i) => { const c = C.map.get(r.u), row = 14+i, dep = r.dep ? rowById(r.dep) : null, ri = roleIdx(deptOf(r.member));
+    const vals = ["", i+1, r._stage||"", r.type==="Stage" ? -1 : (ri>=0 ? ri+1 : -1), r.type, r.desc, "", codeOf(deptOf(r.member)), r.member, r.issue?"⚠":"",
+      r.type==="Stage" ? dT(c.s) : (r.ref ? dt(D.project[r.ref]) : dt(r.indStart)), dt(r.indEnd), dep ? posOf(dep.u) : "", dep ? (posOf(dep.u) < i+1 ? "↖" : "↙") : "", dep ? `(${dep.type[0]})${dep.desc.length>7?dep.desc.slice(0,7)+"…":dep.desc}` : "",
+      r.conn||"FS", +r.lag||"", r.type==="Stage" ? c.wd : (r.wd ?? ""), dT(c.s), dT(c.e), dt(r.bs), dt(r.be), r.type==="Stage" ? stagePct(r)/100 : (+r.pct||0)/100];
+    vals.forEach((v,cI) => put(Gt,row,cI,v)); });
+  const ws2 = XLSX.utils.aoa_to_sheet(Gt, {cellDates:true}); ws2["!cols"] = [{wch:6},{wch:4},{wch:4},{wch:4},{wch:10},{wch:32},{wch:2},{wch:6},{wch:18},{wch:3},{wch:10},{wch:10},{wch:5},{wch:3},{wch:12},{wch:5},{wch:5},{wch:6},{wch:11},{wch:11},{wch:11},{wch:11},{wch:6}];
+  D.rows.forEach((r,i) => { const row = 15+i; if(r.ref && ws2["K"+row]) ws2["K"+row].f = "Settings!$D$" + ({nppf:14, start:16, brief:18})[r.ref]; const dp = r.dep ? posOf(r.dep) : 0; if(dp && ws2["M"+row]) ws2["M"+row].f = "B" + (14+dp); });
+  [ws1, ws2].forEach(ws => Object.keys(ws).forEach(k => { const c = ws[k]; if(c && c.t==="d") c.z = "dd-mmm-yy"; }));
+  XLSX.utils.book_append_sheet(wb, ws1, "Settings"); XLSX.utils.book_append_sheet(wb, ws2, "Gantt");
+  const name = (P.title || "Gantt").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_") + "_" + iso(todayT()) + ".xlsx";
+  try { XLSX.writeFile(wb, name, {cellDates:true}); toast(`Exported ${name}.`); } catch(e){ toast("Download is blocked in this preview. Open the dashboard file on your computer to export."); }
+}
+function importDialog(){
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><div class="modal" role="dialog" aria-modal="true" aria-labelledby="imT"><h3 id="imT">Import the Gantt workbook</h3>
+    <p class="muted" style="margin:0">Choose the master workbook from your OneDrive folder. It must have the <b>Settings</b> and <b>Gantt</b> sheets in the same layout as <i>Gant_Chart_Updated.xlsx</i>. This replaces the plan shown here.</p>
+    <label class="fld"><span>Workbook</span><input type="file" id="imFile" accept=".xlsx,.xlsm,.xls"></label><p class="err" id="imErr" hidden></p>
+    <div class="frow" style="justify-content:flex-end"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="button" id="imGo">Import</button></div></div>`;
+  $("#imGo").onclick = () => { const f = $("#imFile").files[0], er = $("#imErr"); if(!f){ er.textContent = "Choose a workbook first."; er.hidden = false; return; }
+    if(typeof XLSX==="undefined"){ er.textContent = "The Excel library did not load. Check the internet connection and reload."; er.hidden = false; return; }
+    const rd = new FileReader(); rd.onload = () => { try { const before = snapshot(); const nd = importBook(XLSX.read(new Uint8Array(rd.result), {type:"array", cellDates:true, cellFormula:true}));
+        D = nd; closeLayer(); render(); toast(`Imported ${D.rows.length} rows, ${D.team.length} team members.`, () => restore(before)); } catch(e){ er.textContent = e.message || "This file could not be read."; er.hidden = false; } };
+    rd.readAsArrayBuffer(f); };
+}
+
+/* ===== events ===== */
+document.addEventListener("click", e => {
+  const t = e.target, adm = isAdmin();
+  if(t.closest("[data-close]")){ closeLayer(); return; }
+  const rowEl = t.closest("[data-row]"); if(rowEl && !t.closest("#layer")){ if(Date.now() - lastDrag < 300) return; openRow(rowEl.dataset.row); return; }
+  const z = t.closest("[data-zoom]"); if(z){ ui.zoom = z.dataset.zoom; render(); return; }
+  const id = t.id;
+  if(id==="btnAdmin"){ if(adm){ setAdmin(false); render(); toast("Signed out. The dashboard is view only."); } else signIn(); return; }
+  if(id==="btnExport"){ exportBook(); return; }
+  if(!adm) return;
+  if(id==="btnImport") importDialog();
+  else if(id==="addRow") openRow(null, D.rows[D.rows.length-1]?.u);
+  else if(id==="addDept"){ D.departments.push({name:"New department", code:"NEW"}); render(); }
+  else if(id==="addMember"){ D.team.push({name:"New member", role:D.departments[0]?.name||""}); render(); }
+  else if(t.dataset.deldept){ const d = D.departments[+t.dataset.deldept], n = D.team.filter(x=>x.role===d.name).length; if(n){ toast(`${d.name} still has ${n} team member(s). Move them first.`); return; } D.departments.splice(+t.dataset.deldept,1); render(); }
+  else if(t.dataset.delmem){ const m = D.team[+t.dataset.delmem], n = D.rows.filter(r=>r.member===m.name).length; if(n){ toast(`${m.name} is on ${n} row(s). Reassign them first.`); return; } D.team.splice(+t.dataset.delmem,1); render(); }
+  else if(id==="saveBase"){ const before = snapshot(); D.rows.forEach(r => { const c = C.map.get(r.u); r.bs = iso(c.s); r.be = iso(c.e); r.bp = r.type==="Stage" ? stagePct(r) : (+r.pct||0); }); D.project.baseSavedOn = iso(todayT()); render(); toast("Base plan saved.", () => restore(before)); }
+  else if(id==="clearBase"){ const before = snapshot(); D.rows.forEach(r => { r.bs = r.be = null; r.bp = null; }); D.project.baseSavedOn = null; render(); toast("Base plan cleared.", () => restore(before)); }
+  else if(id==="resetData"){ const before = snapshot(), h = D.adminHash; D = fresh(); D.adminHash = h; render(); toast("Reset to the data from Gant_Chart_Updated.xlsx.", () => restore(before)); }
+});
+document.addEventListener("change", e => {
+  const t = e.target, d = t.dataset;
+  if(t.id==="gColor"){ ui.colorBy = t.value; render(); return; }
+  if(t.id==="gPlan"){ ui.plan = t.checked; render(); return; }
+  if(t.id==="gBase"){ ui.base = t.checked; render(); return; }
+  if(t.id==="gDeps"){ ui.deps = t.checked; render(); return; }
+  if(!isAdmin()) return;
+  if(d.dept){ const [i,k] = d.dept.split(":"), dep = D.departments[+i], old = dep.name, v = t.value.trim(); if(!v) return; if(k==="name") D.team.forEach(m => { if(m.role===old) m.role = v; }); dep[k] = v; render(); }
+  if(d.mem){ const [i,k] = d.mem.split(":"), m = D.team[+i], old = m.name, v = t.value.trim(); if(!v) return; if(k==="name"){ D.rows.forEach(r => { if(r.member===old) r.member = v; }); if(D.project.manager===old) D.project.manager = v; } m[k] = v; render(); }
+});
+document.addEventListener("submit", e => {
+  if(!isAdmin()){ e.preventDefault(); return; }
+  if(e.target.id==="projForm"){ e.preventDefault(); const before = snapshot(), oldEnd = C.end;
+    Object.assign(D.project, {title:$("#sTitle").value.trim()||D.project.title, manager:$("#sPM").value, priority:$("#sPrio").value, statusDate:$("#sStatus").value||null, nppf:$("#sNppf").value||null, start:$("#sStart").value||null, brief:$("#sBrief").value||null, colorBy:$("#sColor").value});
+    ui.colorBy = null; render(); toast("Project details saved." + endShift(oldEnd), () => restore(before)); }
+  if(e.target.id==="pinForm"){ e.preventDefault(); const a = $("#pin1").value, b = $("#pin2").value;
+    if(a.length < 4){ toast("Use at least 4 characters."); return; } if(a !== b){ toast("The two PINs do not match."); return; }
+    D.adminHash = hashPin(a); setAdmin(true); render(); toast("Admin PIN changed. Export the Excel file so other copies use it too."); }
+});
+document.addEventListener("keydown", e => { if(e.key==="Escape" && $("#layer").innerHTML) closeLayer(); });
+window.addEventListener("hashchange", render);
+let rzT; window.addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if((location.hash||"")==="#gantt") drawGantt(); }, 150); });
+load(); render();
+</script>
+</body>
+</html>
