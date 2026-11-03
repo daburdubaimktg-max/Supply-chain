@@ -10,7 +10,7 @@ One SharePoint list per collection (names in `js/core/models.js`):
 |---|---|---|
 | Project Master | `projects` | projectCode, name, brand, category, kind, ownerId, launchDate, priority, status, schedulingMode, anchorDate, actualStartDate, plannedEndDate, actualEndDate, closureHistory (JSON) |
 | NPD Activity Master | `activityMaster` (+ `masterDependencies`) | activityNo, sequence, name, department, defaultFprId, expectedDuration, isMandatory, approvalRequired, isActive |
-| Project Task Master | `projectTasks` | projectId, activityId, activityNo, name, department, fprId, backupFprId, approverId, escalationId, expectedDuration, status, approvalStatus, planned/forecast/actual dates, isMandatory, isActive |
+| Project Task Master | `projectTasks` | projectId, activityId, activityNo, name, department, fprId, backupFprId, approverId, expectedDuration, status, approvalStatus, planned/forecast/actual dates, isMandatory, isActive |
 | Task Dependency Master | `taskDependencies` | projectId, taskId, predecessorId, type (FS/SS/FF/SF), lagDays — **one row per predecessor, never a text list** |
 | Stakeholder Master | `stakeholders` | employeeName, department, designation, email, managerId, backupFprId, role, isActive |
 | Approval History | `approvalHistory` | taskId, projectId, action, by, note, timestamp — append-only |
