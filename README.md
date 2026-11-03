@@ -107,3 +107,53 @@ A separate dashboard built only from what is in `templates/Gant_Chart_Updated.xl
 **Excel / OneDrive.** *Import Excel* (admin) reads a workbook in the `Gant_Chart_Updated.xlsx` layout from your OneDrive folder. *Export Excel* writes the same Settings and Gantt layout back, with calculated dates as values, Settings-date and d. Id links kept as formulas, and the admin PIN hash included.
 
 **Note on the source file.** In the Gantt sheet the *Procurement* stage formulas (`K49 =MIN(S50:S52)`, `R49 …MAX(T50:T52)`) stop one row short and miss *Material Delivered* (row 53), so Excel shows the stage ending 29-Apr-26. The dashboard includes that row and shows 30-Apr-26.
+
+---
+
+## NPD & Transition Management Tracker (`npd-tracker/`)
+
+A fully editable New Product Development (NPD) & Transition management system for an FMCG business, built from the master prompt in `Create_NPD_Tracker_Command.pdf`. It replaces the manual Excel tracker and Gantt chart with an HTML dashboard.
+
+**Status: working prototype.** Data persists in the browser. SharePoint Lists and Power Automate e-mail are designed and stubbed, but **not connected or tested** (see below).
+
+### Run it
+
+ES modules need HTTP (not `file://`):
+
+```bash
+cd npd-tracker && python3 -m http.server 8123
+```
+
+Open <http://localhost:8123>. On first load the app seeds the 30-activity master, dependency matrix, stakeholders and two clearly labelled **SAMPLE** projects. Use the **Signed in as** picker (top right) to switch between Administrator, Department Head, FPR and Management roles.
+
+### What is built
+
+- **Fully editable, nothing hardcoded.** The 30 activities, dependencies, FPRs, durations, departments, approvals and mandatory/optional flags are database records edited through the dashboard.
+- **Not Required tasks.** Any task can be marked *Not Required* for a project (with a reason). It is skipped in the schedule and Gantt, its dependants are released, and it never blocks project closure. It can be restored.
+- **Independent projects.** Each project gets its own copy of tasks, FPRs, durations and dependencies. Master changes never alter existing projects unless an admin previews and confirms "Apply to existing projects".
+- **Multiple predecessors**, FS/SS/FF/SF with lag, one row per relationship, with validation (cycle, self, duplicate, missing, inactive, cross-project) and a schedule-impact preview before saving.
+- **Scheduling engine.** Working-day calendar (weekends, public/company holidays), forward and backward scheduling, planned / forecast / actual dates, critical path, downstream recalculation.
+- **Task actions** with automatic date + user capture: Start, Submit for Approval, Approve, Reject (reason required), Complete, Reopen (reason required), History. Project actual start/end are captured automatically.
+- **12 pages:** Executive Overview, Project Portfolio, Gantt, Task Management, Activity Master, Project Task Config, Dependencies, FPR & Stakeholders, Performance Analytics, Escalation Centre, Project Details, Audit & Configuration.
+- **Excel** import (validated, previewed, confirmed) and export; JSON backup/restore.
+- **Roles** enforced in both the UI and the data layer.
+
+### Prototype vs production
+
+| Area | In this build | Needed for production |
+|---|---|---|
+| Database | Browser `localStorage` via an adapter | Configure `SharePointAdapter` + secure API — `docs/SHAREPOINT-INTEGRATION.md` |
+| Login | Simulated user picker | Microsoft Entra ID; server-side permission checks |
+| E-mail | Written to the Notification Log only ("logged, not sent") | Power Automate flows — `docs/POWER-AUTOMATE-FLOWS.md` |
+| Concurrency | Version check on every update (conflict error) | Same, enforced server-side |
+
+The app shows these limits in a banner and in the sidebar. Live SharePoint and e-mail are **not** claimed to be operational.
+
+### Tests
+
+```bash
+node npd-tracker/tests/run-tests.mjs          # 11 engine tests
+node npd-tracker/tests/browser-acceptance.cjs # UI test (needs the server running)
+```
+
+See `docs/TESTING-REPORT.md` for the 30-scenario matrix.

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NPD & Transition Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div id="app" class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">NPD</div>
+        <div>
+          <div class="brand-title">NPD &amp; Transition</div>
+          <div class="brand-sub">Management System</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <a href="#/executive" data-page="executive"><span class="ico">▦</span>Executive Overview</a>
+        <a href="#/portfolio" data-page="portfolio"><span class="ico">☰</span>Project Portfolio</a>
+        <a href="#/gantt" data-page="gantt"><span class="ico">▬</span>Gantt Chart</a>
+        <a href="#/tasks" data-page="tasks"><span class="ico">✓</span>Task Management</a>
+        <div class="nav-group">Configuration</div>
+        <a href="#/activity-master" data-page="activity-master"><span class="ico">⚙</span>Activity Master</a>
+        <a href="#/project-config" data-page="project-config"><span class="ico">✎</span>Project Task Config</a>
+        <a href="#/dependencies" data-page="dependencies"><span class="ico">⇄</span>Dependencies</a>
+        <a href="#/stakeholders" data-page="stakeholders"><span class="ico">☺</span>FPR &amp; Stakeholders</a>
+        <div class="nav-group">Monitoring</div>
+        <a href="#/analytics" data-page="analytics"><span class="ico">↗</span>Performance Analytics</a>
+        <a href="#/escalation" data-page="escalation"><span class="ico">!</span>Escalation Centre</a>
+        <a href="#/audit" data-page="audit"><span class="ico">≡</span>Audit &amp; Configuration</a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="proto-badge" id="adapter-badge">PROTOTYPE · browser storage</div>
+        <div class="proto-badge" id="email-badge">E-mail: logged only</div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="btn btn-ghost menu-btn" id="menu-btn" aria-label="Toggle menu">☰</button>
+        <div class="topbar-title" id="page-title">Executive Overview</div>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-search"><input type="search" id="global-search" placeholder="Search projects / tasks…" aria-label="Search"></div>
+        <button class="btn btn-primary" id="btn-new-project">+ New Project</button>
+        <div class="user-picker">
+          <label for="user-select" class="user-label">Signed in as</label>
+          <select id="user-select" aria-label="Sign in as"></select>
+          <div class="user-role" id="user-role"></div>
+        </div>
+      </header>
+      <div class="banner" id="proto-banner">
+        <strong>Prototype mode.</strong> Data is saved in this browser (persists after refresh). SharePoint and Power Automate e-mail are <em>not</em> connected — notifications are written to the Notification Log only.
+        <a href="#/audit">Configure →</a>
+      </div>
+      <main class="content" id="content"></main>
+    </div>
+  </div>
+
+  <div class="slide-backdrop" id="slide-backdrop"></div>
+  <aside class="slide-panel" id="slide-panel" aria-hidden="true"></aside>
+  <div class="modal-root" id="modal-root"></div>
+  <div class="toasts" id="toasts"></div>
+  <div class="loader" id="loader"><div class="spinner"></div><div>Loading…</div></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
