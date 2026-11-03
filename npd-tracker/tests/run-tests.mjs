@@ -156,11 +156,8 @@ test('acceptance 1-18: two projects, independent task/FPR/duration/dependency co
   const after = store.get(COLLECTIONS.projectTasks, tA.id).plannedStart;
   assert.equal(diffWorkingDays(before, after, store.calendar()), 10);
 
-  // FPR change -> audit + notification to new FPR
+  // FPR change -> audit trail records previous and new FPR
   await actions.changeFpr(tA.id, mayuresh.id);
-  const n = store.all(COLLECTIONS.notificationLog).find((x) => x.taskId === tA.id && x.type === 'FPR_CHANGED');
-  assert.ok(n); assert.equal(n.recipient, mayuresh.email);
-  assert.ok(n.emailStatus.includes('prototype'));
   const aud = store.all(COLLECTIONS.auditLog).filter((x) => x.recordId === tA.id && x.action === 'UPDATE');
   assert.ok(aud.some((x) => x.changes.some((c) => c.field === 'fprId' && c.from === bharath.id && c.to === mayuresh.id)));
 });
@@ -173,7 +170,6 @@ test('acceptance 19-27: lifecycle, approvals, auto project dates, blocked, optio
 
   // blocked: FG Code depends on NPPF
   await assert.rejects(() => actions.startTask(t4.id), /blocked/);
-  assert.ok(store.all(COLLECTIONS.notificationLog).some((n) => n.taskId === t4.id && n.type === 'TASK_BLOCKED'));
 
   const started = await actions.startTask(t1.id);
   assert.equal(started.status, TASK_STATUS.IN_PROGRESS);
@@ -196,7 +192,6 @@ test('acceptance 19-27: lifecycle, approvals, auto project dates, blocked, optio
   const t2done = store.get(COLLECTIONS.projectTasks, t2.id);
   assert.equal(t2done.status, TASK_STATUS.COMPLETED); assert.ok(t2done.actualEnd);
   assert.equal(store.all(COLLECTIONS.approvalHistory).filter((h) => h.taskId === t2.id).map((h) => h.action).join(','), 'SUBMITTED,REJECTED,SUBMITTED,APPROVED');
-  assert.ok(store.all(COLLECTIONS.notificationLog).some((n) => n.taskId === t4.id && n.type === 'TASK_RELEASED'));
 
   // t1 approval required: complete directly by admin counts as approval
   await actions.completeTask(t1.id);
@@ -281,7 +276,7 @@ test('master: edit/add/deactivate/delete rules; master changes do not touch proj
   assert.equal(store.where(COLLECTIONS.projectTasks, (t) => t.projectId === P3.id).length, store.where(COLLECTIONS.projectTasks, (t) => t.projectId === P.id).length);
 });
 
-test('performance + notifications: classification and scheduled reminders with dedupe', async () => {
+test('performance: task classification (overdue, blocked)', async () => {
   const { store, actions } = await freshApp();
   const P = await actions.createProject({ name: 'N', brand: 'Brand A', anchorDate: '2025-12-01' });
   const cfg = store.config(); const c = store.calendar();
@@ -290,11 +285,6 @@ test('performance + notifications: classification and scheduled reminders with d
   const deps = store.where(COLLECTIONS.taskDependencies, (d) => d.projectId === P.id);
   assert.equal(classifyTask(t1, { tasksById, deps, cal: c, config: cfg, today: '2026-02-01' }), 'OVERDUE');
   assert.equal(classifyTask(taskNo(store, P.id, 4), { tasksById, deps, cal: c, config: cfg, today: '2025-11-01' }), 'BLOCKED');
-  const first = await actions.notifier.runScheduledChecks('2026-01-20');
-  assert.ok(first.some((n) => n.type === 'OVERDUE' && n.taskId === t1.id));
-  assert.ok(first.some((n) => n.type === 'ESCALATION' && n.taskId === t1.id));
-  const second = await actions.notifier.runScheduledChecks('2026-01-20');
-  assert.equal(second.length, 0); // duplicate prevention
 });
 
 test('sample data: two SAMPLE projects seed through the public API and persist after reload', async () => {

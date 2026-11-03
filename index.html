@@ -1005,7 +1005,7 @@ VIEWS.escalations = function(){
     <td style="white-space:normal;min-width:180px;font-size:12.5px"><b>To</b> ${esc(who(x.to))||"—"}${x.cc.length?`<br><span class="muted">Cc ${esc(who(x.cc))}</span>`:""}</td>
     <td><div class="frow" style="flex-wrap:nowrap"><a class="btn sm" href="${esc(mailto(emailFor(x)))}" target="_blank" rel="noopener">Compose in Outlook</a><button class="btn sm" type="button" data-copymail="${i}">Copy</button>${x.t?`<button class="btn sm" type="button" data-edit-p="${x.p.id}:${x.t.id}">Open</button>`:""}</div></td></tr>`).join("");
   return `<div class="phead"><div style="display:grid;gap:4px"><div class="eyebrow">Escalations · ${S.brand?esc(S.brand):"All brands"}</div><h1>Escalation matrix</h1></div>
-    <div class="frow"><button class="btn primary" type="button" id="btnExport3">Export for Outlook automailer</button></div></div>
+    <div class="frow"><button class="btn primary" type="button" id="btnExport3">Export escalations</button></div></div>
   <section class="kpis">
     <div class="kpi"><span class="eyebrow">Open escalations</span><span class="v">${xs.length}</span><span class="s">Average ${avg} days late</span></div>
     <div class="kpi"><span class="eyebrow">L3 · Brand & NPD head</span><span class="v ${n(3)?"neg":""}">${n(3)}</span><span class="s">Over ${E.l3} days, FPR-critical or launch at risk</span></div>
@@ -1062,7 +1062,7 @@ const XL_HELP = [
   ["Gate Criteria","Project Code, Stage No, Criterion, Met (Y/N)."],
   ["Tasks","Project Code, ID, Task, Function, Stage No, Owner, Owner Email, Type (Task/Milestone), Scheduling (Dependent/Independent), Predecessors, Duration (days), Fixed Start, Progress %, FPR Critical (Y/N), Notes."],
   ["Escalation Matrix","Setting, Value (L1/L2/L3 day thresholds, NPD head and email). Optional."],
-  ["Escalations","Written on export for the Outlook automailer. Ignored on import."]
+  ["Escalations","Written on export. Ignored on import."]
 ];
 const yn = v => /^(y|yes|true|1)$/i.test(String(v??"").trim());
 function xlDate(v){ if(v==null || v==="") return ""; if(v instanceof Date) return iso(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()));
@@ -1166,7 +1166,7 @@ function templateProject(){ return makeProject({name:"New product", code:"BR-001
 function exportDialog(){
   const p = P(), inB = S.projects.filter(x => x.brand===p.brand);
   $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><div class="modal" role="dialog" aria-modal="true" aria-labelledby="exT"><h3 id="exT">Export master data to Excel</h3>
-    <p class="muted" style="margin:0">The workbook holds every sheet listed below, plus calculated dates and an <b>Escalations</b> sheet that the Outlook automailer reads.</p>
+    <p class="muted" style="margin:0">The workbook holds every sheet listed below, plus calculated dates and an <b>Escalations</b> sheet.</p>
     <div class="fld"><span>What to export</span>
       <label class="chk"><input type="radio" name="exS" value="all" checked> Whole portfolio: ${S.brands.length} brands, ${S.projects.length} projects</label>
       <label class="chk"><input type="radio" name="exS" value="brand"> Brand ${esc(p.brand)}: ${inB.length} projects</label>

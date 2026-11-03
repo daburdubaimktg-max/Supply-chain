@@ -32,7 +32,7 @@ export function openTaskPanel(ctx, taskId, { tab = 'details' } = {}) {
   if (task.status === TASK_STATUS.ON_HOLD && can(ACTIONS.EDIT_TASK)) btns.push(el('button', { class: 'btn btn-primary', onClick: run(() => actions.holdTask(taskId, '', false), 'Task resumed') }, 'Resume'));
   if (task.status === TASK_STATUS.IN_PROGRESS) {
     if (task.approvalRequired && task.approvalStatus !== APPROVAL_STATUS.APPROVED && can(ACTIONS.SUBMIT_TASK)) {
-      btns.push(el('button', { class: 'btn btn-primary', onClick: guard(async () => { const note = await promptDialog({ title: 'Submit for approval', label: 'Note to approver (optional)', required: false, okText: 'Submit' }); if (note === null) return; await actions.submitForApproval(taskId, note); toast('Submitted – approver notified', 'success'); refresh(); }) }, '⇪ Submit for Approval'));
+      btns.push(el('button', { class: 'btn btn-primary', onClick: guard(async () => { const note = await promptDialog({ title: 'Submit for approval', label: 'Note to approver (optional)', required: false, okText: 'Submit' }); if (note === null) return; await actions.submitForApproval(taskId, note); toast('Submitted for approval', 'success'); refresh(); }) }, '⇪ Submit for Approval'));
     }
     if ((!task.approvalRequired || task.approvalStatus === APPROVAL_STATUS.APPROVED || can(ACTIONS.APPROVE_TASK)) && can(ACTIONS.COMPLETE_TASK)) {
       btns.push(el('button', { class: 'btn btn-success', onClick: guard(async () => { if (!(await confirmDialog({ title: 'Complete task', message: `Mark "${task.name}" as completed? The actual completion date and your identity will be captured.`, okText: 'Complete', okClass: 'btn-success' }))) return; await actions.completeTask(taskId); toast('Task completed', 'success'); refresh(); }) }, '✓ Complete'));
@@ -53,7 +53,7 @@ export function openTaskPanel(ctx, taskId, { tab = 'details' } = {}) {
   if (can(ACTIONS.EDIT_TASK)) btns.push(el('button', { class: 'btn', onClick: () => editTask(ctx, task).then((ok) => ok && refresh()) }, '✎ Edit'));
   btns.push(el('button', { class: 'btn', onClick: () => refresh('history') }, 'View History'));
 
-  const tabs = ['details', 'dependencies', 'history', 'notifications'];
+  const tabs = ['details', 'dependencies', 'history'];
   const tabBar = el('div', { class: 'tabs' }, tabs.map((t) => el('button', { class: t === tab ? 'active' : '', onClick: () => refresh(t) }, t[0].toUpperCase() + t.slice(1))));
 
   let body;
@@ -65,14 +65,13 @@ export function openTaskPanel(ctx, taskId, { tab = 'details' } = {}) {
       task.holdReason && task.status === TASK_STATUS.ON_HOLD ? el('div', { class: 'notice warn' }, `On hold: ${task.holdReason}`) : null,
       el('dl', { class: 'kv' },
         kv('Project', `${project.projectCode} · ${project.name}`), kv('Brand', project.brand), kv('Department', task.department),
-        kv('FPR', name(task.fprId)), kv('Backup FPR', name(task.backupFprId)), kv('Approver', name(task.approverId)), kv('Escalation to', name(task.escalationId) !== '—' ? name(task.escalationId) : `${name(stk(task.fprId)?.managerId)} (manager)`),
+        kv('FPR', name(task.fprId)), kv('Backup FPR', name(task.backupFprId)), kv('Approver', name(task.approverId)),
         kv('Expected duration', `${task.expectedDuration} working day(s)${task.expectedDuration === 0 ? ' – milestone' : ''}`),
         kv('Planned', `${fmt(task.plannedStart)} → ${fmt(task.plannedEnd)}`), kv('Forecast', `${fmt(task.forecastStart)} → ${fmt(task.forecastEnd)}`),
         kv('Actual start', task.actualStart ? `${fmt(task.actualStart)} by ${task.actualStartBy}` : '—'), kv('Actual completion', task.actualEnd ? `${fmt(task.actualEnd)} by ${task.actualEndBy}` : '—'),
         kv('Actual duration', metrics.actualDuration != null ? `${metrics.actualDuration} d` : '—'), kv('Delay', metrics.delayDays ? badge(`${metrics.delayDays} working day(s)`, 'red') : badge('0', 'green')),
         kv('Status', task.status.replace(/_/g, ' ')), kv('Approval', task.approvalStatus.replace(/_/g, ' ')), kv('Mandatory', yesNo(task.isMandatory)), kv('Approval required', yesNo(task.approvalRequired)),
-        kv('Priority', task.priority), kv('Critical path', yesNo(task.isCritical)), kv('Slack', task.plannedEnd && task.forecastEnd ? `${diffWorkingDays(task.forecastEnd, task.plannedEnd, cal)} d` : '—'),
-        kv('Notify also', (task.notifyIds || []).map(name).join(', ') || '—')),
+        kv('Priority', task.priority), kv('Critical path', yesNo(task.isCritical)), kv('Slack', task.plannedEnd && task.forecastEnd ? `${diffWorkingDays(task.forecastEnd, task.plannedEnd, cal)} d` : '—')),
       task.description ? el('div', { class: 'panel-section mt' }, el('h4', {}, 'Description'), el('p', {}, task.description)) : null,
       task.instructions ? el('div', { class: 'panel-section' }, el('h4', {}, 'Instructions'), el('p', { style: { whiteSpace: 'pre-wrap' } }, task.instructions)) : null,
       commentsSection(ctx, task, refresh));
@@ -93,9 +92,6 @@ export function openTaskPanel(ctx, taskId, { tab = 'details' } = {}) {
       el('h4', {}, 'Full history'),
       el('ul', { class: 'timeline' }, items.map((i) => el('li', {}, el('div', { class: 'when' }, `${new Date(i.when).toLocaleString()} · ${i.who}`), i.text,
         i.changes ? el('ul', { class: 'plain small muted' }, i.changes.slice(0, 8).map((c) => el('li', {}, `${c.field}: ${JSON.stringify(c.from)} → ${JSON.stringify(c.to)}`))) : null))));
-  } else {
-    const notes = store.all(COLLECTIONS.notificationLog).filter((n) => n.taskId === taskId).reverse();
-    body = notes.length ? el('ul', { class: 'timeline' }, notes.map((n) => el('li', {}, el('div', { class: 'when' }, `${new Date(n.timestamp).toLocaleString()} · ${n.emailStatus}`), el('strong', {}, n.subject), el('div', { class: 'small muted' }, `To: ${n.recipient}${n.cc ? ` · CC: ${n.cc}` : ''}`), n.payload?.requiredAction ? el('div', { class: 'small' }, n.payload.requiredAction) : null))) : el('p', { class: 'muted' }, 'No notifications logged for this task.');
   }
 
   const panel = el('div', {},
@@ -218,12 +214,10 @@ export async function editTask(ctx, task) {
     { name: 'fprId', label: 'FPR', type: 'select', options: noOne.concat(stks), value: task.fprId || '', disabled: dis('fprId') },
     { name: 'backupFprId', label: 'Backup FPR', type: 'select', options: noOne.concat(stks), value: task.backupFprId || '', disabled: dis('backupFprId') },
     { name: 'approverId', label: 'Approver', type: 'select', options: noOne.concat(stks), value: task.approverId || '', disabled: dis('approverId') },
-    { name: 'escalationId', label: 'Escalation recipient', type: 'select', options: noOne.concat(stks), value: task.escalationId || '', disabled: dis('escalationId'), hint: 'Defaults to FPR\'s manager' },
     { name: 'expectedDuration', label: 'Expected duration (working days)', type: 'number', min: 0, value: task.expectedDuration, disabled: dis('expectedDuration'), hint: '0 = milestone' },
     { name: 'manualPlannedStart', label: 'Pin planned start (optional)', type: 'date', value: task.manualPlannedStart || '', disabled: dis('manualPlannedStart'), hint: 'Overrides computed start unless a dependency forbids it' },
     { name: 'isMandatory', label: 'Mandatory for project closure', type: 'checkbox', value: task.isMandatory, disabled: dis('isMandatory') },
     { name: 'approvalRequired', label: 'Approval required', type: 'checkbox', value: task.approvalRequired, disabled: dis('approvalRequired') },
-    { name: 'notifyIds', label: 'Additional notification recipients (CC)', type: 'multiselect', options: stks, value: task.notifyIds || [], disabled: dis('notifyIds'), span2: true },
     { name: 'description', label: 'Description', type: 'textarea', value: task.description, disabled: dis('description'), span2: true },
     { name: 'instructions', label: 'Instructions', type: 'textarea', value: task.instructions, disabled: dis('instructions'), span2: true },
   ];
@@ -235,7 +229,7 @@ export async function editTask(ctx, task) {
       for (const f of fields) {
         if (f.disabled) continue;
         let val = v[f.name];
-        if (['fprId', 'backupFprId', 'approverId', 'escalationId'].includes(f.name)) val = val || null;
+        if (['fprId', 'backupFprId', 'approverId'].includes(f.name)) val = val || null;
         if (f.name === 'manualPlannedStart') val = val || null;
         if (JSON.stringify(val) !== JSON.stringify(task[f.name] ?? (f.type === 'multiselect' ? [] : null)) && !(val === null && task[f.name] == null)) changes[f.name] = val;
       }

@@ -2,7 +2,7 @@
 
 Run on 2026-11-03.
 
-- `node npd-tracker/tests/run-tests.mjs` — **11 / 11 pass** (calendar, dependency validation, scheduler, seed, lifecycle, permissions, master rules, notifications, persistence).
+- `node npd-tracker/tests/run-tests.mjs` — **11 / 11 pass** (calendar, dependency validation, scheduler, seed, lifecycle, permissions, master rules, task classification, persistence).
 - `node npd-tracker/tests/browser-acceptance.cjs` (headless Chromium) — **7 / 7 pass**, no console errors.
 - Smoke test: all 12 pages render without errors.
 
@@ -21,13 +21,13 @@ Run on 2026-11-03.
 | 9–10 | Save both; one project does not affect the other | Pass | Engine |
 | 11–13 | Second predecessor; change type; validation (duplicate, cycle, self, cross-project) | Pass | Engine |
 | 14–15 | Remove predecessor; downstream dates recalculate | Pass | Engine |
-| 16–17 | Change FPR; e-mail recipient updates | Pass (log only) | Engine. The notification row is written to the new FPR; **no e-mail is sent** in the prototype |
+| 16–17 | Change FPR (audit records previous and new FPR); e-mail recipient update | FPR change passes; e-mail **removed by request** | Engine |
 | 18 | Audit history | Pass | Engine: before/after FPR, dependencies, dates |
 | 19–20 | Start / complete capture dates automatically | Pass | Engine; Browser (Start) |
 | 21 | Approval controls (submit, reject needs reason, approve) | Pass | Engine |
 | 22–23 | Project start/end captured automatically; reopen preserves closure record | Pass | Engine |
 | 24 | Blocked task behaviour | Pass | Engine |
-| 25 | Reminder and escalation logic, no duplicates | Pass (logic only) | Engine. Not tested against real Power Automate/Outlook |
+| 25 | Reminder and escalation e-mails | Removed by request | Notifications, Power Automate and the automailer were taken out. The Escalation Centre still lists overdue / due / blocked / approval-pending tasks |
 | 26 | Gantt updates | Partial | Renders correctly after changes (Browser screenshots). No automated assertion that bars move |
 | 27 | Optional / Not Required tasks do not block closure | Pass | Engine |
 | 28 | Data persists after refresh | Pass | Browser; Engine |
@@ -38,5 +38,4 @@ Run on 2026-11-03.
 
 - SharePoint Lists connection — adapter is a stub.
 - Entra ID sign-in — login is simulated.
-- Power Automate / Outlook delivery — designed only.
 - Gantt export and Excel import/export were not exercised automatically.

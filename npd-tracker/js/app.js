@@ -103,22 +103,16 @@ async function boot() {
   document.getElementById('global-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') router.go(`tasks?q=${encodeURIComponent(e.target.value)}`); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panelIsOpen()) closePanel(); });
 
-  // scheduled notification checks (production: Power Automate recurrence flow)
-  await actions.notifier.runScheduledChecks();
   setLoading(false);
   router.dispatch();
 }
 
 function updateBadges(store) {
-  const cfg = store.config();
-  const a = document.getElementById('adapter-badge'); const e = document.getElementById('email-badge'); const b = document.getElementById('proto-banner');
+  const a = document.getElementById('adapter-badge'); const b = document.getElementById('proto-banner');
   const prodData = store.adapter?.isProduction;
   a.textContent = prodData ? 'PRODUCTION · SharePoint Lists' : 'PROTOTYPE · browser storage';
   a.classList.toggle('prod', Boolean(prodData));
-  const prodMail = cfg.emailAutomation === 'powerautomate';
-  e.textContent = prodMail ? 'E-mail: Power Automate queue' : 'E-mail: logged only (not sent)';
-  e.classList.toggle('prod', prodMail);
-  b.style.display = prodData && prodMail ? 'none' : '';
+  b.style.display = prodData ? 'none' : '';
 }
 
 boot().catch((e) => { console.error(e); setLoading(false); document.getElementById('content').append(el('div', { class: 'notice error' }, `Failed to start: ${e.message}`)); });

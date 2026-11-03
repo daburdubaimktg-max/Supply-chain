@@ -2,7 +2,7 @@
 
 > **New: `gantt-dashboard.html`** is a dashboard and editable Gantt built only from `Gant_Chart_Updated.xlsx` (see [Transition Gantt Dashboard](#transition-gantt-dashboard-gantt-dashboardhtml) below).
 
-A project management tool for New Product Development (NPD) across functions: Marketing, R&D, Packaging, Supply Chain, Regulatory, Quality, Manufacturing, Finance and Sales. It tracks many brands, with many projects per brand, through stage gates up to the **FPR (First Production Run)** and launch. It also emails escalations through Outlook.
+A project management tool for New Product Development (NPD) across functions: Marketing, R&D, Packaging, Supply Chain, Regulatory, Quality, Manufacturing, Finance and Sales. It tracks many brands, with many projects per brand, through stage gates up to the **FPR (First Production Run)** and launch.
 
 It is a single file, `index.html`. There is nothing to install: open it in Chrome or Edge. Data is saved in your browser, and the **Excel workbook is the master data**. Keep that workbook in OneDrive.
 
@@ -50,41 +50,9 @@ On export the app adds calculated columns (planned dates, slack, status, varianc
 2. In the app, use **Import Excel** and pick that file. Projects with an existing code are updated and keep their baseline. New codes are added.
 3. After editing in the app, use **Export Excel** and save the file over the one in OneDrive. Browsers save to Downloads by default; turn on *Ask where to save each file* to save straight into OneDrive.
 
-## Escalation matrix and Outlook automailer
+## Escalation matrix
 
-| Level | Trigger (defaults, configurable) | To | Cc |
-|---|---|---|---|
-| L1 | Task pending **more than 3 days** past its planned finish | SPOC (task owner) | SPOC's boss |
-| L2 | More than 7 days, any late critical-path task, or a gate decision overdue | SPOC's boss (gates: brand manager) | SPOC, function head |
-| L3 | More than 14 days, a late FPR-critical task, a late FPR or launch milestone, or forecast launch past target | Brand manager | NPD head, boss, SPOC |
-
-Each SPOC's boss comes from the **People** sheet. The SPOC name must match the task's Owner.
-
-In the app, **Escalations → Compose in Outlook** opens a pre-filled email for one escalation.
-
-For automatic daily emails, use `automailer/npd_automailer.py`. It reads the workbook straight from your OneDrive folder, works out escalations using the same rules as the app, and sends through Outlook desktop.
-
-### Set up (Windows PC with Outlook and the OneDrive app)
-1. Install Python 3.10+ and run:
-
-   ```bash
-   pip install -r automailer/requirements.txt
-   ```
-
-2. Edit `automailer/config.ini` and set `workbook` to the file in your OneDrive folder.
-3. Check what would be sent (nothing goes out; it writes `escalation_preview.html`):
-
-   ```bash
-   python automailer/npd_automailer.py --preview
-   ```
-
-4. Test safely. Set `test_recipient = your.name@company.com` and `mode = draft` (the emails land in your Outlook Drafts), then `mode = send`.
-5. Go live. Clear `test_recipient` and keep `mode = send`.
-6. Schedule it. In **Task Scheduler → Create Basic Task**, choose Daily at 09:00 and *Start a program* `automailer\run_daily.bat`. Outlook must be signed in on that PC.
-
-The mailer keeps `NPD_Automailer_Log.csv` next to the workbook in OneDrive. An escalation is repeated every `repeat_every_days` (default 2). A move up to a new level is mailed straight away.
-
-If no PC can run it, `mode = smtp` sends through Office 365 SMTP instead. Set `smtp_user` in the config and the password in the `NPD_SMTP_PASSWORD` environment variable. Your IT team may need to allow SMTP AUTH for that mailbox.
+Escalation levels and rules are shown in the app. **Escalations → Compose in Outlook** opens a pre-filled e-mail draft for one escalation; you review and send it yourself. There is no automatic mailer.
 
 ---
 
@@ -114,7 +82,7 @@ A separate dashboard built only from what is in `templates/Gant_Chart_Updated.xl
 
 A fully editable New Product Development (NPD) & Transition management system for an FMCG business, built from the master prompt in `Create_NPD_Tracker_Command.pdf`. It replaces the manual Excel tracker and Gantt chart with an HTML dashboard.
 
-**Status: working prototype.** Data persists in the browser. SharePoint Lists and Power Automate e-mail are designed and stubbed, but **not connected or tested** (see below).
+**Status: working prototype.** Data persists in the browser. SharePoint Lists is designed and stubbed, but **not connected or tested** (see below). There is no e-mail or notification feature.
 
 ### Run it
 
@@ -134,7 +102,7 @@ Open <http://localhost:8123>. On first load the app seeds the 30-activity master
 - **Multiple predecessors**, FS/SS/FF/SF with lag, one row per relationship, with validation (cycle, self, duplicate, missing, inactive, cross-project) and a schedule-impact preview before saving.
 - **Scheduling engine.** Working-day calendar (weekends, public/company holidays), forward and backward scheduling, planned / forecast / actual dates, critical path, downstream recalculation.
 - **Task actions** with automatic date + user capture: Start, Submit for Approval, Approve, Reject (reason required), Complete, Reopen (reason required), History. Project actual start/end are captured automatically.
-- **12 pages:** Executive Overview, Project Portfolio, Gantt, Task Management, Activity Master, Project Task Config, Dependencies, FPR & Stakeholders, Performance Analytics, Escalation Centre, Project Details, Audit & Configuration.
+- **12 pages:** Executive Overview, Project Portfolio, Gantt, Task Management, Activity Master, Project Task Config, Dependencies, FPR & Stakeholders, Performance Analytics, Escalation Centre (read-only list of overdue / due / blocked / approval-pending tasks), Project Details, Audit & Configuration.
 - **Excel** import (validated, previewed, confirmed) and export; JSON backup/restore.
 - **Roles** enforced in both the UI and the data layer.
 
@@ -144,10 +112,9 @@ Open <http://localhost:8123>. On first load the app seeds the 30-activity master
 |---|---|---|
 | Database | Browser `localStorage` via an adapter | Configure `SharePointAdapter` + secure API — `docs/SHAREPOINT-INTEGRATION.md` |
 | Login | Simulated user picker | Microsoft Entra ID; server-side permission checks |
-| E-mail | Written to the Notification Log only ("logged, not sent") | Power Automate flows — `docs/POWER-AUTOMATE-FLOWS.md` |
 | Concurrency | Version check on every update (conflict error) | Same, enforced server-side |
 
-The app shows these limits in a banner and in the sidebar. Live SharePoint and e-mail are **not** claimed to be operational.
+The app shows this limit in a banner and in the sidebar. Live SharePoint is **not** claimed to be operational.
 
 ### Tests
 

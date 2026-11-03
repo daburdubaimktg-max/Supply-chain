@@ -14,7 +14,7 @@ export function render(ctx, root) {
     title: s.id ? `Edit stakeholder – ${s.employeeName}` : 'Create stakeholder', wide: true,
     fields: [
       { name: 'employeeName', label: 'Employee name', value: s.employeeName, required: true },
-      { name: 'email', label: 'E-mail ID', type: 'email', value: s.email, required: true, hint: 'Used for all notifications' },
+      { name: 'email', label: 'E-mail ID', type: 'email', value: s.email, required: true, hint: 'Contact e-mail' },
       { name: 'department', label: 'Department', type: 'custom', node: el('input', { list: 'dept-list2', value: s.department || '' }), read: (n) => n.value, required: true },
       { name: 'designation', label: 'Designation', value: s.designation },
       { name: 'role', label: 'Role', type: 'select', options: Object.values(ROLES).map((r) => ({ value: r, label: r })), value: s.role || ROLES.FPR },

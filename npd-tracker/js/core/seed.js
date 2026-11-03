@@ -63,18 +63,9 @@ export const DEFAULT_CONFIG = {
   companyName: 'FMCG NPD & Transition Tracker',
   dueSoonThresholdDays: 2,        // working days before planned end => DUE SOON
   atRiskThresholdDays: 0,         // forecast end beyond planned end by > N working days => AT RISK
-  escalationAfterDays: 3,         // working days overdue => escalate to manager
-  reminderBeforeDays: 2,
   defaultSchedulingMode: 'FORWARD',
   significantChangeDays: 5,       // schedule shift (working days) that triggers a confirmation dialog
-  escalationLevels: [
-    { level: 1, afterDays: 3, recipient: 'manager' },
-    { level: 2, afterDays: 7, recipient: 'departmentHead' },
-    { level: 3, afterDays: 14, recipient: 'projectOwner' },
-  ],
-  notifications: { enabled: true, ccProjectOwner: true, dashboardUrl: 'https://your-tenant.sharepoint.com/sites/NPD/dashboard' },
   dataAdapter: 'localStorage',    // 'localStorage' (prototype) | 'sharepoint' (production, requires configuration)
-  emailAutomation: 'logged',      // 'logged' (prototype) | 'powerautomate' (production)
 };
 
 export const DEFAULT_CALENDAR = {

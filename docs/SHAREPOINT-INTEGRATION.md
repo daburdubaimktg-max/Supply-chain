@@ -14,11 +14,10 @@ One SharePoint list per collection (names in `js/core/models.js`):
 | Task Dependency Master | `taskDependencies` | projectId, taskId, predecessorId, type (FS/SS/FF/SF), lagDays — **one row per predecessor, never a text list** |
 | Stakeholder Master | `stakeholders` | employeeName, department, designation, email, managerId, backupFprId, role, isActive |
 | Approval History | `approvalHistory` | taskId, projectId, action, by, note, timestamp — append-only |
-| Notification Log | `notificationLog` | projectId, taskId, type, recipient, cc, subject, emailStatus (QUEUED/SENT/FAILED), errorDetails, dedupeKey |
 | Working Calendar | `workingCalendar` | weekendDays, holidays |
-| System Configuration | `systemConfig` | thresholds, escalation levels, adapter and e-mail mode |
+| System Configuration | `systemConfig` | thresholds and data adapter |
 
-Also: `auditLog`, `taskHistory`, `scheduleBaselines`, `templates`, `comments` (append-only or supporting lists). Add a unique index on `dedupeKey + taskId + type` in the Notification Log and unique constraints on Task ID per project.
+Also: `auditLog`, `taskHistory`, `scheduleBaselines`, `templates`, `comments` (append-only or supporting lists). Add a unique constraint on Task ID per project.
 
 ## Required architecture
 

@@ -10,7 +10,6 @@ export const COLLECTIONS = {
   taskDependencies: 'taskDependencies', // Task Dependency Master (one row per predecessor)
   stakeholders: 'stakeholders',       // Stakeholder Master
   approvalHistory: 'approvalHistory', // Approval History (append-only)
-  notificationLog: 'notificationLog', // Notification Log
   workingCalendar: 'workingCalendar', // Working Calendar (weekend + holidays)
   systemConfig: 'systemConfig',       // System Configuration (single record)
   auditLog: 'auditLog',               // Audit history (append-only)
@@ -73,20 +72,6 @@ export const ROLES = {
 export const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 export const PROJECT_KINDS = ['NPD', 'Transition'];
 export const SCHEDULING_MODES = ['FORWARD', 'BACKWARD'];
-
-export const NOTIFICATION_TYPES = {
-  UPCOMING: 'UPCOMING_REMINDER',
-  DUE_TODAY: 'DUE_TODAY',
-  OVERDUE: 'OVERDUE',
-  ESCALATION: 'ESCALATION',
-  COMPLETED: 'TASK_COMPLETED',
-  BLOCKED: 'TASK_BLOCKED',
-  FPR_CHANGED: 'FPR_CHANGED',
-  APPROVAL_REQUESTED: 'APPROVAL_REQUESTED',
-  REJECTED: 'TASK_REJECTED',
-  PROJECT_COMPLETED: 'PROJECT_COMPLETED',
-  TASK_RELEASED: 'TASK_RELEASED',
-};
 
 let idCounter = 0;
 export function newId(prefix = 'id') {
@@ -176,8 +161,6 @@ export function makeTask(data, user) {
     fprId: data.fprId || null,
     backupFprId: data.backupFprId || null,
     approverId: data.approverId || null,
-    escalationId: data.escalationId || null,
-    notifyIds: data.notifyIds || [],
     expectedDuration: Number(data.expectedDuration ?? 0),
     isMandatory: data.isMandatory ?? true,
     approvalRequired: data.approvalRequired ?? false,

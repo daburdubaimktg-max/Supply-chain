@@ -36,22 +36,15 @@ export function render(ctx, root) {
         { name: 'companyName', label: 'System title', value: cfg.companyName },
         { name: 'dueSoonThresholdDays', label: 'Due-soon threshold (working days)', type: 'number', min: 0, value: cfg.dueSoonThresholdDays },
         { name: 'atRiskThresholdDays', label: 'At-risk threshold (forecast beyond plan, wd)', type: 'number', min: 0, value: cfg.atRiskThresholdDays },
-        { name: 'reminderBeforeDays', label: 'Reminder before deadline (wd)', type: 'number', min: 0, value: cfg.reminderBeforeDays },
-        { name: 'escalationAfterDays', label: 'Escalate to manager after (wd overdue)', type: 'number', min: 0, value: cfg.escalationAfterDays },
         { name: 'significantChangeDays', label: 'Confirm schedule changes ≥ (wd shift)', type: 'number', min: 0, value: cfg.significantChangeDays },
-        { name: 'escalationLevels', label: 'Escalation levels (JSON)', type: 'textarea', value: JSON.stringify(cfg.escalationLevels, null, 0), span2: true, hint: '[{"level":1,"afterDays":3,"recipient":"manager"}, …] recipients: manager | departmentHead | projectOwner' },
-        { name: 'dashboardUrl', label: 'Dashboard URL (in e-mails)', value: cfg.notifications?.dashboardUrl, span2: true },
-        { name: 'ccProjectOwner', label: 'CC project owner on notifications', type: 'checkbox', value: cfg.notifications?.ccProjectOwner },
-        { name: 'notificationsEnabled', label: 'Notifications enabled', type: 'checkbox', value: cfg.notifications?.enabled !== false },
-        { name: 'emailAutomation', label: 'E-mail automation', type: 'select', options: [{ value: 'logged', label: 'Prototype – log only (not sent)' }, { value: 'powerautomate', label: 'Production – queue for Power Automate (requires flow)' }], value: cfg.emailAutomation },
         { name: 'dataAdapter', label: 'Data adapter', type: 'select', options: [{ value: 'localStorage', label: 'Prototype – browser storage' }, { value: 'sharepoint', label: 'Production – SharePoint Lists (requires configuration)' }], value: cfg.dataAdapter },
         { name: 'spApi', label: 'SharePoint API base URL', value: cfg.sharepoint?.apiBaseUrl || '', span2: true, hint: 'Secure backend endpoint; never put client secrets here' },
       ],
-      onSubmit: async (v) => { let lv; try { lv = JSON.parse(v.escalationLevels); } catch { throw new Error('Escalation levels must be valid JSON'); }
-        await actions.updateConfig({ companyName: v.companyName, dueSoonThresholdDays: v.dueSoonThresholdDays, atRiskThresholdDays: v.atRiskThresholdDays, reminderBeforeDays: v.reminderBeforeDays, escalationAfterDays: v.escalationAfterDays, significantChangeDays: v.significantChangeDays, escalationLevels: lv, notifications: { ...cfg.notifications, dashboardUrl: v.dashboardUrl, ccProjectOwner: v.ccProjectOwner, enabled: v.notificationsEnabled }, emailAutomation: v.emailAutomation, dataAdapter: v.dataAdapter, sharepoint: { ...(cfg.sharepoint || {}), apiBaseUrl: v.spApi } });
+      onSubmit: async (v) => {
+        await actions.updateConfig({ companyName: v.companyName, dueSoonThresholdDays: v.dueSoonThresholdDays, atRiskThresholdDays: v.atRiskThresholdDays, significantChangeDays: v.significantChangeDays, dataAdapter: v.dataAdapter, sharepoint: { ...(cfg.sharepoint || {}), apiBaseUrl: v.spApi } });
         toast('Configuration saved' + (v.dataAdapter === 'sharepoint' ? ' – reload to attempt SharePoint connection' : ''), 'success'); return true; },
     }) }, '✎ Edit') : null),
-    el('dl', { class: 'kv' }, ...[['Due-soon threshold', `${cfg.dueSoonThresholdDays} wd`], ['At-risk threshold', `${cfg.atRiskThresholdDays} wd`], ['Reminder before deadline', `${cfg.reminderBeforeDays} wd`], ['Escalation after', `${cfg.escalationAfterDays} wd overdue`], ['Escalation levels', (cfg.escalationLevels || []).map((l) => `L${l.level} @${l.afterDays}d → ${l.recipient}`).join(' · ')], ['Significant change confirmation', `≥ ${cfg.significantChangeDays} wd`], ['Data adapter', `${cfg.dataAdapter} ${store.adapter.isProduction ? '(connected)' : '(prototype – browser storage)'}`], ['E-mail automation', cfg.emailAutomation === 'powerautomate' ? 'Power Automate queue' : 'Logged only (prototype)'], ['Notifications', cfg.notifications?.enabled === false ? 'Disabled' : 'Enabled']].flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])));
+    el('dl', { class: 'kv' }, ...[['Due-soon threshold', `${cfg.dueSoonThresholdDays} wd`], ['At-risk threshold', `${cfg.atRiskThresholdDays} wd`], ['Significant change confirmation', `≥ ${cfg.significantChangeDays} wd`], ['Data adapter', `${cfg.dataAdapter} ${store.adapter.isProduction ? '(connected)' : '(prototype – browser storage)'}`]].flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])));
   renderCfg();
 
   // ---- Working calendar -------------------------------------------------------

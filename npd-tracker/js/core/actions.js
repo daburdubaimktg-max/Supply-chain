@@ -1,16 +1,15 @@
 // Business actions: everything that changes data goes through here so that
-// permissions, validation, scheduling, audit trail and notifications are
+// permissions, validation, scheduling, audit trail and history are
 // applied consistently. The UI never writes to the store directly.
 
 import {
-  COLLECTIONS, TASK_STATUS, APPROVAL_STATUS, PROJECT_STATUS, NOTIFICATION_TYPES,
+  COLLECTIONS, TASK_STATUS, APPROVAL_STATUS, PROJECT_STATUS,
   makeTask, makeDependency, makeProject, makeActivity, makeStakeholder, newId, nowIso,
 } from './models.js';
 import { ACTIONS } from './auth.js';
-import { validateDependencies, downstream } from './dependencies.js';
+import { validateDependencies } from './dependencies.js';
 import { computeSchedule, scheduleImpact } from './scheduler.js';
 import { blockingPredecessors } from './performance.js';
-import { Notifier } from './notifications.js';
 import { today as todayStr } from './calendar.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,7 +18,6 @@ export class Actions {
   constructor(store, auth) {
     this.store = store;
     this.auth = auth;
-    this.notifier = new Notifier(store);
   }
 
   // ---- helpers ---------------------------------------------------------------
@@ -78,7 +76,6 @@ export class Actions {
           fprId: opts.fprOverrides?.[srcId] ?? (source.fromTemplate ? a.fprId : a.defaultFprId),
           backupFprId: source.fromTemplate ? a.backupFprId : (this.store.get(COLLECTIONS.stakeholders, a.defaultFprId)?.backupFprId || null),
           approverId: source.fromTemplate ? a.approverId : (this.store.get(COLLECTIONS.stakeholders, a.defaultFprId)?.managerId || null),
-          escalationId: source.fromTemplate ? a.escalationId : null,
           expectedDuration: opts.durationOverrides?.[srcId] ?? a.expectedDuration,
           isMandatory: opts.mandatoryOverrides?.[srcId] ?? a.isMandatory,
           approvalRequired: opts.approvalOverrides?.[srcId] ?? a.approvalRequired,
@@ -211,7 +208,7 @@ export class Actions {
       id: newId('tpl'), name, description, sourceProjectId: projectId,
       tasks: tasks.map((t) => ({
         templateTaskId: t.id, activityId: t.activityId, activityNo: t.activityNo, sequence: t.sequence, name: t.name,
-        department: t.department, fprId: t.fprId, backupFprId: t.backupFprId, approverId: t.approverId, escalationId: t.escalationId,
+        department: t.department, fprId: t.fprId, backupFprId: t.backupFprId, approverId: t.approverId,
         expectedDuration: t.expectedDuration, isMandatory: t.isMandatory, approvalRequired: t.approvalRequired,
         description: t.description, instructions: t.instructions,
       })),
@@ -395,7 +392,6 @@ export class Actions {
         expectedVersion, auditSummary: `FPR changed on "${before.name}": ${oldFpr?.employeeName || '—'} → ${newFpr?.employeeName || '—'}`,
       });
       await this.store.append(COLLECTIONS.taskHistory, { taskId, projectId: before.projectId, event: 'FPR_CHANGED', details: `${oldFpr?.employeeName || '—'} → ${newFpr?.employeeName || '—'}`, from: before.fprId, to: newFprId });
-      if (newFpr) await this.notifier.log(after, NOTIFICATION_TYPES.FPR_CHANGED, { requiredAction: 'You are now the FPR for this task', dedupeKey: `${NOTIFICATION_TYPES.FPR_CHANGED}:${newFprId}:${nowIso()}` });
     });
     return after;
   }
@@ -434,7 +430,6 @@ export class Actions {
       after = await this.store.update(COLLECTIONS.projectTasks, taskId, { status: TASK_STATUS.NOT_REQUIRED, previousStatus: t.status, notRequiredReason: reason }, { reason, auditSummary: `Marked "${t.name}" NOT REQUIRED` });
       await this.store.append(COLLECTIONS.taskHistory, { taskId, projectId: t.projectId, event: 'NOT_REQUIRED', details: reason, from: t.status, to: TASK_STATUS.NOT_REQUIRED });
       await this.recalculate(t.projectId, { reason: `"${t.name}" marked Not Required` });
-      await this._releaseDependents(after);
       await this._checkProjectClosure(t.projectId);
     });
     return after;
@@ -522,7 +517,6 @@ export class Actions {
     if (![TASK_STATUS.NOT_STARTED, TASK_STATUS.BLOCKED, TASK_STATUS.ON_HOLD].includes(t.status)) throw new Error(`Task cannot be started from status ${t.status}.`);
     const { blocked, blocking } = this.eligibility(t);
     if (blocked) {
-      await this.notifier.log(t, NOTIFICATION_TYPES.BLOCKED, { requiredAction: `Waiting for: ${blocking.map((b) => b.name).join(', ')}`, dedupeKey: `${NOTIFICATION_TYPES.BLOCKED}:${todayStr()}` });
       throw new Error(`Task is blocked by: ${blocking.map((b) => b.name).join(', ')}`);
     }
     const ts = nowIso();
@@ -551,7 +545,6 @@ export class Actions {
       }, { auditSummary: `SUBMITTED "${t.name}" for approval` });
       await this.store.append(COLLECTIONS.approvalHistory, { taskId, projectId: t.projectId, action: 'SUBMITTED', by: this.user().name, note });
       await this.store.append(COLLECTIONS.taskHistory, { taskId, projectId: t.projectId, event: 'SUBMITTED', details: note, from: t.status, to: TASK_STATUS.PENDING_APPROVAL });
-      await this.notifier.log(after, NOTIFICATION_TYPES.APPROVAL_REQUESTED, { requiredAction: 'Review and approve / reject', dedupeKey: `${NOTIFICATION_TYPES.APPROVAL_REQUESTED}:${ts}` });
     });
     return after;
   }
@@ -574,7 +567,6 @@ export class Actions {
       after = await this.store.update(COLLECTIONS.projectTasks, taskId, { status: TASK_STATUS.IN_PROGRESS, approvalStatus: APPROVAL_STATUS.REJECTED, rejectionReason: reason }, { reason, auditSummary: `REJECTED "${t.name}": ${reason}` });
       await this.store.append(COLLECTIONS.approvalHistory, { taskId, projectId: t.projectId, action: 'REJECTED', by: this.user().name, note: reason });
       await this.store.append(COLLECTIONS.taskHistory, { taskId, projectId: t.projectId, event: 'REJECTED', details: reason, from: TASK_STATUS.PENDING_APPROVAL, to: TASK_STATUS.IN_PROGRESS });
-      await this.notifier.log(after, NOTIFICATION_TYPES.REJECTED, { requiredAction: `Correct and resubmit: ${reason}`, dedupeKey: `${NOTIFICATION_TYPES.REJECTED}:${nowIso()}` });
     });
     return after;
   }
@@ -602,9 +594,7 @@ export class Actions {
         status: TASK_STATUS.COMPLETED, actualEnd: ts.slice(0, 10), actualEndTime: ts, actualEndBy: this.user().name, actualStart: t.actualStart || ts.slice(0, 10), ...extra,
       }, { auditSummary: `COMPLETED "${t.name}"` });
       await this.store.append(COLLECTIONS.taskHistory, { taskId: t.id, projectId: t.projectId, event: 'COMPLETED', details: note || `Completed by ${this.user().name}`, from: t.status, to: TASK_STATUS.COMPLETED });
-      await this.notifier.log(after, NOTIFICATION_TYPES.COMPLETED, { dedupeKey: `${NOTIFICATION_TYPES.COMPLETED}:${ts}` });
       await this.recalculate(t.projectId, { reason: `"${t.name}" completed`, skipAudit: true });
-      await this._releaseDependents(after);
       await this._checkProjectClosure(t.projectId);
     });
     return after;
@@ -659,18 +649,6 @@ export class Actions {
     return this.store.append(COLLECTIONS.comments, { taskId: null, projectId, text: text.trim() });
   }
 
-  async _releaseDependents(task) {
-    const tasks = this.projectTasks(task.projectId);
-    const tasksById = new Map(tasks.map((t) => [t.id, t]));
-    const deps = this.projectDeps(task.projectId);
-    for (const id of downstream(task.id, deps, 1)) {
-      const d = tasksById.get(id);
-      if (!d || d.status !== TASK_STATUS.NOT_STARTED) continue;
-      if (blockingPredecessors(d, tasksById, deps).length === 0) {
-        await this.notifier.log(d, NOTIFICATION_TYPES.TASK_RELEASED, { requiredAction: 'All predecessors complete – you can start this task', dedupeKey: `${NOTIFICATION_TYPES.TASK_RELEASED}:${task.id}` });
-      }
-    }
-  }
 
   // ---- Automatic project dates ----------------------------------------------
   async _captureProjectStart(projectId, ts) {
@@ -700,8 +678,6 @@ export class Actions {
       status: PROJECT_STATUS.COMPLETED, actualEndDate: ts.slice(0, 10), actualEndTime: ts, actualEndBy: this.user().name,
       closureHistory: [...(p.closureHistory || []), closure],
     }, { auditSummary: `Project ${p.projectCode} closed automatically – all mandatory tasks complete` });
-    const last = this.projectTasks(projectId).find((t) => t.status === TASK_STATUS.COMPLETED);
-    if (last) await this.notifier.log(last, NOTIFICATION_TYPES.PROJECT_COMPLETED, { requiredAction: 'Project closed', dedupeKey: `${NOTIFICATION_TYPES.PROJECT_COMPLETED}:${ts}` });
   }
 
   async _reopenProjectIfClosed(projectId, why) {
