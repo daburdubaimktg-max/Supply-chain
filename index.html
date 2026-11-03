@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NPD Gate Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: control-room tool. Top bar + view tabs, then one working surface per view.
+   Stage-gate amber marks decisions, petrol blue is the action colour, function colours code each team. */
+:root{
+  --bg:#EEF2F1; --surface:#FFFFFF; --surface2:#F6F8F8; --ink:#16212A; --muted:#5A6A72; --line:#D5DDDC;
+  --accent:#0E5A6B; --accent-ink:#FFFFFF; --gate:#B36A00; --crit:#C2372B; --good:#2E7D4F; --warn:#AE7414;
+  --grid:#E3E9E8; --weekend:#F2F5F4; --bar-base:#9AA8AE; --shadow:0 1px 2px rgba(20,40,50,.06),0 4px 16px rgba(20,40,50,.06);
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --left:300px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#162027; --surface2:#1B262E; --ink:#E3EAEC; --muted:#93A3A9; --line:#2A3740;
+  --accent:#4FB0C4; --accent-ink:#06222A; --gate:#E4A43E; --crit:#EF6B5F; --good:#5DC08B; --warn:#E2AA4C;
+  --grid:#222E36; --weekend:#18232A; --bar-base:#5E6E76; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#162027; --surface2:#1B262E; --ink:#E3EAEC; --muted:#93A3A9; --line:#2A3740;
+  --accent:#4FB0C4; --accent-ink:#06222A; --gate:#E4A43E; --crit:#EF6B5F; --good:#5DC08B; --warn:#E2AA4C;
+  --grid:#222E36; --weekend:#18232A; --bar-base:#5E6E76; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1600px;margin:0 auto}
+header.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;font:700 20px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase}
+.brand svg{flex:none}
+.proj{display:flex;align-items:center;gap:8px;flex:1 1 280px;min-width:0}
+.proj select{max-width:100%;min-width:0;flex:1 1 auto}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs a{padding:10px 14px;text-decoration:none;color:var(--muted);font:600 15px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs a:hover{color:var(--ink)}
+main{padding-block:20px 48px;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:28px;font-weight:700}
+h2{font-size:19px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+h3{font-size:16px;font-weight:600}
+.eyebrow{font:500 11px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:6px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 40%,var(--line))}
+.btn.sm{padding:4px 9px;font-size:13px}
+input[type=text],input[type=date],input[type=number],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
+textarea{width:100%;resize:vertical}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px}
+.sample-note{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:color-mix(in srgb,var(--gate) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--gate) 35%,var(--line));padding:10px 14px;border-radius:8px}
+/* Project header */
+.phead{display:flex;flex-wrap:wrap;gap:12px 32px;align-items:flex-end;justify-content:space-between}
+.meta{display:flex;flex-wrap:wrap;gap:6px 24px}
+.meta div{display:grid;gap:2px}
+.meta b{font:500 14px var(--f-mono)}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;align-content:start}
+.kpi .v{font:600 30px/1.05 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.fpr{border-color:color-mix(in srgb,var(--gate) 50%,var(--line))}
+.kpi.fpr .v{color:var(--gate)}
+.pos{color:var(--good)} .neg{color:var(--crit)} .wrn{color:var(--warn)}
+/* Gate track */
+.track{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:0;overflow-x:auto}
+.stage{padding:12px 14px 14px;border-right:1px dashed var(--line);display:grid;gap:8px;align-content:start;position:relative;min-width:170px}
+.stage:last-child{border-right:0}
+.stage .bar{height:6px;background:var(--grid);border-radius:3px;overflow:hidden}
+.stage .bar i{display:block;height:100%;background:var(--accent)}
+.gate-tag{display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--line)}
+.diamond{width:12px;height:12px;transform:rotate(45deg);background:var(--gate);flex:none;border-radius:2px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font:500 11.5px/1.5 var(--f-mono);letter-spacing:.02em;border:1px solid transparent;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.c-done,.c-go{color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+.c-prog{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
+.c-risk,.c-hold,.c-recycle{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}
+.c-late,.c-kill{color:var(--crit);background:color-mix(in srgb,var(--crit) 13%,transparent)}
+.c-ns,.c-pending{color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
+.swatch{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
+/* lists */
+.list{display:grid}
+.li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:9px 0;border-top:1px solid var(--line);align-items:center;cursor:pointer}
+.li:first-child{border-top:0}
+.li .t{font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.li .sub{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.li:hover .t{color:var(--accent)}
+.ring{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.ring svg{width:110px;height:110px}
+/* load bars */
+.load{display:grid;gap:10px}
+.lrow{display:grid;grid-template-columns:130px minmax(0,1fr) 48px;gap:10px;align-items:center}
+.lrow .nm{display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.stack{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--grid)}
+.stack i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+/* Portfolio roadmap */
+.rm{display:grid;overflow-x:auto}
+.rm-row{display:grid;grid-template-columns:220px minmax(420px,1fr) 92px;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--grid);cursor:pointer}
+.rm-row:hover .rm-lbl b{color:var(--accent)}
+.rm-axis{border-top:0;cursor:default;padding:0 0 4px}
+.rm-brand{padding:14px 0 4px;display:flex;gap:10px;align-items:baseline;border-top:1px solid var(--line)}
+.rm-lbl{display:grid;min-width:0}
+.rm-lbl b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm-lbl span{font-size:12px}
+.rm-track{position:relative;height:22px}
+.rm-scale{height:30px;border-bottom:1px solid var(--line)}
+.rm-tick{position:absolute;bottom:4px;font:11px var(--f-mono);color:var(--muted);padding-left:4px;border-left:1px solid var(--line);height:16px;white-space:nowrap}
+.rm-today{position:absolute;top:0;bottom:-2000px;border-left:1.5px solid var(--accent);pointer-events:none;z-index:1}
+.rm-today b{font:500 10.5px var(--f-mono);color:var(--accent);padding-left:4px;position:absolute;top:0;white-space:nowrap}
+.rm{position:relative;overflow:hidden auto}
+.rm-seg{position:absolute;top:7px;height:8px;border-right:1px solid var(--surface)}
+.rm-seg.p{background:var(--accent)} .rm-seg.c{background:var(--gate)} .rm-seg.f{background:var(--grid)}
+.rm-gate{position:absolute;top:7px;width:8px;height:8px;margin-left:-4px;transform:rotate(45deg);background:var(--surface);border:1.5px solid var(--muted)}
+.rm-fpr{position:absolute;top:3px;width:12px;height:12px;margin-left:-6px;transform:rotate(45deg);background:var(--gate);border:2px solid var(--surface);z-index:2}
+.rm-launch{position:absolute;top:13px;margin-left:-6px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:9px solid var(--ink);z-index:2}
+.rm-tgt{position:absolute;top:-2px;bottom:-2px;border-left:2px dotted var(--crit)}
+@media (max-width:640px){.rm-row{grid-template-columns:130px minmax(360px,1fr) 80px}.rm{overflow-x:auto}}
+/* Gantt */
+.gtools{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 11px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.gscroll{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:8px;background:var(--surface);position:relative}
+.ghead{position:sticky;top:0;z-index:3;display:flex;background:var(--surface);border-bottom:1px solid var(--line)}
+.gbody{display:flex}
+.gleft{position:sticky;left:0;z-index:2;width:var(--left);flex:none;background:var(--surface);border-right:1px solid var(--line)}
+.ghead .gleft{z-index:4;display:flex;align-items:flex-end;padding:0 10px 6px;font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);gap:8px}
+.grow{height:30px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--grid);cursor:pointer;font-size:13px;white-space:nowrap}
+.grow .id{font:12px var(--f-mono);color:var(--muted);width:28px;flex:none}
+.grow .nm{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.grow .du{font:12px var(--f-mono);color:var(--muted);flex:none}
+.grow.grp{background:var(--surface2);font-weight:600;cursor:default;font-family:var(--f-display);font-size:14px;letter-spacing:.02em}
+.grow:not(.grp):hover{background:var(--surface2)}
+.grow.crit .nm{color:var(--crit)}
+svg text{font-family:var(--f-mono)}
+.g-grid{stroke:var(--grid)}
+.g-month{stroke:var(--line)}
+.g-week{fill:var(--weekend)}
+.g-lbl{fill:var(--muted);font-size:10.5px}
+.g-mlbl{fill:var(--ink);font-size:11px;font-weight:500}
+.g-bar{cursor:pointer}
+.g-bar rect.base{opacity:.35}
+.g-bar.crit rect.out{stroke:var(--crit);stroke-width:2}
+.g-bl{fill:var(--bar-base);opacity:.75}
+.g-sum{fill:var(--ink);opacity:.55}
+.g-gate{fill:var(--gate)}
+.g-ms{fill:var(--ink)}
+.g-ms.fpr{fill:var(--gate)}
+.g-pct{fill:var(--muted);font-size:10.5px}
+.g-arrow{fill:none;stroke:var(--muted);stroke-width:1.1;opacity:.75}
+.g-arrow.crit{stroke:var(--crit);opacity:.9}
+.g-ah{fill:var(--muted)}
+.g-today{stroke:var(--accent);stroke-width:1.5}
+.g-fprl{stroke:var(--gate);stroke-width:1.5;stroke-dasharray:4 3}
+.g-tgt{stroke:var(--crit);stroke-width:1.5;stroke-dasharray:2 3}
+.g-flag{font-size:10.5px;font-weight:500}
+/* Tables */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface2);position:sticky;top:0}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--surface2)}
+tr.stg td{background:var(--surface2);font:600 13px var(--f-display);letter-spacing:.04em;text-transform:uppercase;cursor:default}
+td .tn{max-width:280px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+.pbar{display:inline-block;width:60px;height:5px;background:var(--grid);border-radius:3px;vertical-align:middle;margin-right:6px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Function board */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:14px}
+.fcol{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:grid;align-content:start}
+.fcol header{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.fcol header .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.fcol .cards{padding:6px 14px 10px}
+/* Gates */
+.gates{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:16px}
+.gcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px;align-content:start}
+.gcard .hd{display:flex;gap:10px;align-items:flex-start}
+.gcard .hd .diamond{margin-top:5px}
+.crit-list{display:grid;gap:6px}
+.crit-list label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}
+.crit-list input{margin-top:3px}
+.frow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+/* Drawer + modal */
+.scrim{position:fixed;inset:0;background:rgba(10,20,25,.45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(480px,100%);background:var(--surface);z-index:21;box-shadow:var(--shadow);display:grid;grid-template-rows:auto 1fr auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.drawer .dh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center}
+.drawer .db{padding:16px 18px;overflow:auto;display:grid;gap:14px;align-content:start}
+.drawer .df{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.fld{display:grid;gap:5px}
+.fld>span{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fld small{color:var(--muted);font-size:12px}
+.fld2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.calc{background:var(--surface2);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px}
+.calc b{font:500 13px var(--f-mono)}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,calc(100% - 32px));max-height:calc(100% - 48px);overflow:auto;background:var(--surface);border-radius:12px;z-index:22;box-shadow:var(--shadow);padding:20px;display:grid;gap:14px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;max-width:calc(100% - 32px);box-shadow:var(--shadow);font-size:13.5px}
+.err{color:var(--crit);font-size:13px}
+.xl-sheets{display:grid;gap:6px;font-size:13px}
+.xl-sheets div{display:grid;grid-template-columns:120px 1fr;gap:10px}
+@media (max-width:640px){
+  :root{--left:170px}
+  h1{font-size:23px}
+  .lrow{grid-template-columns:96px minmax(0,1fr) 40px}
+  .ring{grid-template-columns:1fr}
+  .fld2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="9" width="7" height="4" rx="1" fill="var(--accent)"/><rect x="6" y="3" width="10" height="4" rx="1" fill="var(--accent)" opacity=".6"/><rect x="11" y="15" width="10" height="4" rx="1" fill="var(--accent)" opacity=".8"/><rect x="15.5" y="6.5" width="5" height="5" rx="1" transform="rotate(45 18 9)" fill="var(--gate)"/></svg>
+      NPD Gate Tracker
+    </div>
+    <div class="proj">
+      <label for="brandSel" class="eyebrow">Brand</label>
+      <select id="brandSel" style="flex:0 1 180px"></select>
+      <label for="projSel" class="eyebrow">Project</label>
+      <select id="projSel"></select>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnNew" type="button">New project</button>
+      <button class="btn" id="btnImport" type="button">Import Excel</button>
+      <button class="btn primary" id="btnExport" type="button">Export Excel</button>
+    </div>
+  </div>
+  <nav class="wrap tabs" id="tabs" aria-label="Views">
+    <a href="#portfolio">Portfolio</a>
+    <a href="#overview">Project dashboard</a>
+    <a href="#gantt">Gantt</a>
+    <a href="#tasks">Tasks</a>
+    <a href="#functions">Functions</a>
+    <a href="#gates">Stage gates</a>
+    <a href="#escalations">Escalations</a>
+    <a href="#project">Project setup</a>
+  </nav>
+</header>
+<main class="wrap" id="view"></main>
+<div id="layer"></div>
+
+<script>
+"use strict";
+/* ---------- constants ---------- */
+const DAY = 86400000;
+const KEY = "npd-gate-tracker-v1";
+const DEP_TYPES = ["FS","SS","FF","SF"];
+const DECISIONS = ["Pending","Go","Hold","Recycle","Kill"];
+const FN_DEFAULT = [
+  {name:"Marketing",color:"#C94F86",head:"Brand Manager"},
+  {name:"R&D",color:"#6A5BC4",head:"Formulation Lead"},
+  {name:"Packaging",color:"#23899A",head:"Packaging Dev Lead"},
+  {name:"Supply Chain",color:"#3B78C2",head:"SCM Planner"},
+  {name:"Regulatory",color:"#94733D",head:"Regulatory Affairs"},
+  {name:"Quality",color:"#4C9446",head:"QA Manager"},
+  {name:"Manufacturing",color:"#C3672A",head:"Plant Head"},
+  {name:"Finance",color:"#7C8490",head:"Commercial Finance"},
+  {name:"Sales",color:"#AE4646",head:"Trade Marketing"}
+];
+const STAGES_DEFAULT = [
+  {name:"Discovery",gate:"Idea screen",criteria:["Consumer need validated","Market size above threshold","Strategic fit confirmed"]},
+  {name:"Concept & Feasibility",gate:"Business case approval",criteria:["Concept test score met","Technical feasibility proven","COGS within target margin","Business case signed by Finance"]},
+  {name:"Development",gate:"Development sign-off",criteria:["Formulation locked","Artwork approved","Packaging specs frozen","Regulatory path clear"]},
+  {name:"Validation & Scale-up",gate:"FPR & launch readiness",criteria:["Pilot batch passed QC","Stability data acceptable","PM & RM available in plant","Line trial successful","FPR released"]},
+  {name:"Launch",gate:"Post-launch review",criteria:["Volume vs forecast reviewed","Consumer & trade feedback captured","Learnings documented"]}
+];
+
+/* ---------- utils ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function parseD(s){ if(s instanceof Date) return Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(s||"")); return m ? Date.UTC(+m[1], +m[2]-1, +m[3]) : NaN; }
+const iso = t => new Date(t).toISOString().slice(0,10);
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmt = t => { if(!isFinite(t)) return "—"; const d = new Date(t); return String(d.getUTCDate()).padStart(2,"0")+" "+MON[d.getUTCMonth()]+" "+String(d.getUTCFullYear()).slice(2); };
+const fmtShort = t => { const d = new Date(t); return String(d.getUTCDate()).padStart(2,"0")+" "+MON[d.getUTCMonth()]; };
+const todayT = () => { const n = new Date(); return Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()); };
+const signed = n => (n>0?"+":"")+n;
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const uid = () => "p" + Math.random().toString(36).slice(2,9);
+
+/* ---------- working-day calendar ---------- */
+function mkCal(p){
+  const ww = +p.workweek || 6;
+  const hol = new Set((p.holidays||[]).map(parseD).filter(isFinite));
+  const isW = t => { if(hol.has(t)) return false; const d = new Date(t).getUTCDay(); return ww===7 || (ww===6 ? d!==0 : d!==0 && d!==6); };
+  let t = parseD(p.start); if(!isFinite(t)) t = todayT();
+  let g = 0; while(!isW(t) && g++ < 30) t += DAY;
+  const days = [t];
+  const ext = n => { while(days.length <= n){ let x = days[days.length-1] + DAY, k = 0; while(!isW(x) && k++ < 30) x += DAY; days.push(x); } };
+  return {
+    isW,
+    wd2d(i){ i = clamp(Math.round(i), 0, 20000); ext(i); return days[i]; },
+    d2wd(d){ if(!isFinite(d) || d <= days[0]) return 0; d = Math.min(d, days[0] + 3650*DAY);
+      while(days[days.length-1] < d) ext(days.length + 60);
+      let lo = 0, hi = days.length-1; while(lo < hi){ const m = (lo+hi) >> 1; if(days[m] >= d) hi = m; else lo = m+1; } return lo; }
+  };
+}
+
+/* ---------- scheduler: forward/backward pass over tasks + gates ---------- */
+function schedule(p){
+  const C = mkCal(p), nodes = new Map(), NS = p.stages.length;
+  p.tasks.forEach(t => nodes.set("t"+t.id, {key:"t"+t.id, task:t, dur: t.kind==="milestone" ? 0 : Math.max(0, Math.round(+t.dur||0)), preds:[], succs:[]}));
+  for(let k=1; k<=NS; k++) nodes.set("g"+k, {key:"g"+k, gate:k, dur:0, preds:[], succs:[]});
+  const link = (a, b, type, lag) => { const A = nodes.get(a), B = nodes.get(b); if(!A || !B || A===B) return;
+    B.preds.push({n:A, type, lag}); A.succs.push({n:B, type, lag}); };
+  p.tasks.forEach(t => {
+    if(t.mode === "ind") return;
+    (t.deps||[]).forEach(d => link("t"+d.id, "t"+t.id, DEP_TYPES.includes(d.type) ? d.type : "FS", +d.lag||0));
+    if(p.gateBlocks && t.stage > 1) link("g"+(t.stage-1), "t"+t.id, "FS", 0);
+  });
+  for(let k=1; k<=NS; k++){
+    p.tasks.filter(t => t.stage===k).forEach(t => link("t"+t.id, "g"+k, "FS", 0));
+    if(k>1) link("g"+(k-1), "g"+k, "FS", 0);
+  }
+  const indeg = new Map(), order = [], q = [];
+  nodes.forEach(n => { indeg.set(n, n.preds.length); if(!n.preds.length) q.push(n); });
+  while(q.length){ const n = q.shift(); order.push(n); n.succs.forEach(e => { const v = indeg.get(e.n)-1; indeg.set(e.n, v); if(v===0) q.push(e.n); }); }
+  const done = new Set(order), cyc = [...nodes.values()].filter(n => !done.has(n));
+  const all = order.concat(cyc);
+  all.forEach(n => {
+    let es = 0;
+    if(n.task && n.task.mode === "ind") es = C.d2wd(parseD(n.task.fixed || p.start));
+    n.preds.forEach(e => { const a = e.n; if(a.es === undefined) return; let v;
+      switch(e.type){ case "SS": v = a.es+e.lag; break; case "FF": v = a.ef+e.lag-n.dur; break; case "SF": v = a.es+e.lag-n.dur; break; default: v = a.ef+e.lag; }
+      if(v > es) es = v; });
+    n.es = Math.max(0, es); n.ef = n.es + n.dur;
+  });
+  let end = 0; nodes.forEach(n => { if(n.ef > end) end = n.ef; });
+  for(let i = all.length-1; i >= 0; i--){ const n = all[i]; let lf = end;
+    n.succs.forEach(e => { const s = e.n; if(s.lf === undefined) return; let v;
+      switch(e.type){ case "SS": v = s.ls-e.lag+n.dur; break; case "FF": v = s.lf-e.lag; break; case "SF": v = s.lf-e.lag+n.dur; break; default: v = s.ls-e.lag; }
+      if(v < lf) lf = v; });
+    n.lf = lf; n.ls = lf - n.dur; n.slack = n.ls - n.es; }
+  const cycIds = new Set(cyc.filter(n => n.task).map(n => n.task.id));
+  const tasks = new Map();
+  p.tasks.forEach(t => { const n = nodes.get("t"+t.id);
+    const start = C.wd2d(n.es), finish = n.dur > 0 ? C.wd2d(n.ef-1) : start;
+    tasks.set(t.id, {es:n.es, ef:n.ef, slack:n.slack, crit: n.slack <= 0 && !cycIds.has(t.id), start, finish, dur:n.dur, cyc:cycIds.has(t.id)}); });
+  const gates = [];
+  for(let k=1; k<=NS; k++){ const n = nodes.get("g"+k); gates.push({k, wd:n.es, date: n.es > 0 ? C.wd2d(n.es-1) : C.wd2d(0)}); }
+  let endDate = 0; tasks.forEach(r => { if(r.finish > endDate) endDate = r.finish; });
+  return {tasks, gates, end, endDate, cal:C, cyc:cycIds};
+}
+
+/* ---------- status ---------- */
+function status(t, r){
+  const pr = +t.progress || 0, td = todayT();
+  if(pr >= 100) return {k:"done", l:"Done"};
+  if(r.finish < td) return {k:"late", l:"Delayed"};
+  if(r.start <= td){
+    const span = Math.max(1, (r.finish - r.start)/DAY + 1), exp = clamp(((td - r.start)/DAY + 1)/span*100, 0, 100);
+    return exp - pr > 25 ? {k:"risk", l:"At risk"} : {k:"prog", l:"In progress"};
+  }
+  return {k:"ns", l:"Not started"};
+}
+const DEC_K = {Pending:"pending", Go:"go", Hold:"hold", Recycle:"recycle", Kill:"kill"};
+
+/* ---------- predecessor text ---------- */
+const depStr = d => d.id + ((d.type && d.type!=="FS") || d.lag ? (d.type||"FS") : "") + (d.lag ? signed(d.lag) : "");
+function parseDeps(txt, selfId, ids){
+  const out = [], errs = [];
+  String(txt||"").split(/[,;]+/).map(s => s.trim()).filter(Boolean).forEach(s => {
+    const m = /^#?(\d+)\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+)?\s*d?$/i.exec(s);
+    if(!m){ errs.push(`"${s}" is not a valid link`); return; }
+    const id = +m[1]; if(id === selfId){ errs.push("A task cannot depend on itself"); return; }
+    if(!ids.has(id)){ errs.push(`Task #${id} does not exist`); return; }
+    out.push({id, type:(m[2]||"FS").toUpperCase(), lag: m[3] ? parseInt(m[3].replace(/\s/g,""),10) : 0});
+  });
+  return {deps: out, errs};
+}
+
+/* ---------- sample / template ---------- */
+function templateTasks(){
+  // [id, name, fn, stage, dur, mode, deps|fixedStartOffsetDays, owner, fpr, kind]
+  return [
+    [1,"Consumer insight & opportunity sizing","Marketing",1,10,"ind",0,"R. Kapoor"],
+    [2,"Product brief & claims direction","Marketing",1,5,"dep","1","R. Kapoor"],
+    [3,"Initial formulation scan","R&D",1,8,"dep","2SS+2","S. Iyer"],
+    [4,"Competitive pack benchmarking","Packaging",1,5,"dep","2","N. Shah"],
+    [5,"Quantitative concept test","Marketing",2,12,"dep","","R. Kapoor"],
+    [6,"Lab-scale formulation trials","R&D",2,15,"dep","","S. Iyer"],
+    [7,"Pack format & size selection","Packaging",2,8,"dep","5SS+3","N. Shah"],
+    [8,"Supplier RFQ – laminate tube & carton","Supply Chain",2,10,"dep","7","A. Verma"],
+    [9,"COGS & P&L business case","Finance",2,6,"dep","6, 8","M. Rao"],
+    [10,"Regulatory classification & claims check","Regulatory",2,10,"ind",24,"P. Nair"],
+    [11,"Final formulation lock","R&D",3,10,"dep","","S. Iyer",true],
+    [12,"Artwork brief & design","Marketing",3,12,"dep","","R. Kapoor"],
+    [13,"Packaging development & dielines","Packaging",3,10,"dep","12SS+2","N. Shah"],
+    [14,"Artwork legal & regulatory approval","Regulatory",3,5,"dep","12, 13","P. Nair",true],
+    [15,"Cylinder & tooling making","Packaging",3,12,"dep","14","N. Shah",true],
+    [16,"Vendor onboarding & PO release","Supply Chain",3,6,"dep","","A. Verma",true],
+    [17,"Manufacturing licence / product permission","Regulatory",3,30,"ind",38,"P. Nair",true],
+    [18,"Pilot batch (scale-up)","Manufacturing",4,5,"dep","","K. Singh",true],
+    [19,"Stability – 1-month accelerated data","Quality",4,26,"dep","18","D. Menon",true],
+    [20,"Packaging material (PM) delivery","Supply Chain",4,15,"dep","15","A. Verma",true],
+    [21,"Raw material (RM) procurement","Supply Chain",4,12,"dep","18SS","A. Verma",true],
+    [22,"Line trial & machinability","Manufacturing",4,3,"dep","18, 20","K. Singh",true],
+    [23,"QC specifications & release protocol","Quality",4,6,"dep","18","D. Menon",true],
+    [24,"Sales forecast & S&OP sign-off","Supply Chain",4,5,"dep","18","A. Verma",true],
+    [25,"FPR – First Production Run","Manufacturing",4,0,"dep","17, 19, 20, 21, 22, 23, 24","K. Singh",false,"milestone"],
+    [26,"Dispatch to depots & pipeline fill","Supply Chain",5,10,"dep","","A. Verma"],
+    [27,"Market launch","Sales",5,0,"dep","26","Trade Marketing",false,"milestone"],
+    [28,"Trade launch & sell-in","Sales",5,12,"dep","26SS+2","V. Joshi"],
+    [29,"Launch campaign (TV + digital)","Marketing",5,20,"dep","27","R. Kapoor"],
+    [30,"Post-launch performance review","Marketing",5,6,"dep","29","R. Kapoor"]
+  ];
+}
+function makeProject({name, start, target, category, sku, template, sample, brand, code}){
+  const p = {id:uid(), name, brand:brand||"Unassigned", code:code||"", category:category||"", sku:sku||"", start, target:target||"", workweek:6, gateBlocks:true,
+    holidays:[], functions: FN_DEFAULT.map(f => ({...f})),
+    stages: STAGES_DEFAULT.map((s,i) => ({name:s.name, gate:s.gate, decision:"Pending", decisionDate:"", notes:"",
+      criteria: s.criteria.map(c => ({t:c, done:false}))})),
+    tasks:[], baseline:null, fprId:null, launchId:null, sample: !!sample, nextId:1};
+  if(template){
+    const s0 = parseD(start);
+    p.tasks = templateTasks().map(r => { const [id,nm,fn,stage,dur,mode,dx,owner,fpr,kind] = r;
+      const t = {id, name:nm, fn, stage, dur, mode, owner, fpr:!!fpr, kind:kind||"task", progress:0, notes:"", deps:[], fixed:""};
+      if(mode==="ind") t.fixed = iso(s0 + dx*DAY); else t.deps = parseDeps(dx, id, new Set(templateTasks().map(x=>x[0]))).deps;
+      return t; });
+    p.fprId = 25; p.launchId = 27; p.nextId = 31;
+  } else {
+    p.tasks = [
+      {id:1,name:"FPR – First Production Run",fn:"Manufacturing",stage:4,dur:0,mode:"dep",owner:"",fpr:false,kind:"milestone",progress:0,notes:"",deps:[],fixed:""},
+      {id:2,name:"Market launch",fn:"Sales",stage:5,dur:0,mode:"dep",owner:"",fpr:false,kind:"milestone",progress:0,notes:"",deps:[],fixed:""}];
+    p.fprId = 1; p.launchId = 2; p.nextId = 3;
+  }
+  return p;
+}
+function buildSampleProject(o, slips, lags, openCrit){
+  const p = makeProject({...o, template:true, sample:true});
+  setBaseline(p);
+  Object.entries(slips||{}).forEach(([id,d]) => { const t = taskById(p, +id); if(t) t.dur += d; });
+  const R = schedule(p), td = todayT();
+  p.tasks.forEach(t => { const r = R.tasks.get(t.id); if(t.kind==="milestone"){ t.progress = r.start < td ? 100 : 0; return; }
+    const span = (r.finish - r.start)/DAY + 1; t.progress = clamp(Math.round(((td - r.start)/DAY + 1)/span*100/5)*5, 0, 100); });
+  Object.entries(lags||{}).forEach(([id,d]) => { const t = taskById(p, +id); if(t && t.progress>0) t.progress = clamp(t.progress + d, 0, 95); });
+  R.gates.forEach(g => { const s = p.stages[g.k-1]; if(g.date < td){ s.decision = "Go"; s.decisionDate = iso(g.date + DAY); s.criteria.forEach(c => c.done = true); } });
+  if(openCrit){ const s = p.stages[openCrit-1]; if(s) s.criteria[0].done = false; }
+  return p;
+}
+function buildPortfolio(){
+  const brands = [{name:"Neem Leaf", category:"Oral Care", manager:"R. Kapoor", email:"r.kapoor@example.com"},{name:"Amla Gold", category:"Hair Care", manager:"S. Bhatia", email:"s.bhatia@example.com"},{name:"Tulsi Pure", category:"Health Supplements", manager:"L. Thomas", email:"l.thomas@example.com"}];
+  const projects = [
+    buildSampleProject({code:"NL-001", brand:"Neem Leaf", name:"Herbal Toothpaste 150g", category:"Oral Care", sku:"NL-HTP-150", start:"2026-09-07", target:"2027-02-15"}, {15:4, 6:3}, {12:-35, 8:-10, 16:-40, 17:-15}, 3),
+    buildSampleProject({code:"NL-002", brand:"Neem Leaf", name:"Kids Gel Toothpaste 80g", category:"Oral Care", sku:"NL-KGT-080", start:"2026-10-19", target:"2027-04-30"}, {}, {5:-20}),
+    buildSampleProject({code:"AG-001", brand:"Amla Gold", name:"Onion Hair Oil 200ml", category:"Hair Care", sku:"AG-OHO-200", start:"2026-06-15", target:"2026-11-30"}, {20:6}, {20:-30, 26:-20}),
+    buildSampleProject({code:"TP-001", brand:"Tulsi Pure", name:"Immunity Drops 30ml", category:"Health Supplements", sku:"TP-IMD-030", start:"2026-08-03", target:"2027-01-10"}, {17:14}, {17:-25, 14:-20})
+  ];
+  return {brands, projects};
+}
+function setBaseline(p){
+  const R = schedule(p); const b = {at: iso(todayT()), tasks:{}, gates:{}};
+  p.tasks.forEach(t => { const r = R.tasks.get(t.id); b.tasks[t.id] = {s:iso(r.start), f:iso(r.finish)}; });
+  R.gates.forEach(g => b.gates[g.k] = iso(g.date));
+  p.baseline = b;
+}
+
+/* ---------- state ---------- */
+let S = null, R = null;
+const ui = {zoom:"week", group:"stage", crit:true, base:true, deps:true, fFn:"", fStage:"", fStatus:"", q:""};
+function load(){
+  try { const raw = localStorage.getItem(KEY); if(raw) S = JSON.parse(raw); } catch(e){ S = null; }
+  if(!S || !Array.isArray(S.projects) || !S.projects.length){ S = {...buildPortfolio(), active:null, brand:""}; S.active = S.projects[0].id; }
+  if(!Array.isArray(S.brands)) S.brands = [];
+  if(!Array.isArray(S.people)) S.people = S.projects.some(p => p.sample) ? samplePeople() : [];
+  S.projects.forEach(p => { if(!p.brand) p.brand = "Unassigned"; if(p.code===undefined) p.code = ""; ensureBrand(p.brand); });
+  try { Object.assign(ui, JSON.parse(localStorage.getItem(KEY+"-ui")||"{}")); } catch(e){}
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); localStorage.setItem(KEY+"-ui", JSON.stringify(ui)); } catch(e){} }
+const P = () => S.projects.find(p => p.id===S.active) || S.projects[0];
+function ensureBrand(name, extra){ name = String(name||"Unassigned").trim() || "Unassigned"; let b = S.brands.find(x => x.name.toLowerCase()===name.toLowerCase());
+  if(!b){ b = {name, category:"", manager:"", ...(extra||{})}; S.brands.push(b); } else if(extra){ if(extra.category) b.category = extra.category; if(extra.manager) b.manager = extra.manager; } return b; }
+const inBrand = p => !S.brand || p.brand===S.brand;
+function nextCode(brand){ const pre = (String(brand).replace(/[^A-Za-z ]/g,"").split(/\s+/).filter(Boolean).map(w=>w[0]).join("").toUpperCase() || "PR").slice(0,3);
+  let n = 1; while(S.projects.some(p => p.code===`${pre}-${String(n).padStart(3,"0")}`)) n++; return `${pre}-${String(n).padStart(3,"0")}`; }
+const fnColor = (p, name) => (p.functions.find(f => f.name===name) || {color:"#8A949A"}).color;
+const taskById = (p, id) => p.tasks.find(t => t.id===id);
+const ordered = p => p.tasks.slice().sort((a,b) => a.stage-b.stage || p.tasks.indexOf(a)-p.tasks.indexOf(b));
+function keyDates(p, Rr){ const f = p.fprId && Rr.tasks.get(p.fprId), l = p.launchId && Rr.tasks.get(p.launchId);
+  return {fpr: f ? f.start : NaN, launch: l ? l.start : NaN, end: Rr.endDate}; }
+function variance(p, id, r){ const b = p.baseline && p.baseline.tasks[id]; return b ? Math.round((r.finish - parseD(b.f))/DAY) : null; }
+
+/* ---------- rendering ---------- */
+function render(){
+  const p = P(); R = schedule(p);
+  if(S.brand && !S.brands.some(b => b.name===S.brand)) S.brand = "";
+  $("#brandSel").innerHTML = `<option value="">All brands (${S.projects.length})</option>` + S.brands.map(b => `<option value="${esc(b.name)}"${b.name===S.brand?" selected":""}>${esc(b.name)} (${S.projects.filter(x=>x.brand===b.name).length})</option>`).join("");
+  const opt = x => `<option value="${x.id}"${x.id===p.id?" selected":""}>${esc(x.code?x.code+" · ":"")}${esc(x.name)}</option>`;
+  $("#projSel").innerHTML = S.brand ? S.projects.filter(inBrand).map(opt).join("") || `<option value="">No projects yet</option>`
+    : S.brands.map(b => { const xs = S.projects.filter(x => x.brand===b.name); return xs.length ? `<optgroup label="${esc(b.name)}">${xs.map(opt).join("")}</optgroup>` : ""; }).join("");
+  let v = (location.hash||"#portfolio").slice(1);
+  if(!VIEWS[v]) v = "portfolio";
+  document.querySelectorAll("#tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href")==="#"+v ? "page" : "false"));
+  const anySample = S.projects.some(x => x.sample);
+  $("#view").innerHTML = (anySample ? `<div class="sample-note"><span class="eyebrow">Sample data</span><span>The brands and projects shown are examples so you can see how the tracker works. Load your master data with <b>Import Excel</b> or add your own with <b>New project</b>.</span>${v==="portfolio"?`<button class="btn sm" type="button" id="clearSamples">Remove sample projects</button>`:""}</div>` : "") + VIEWS[v](p);
+  AFTER[v] && AFTER[v](p);
+  save();
+}
+
+function projectHeader(p){
+  return `<div class="phead"><div style="display:grid;gap:4px;min-width:0"><div class="eyebrow">${esc(p.brand)}${p.code?" · "+esc(p.code):""} · ${esc(p.category||"New product development")}${p.sku?" · "+esc(p.sku):""}</div><h1>${esc(p.name)}</h1></div>
+  <div class="meta"><div><span class="eyebrow">Kick-off</span><b>${fmt(parseD(p.start))}</b></div><div><span class="eyebrow">Target launch</span><b>${fmt(parseD(p.target))}</b></div>
+  <div><span class="eyebrow">Work week</span><b>${p.workweek} days</b></div><div><span class="eyebrow">Baseline</span><b>${p.baseline?fmt(parseD(p.baseline.at)):"Not set"}</b></div></div></div>`;
+}
+
+function projSummary(p){
+  const Rr = schedule(p), K = keyDates(p, Rr), td = todayT();
+  const work = p.tasks.filter(t => t.kind!=="milestone"), d = work.reduce((a,t)=>a+(+t.dur||0),0)||1;
+  const prog = Math.round(work.reduce((a,t)=>a+(+t.dur||0)*(+t.progress||0),0)/d);
+  const st = p.tasks.map(t => status(t, Rr.tasks.get(t.id)).k);
+  const killed = p.stages.some(s => s.decision==="Kill"), cur = p.stages.findIndex(s => s.decision!=="Go");
+  const tgt = parseD(p.target), buf = isFinite(tgt) && isFinite(K.launch) ? Math.round((tgt-K.launch)/DAY) : null;
+  let mn = parseD(p.start); Rr.tasks.forEach(r => { if(r.start<mn) mn = r.start; });
+  const fprB = p.baseline && p.fprId && p.baseline.tasks[p.fprId] ? Math.round((K.fpr - parseD(p.baseline.tasks[p.fprId].f))/DAY) : null;
+  return {p, R:Rr, K, prog, late: st.filter(k=>k==="late").length, risk: st.filter(k=>k==="risk").length, killed, cur, buf, tgt, start:mn, end:Math.max(Rr.endDate, isFinite(tgt)?tgt:0), fprB, td};
+}
+function health(x){ if(x.killed) return {k:"kill", l:"Killed"}; if(x.cur===-1) return {k:"done", l:"Launched"};
+  if((x.buf!==null && x.buf<0) || x.late>2) return {k:"late", l:"Off track"}; if(x.late || x.risk || (x.buf!==null && x.buf<7)) return {k:"risk", l:"Watch"}; return {k:"go", l:"On track"}; }
+const VIEWS = {
+portfolio(){
+  const xs = S.projects.filter(inBrand).map(projSummary), td = todayT();
+  const brands = S.brands.filter(b => !S.brand || b.name===S.brand);
+  const active = xs.filter(x => !x.killed && x.cur!==-1);
+  const fprSoon = xs.filter(x => isFinite(x.K.fpr) && x.K.fpr >= td && x.K.fpr <= td + 60*DAY).length;
+  const offT = xs.filter(x => x.buf!==null && x.buf<0 && !x.killed).length;
+  const lateT = xs.reduce((a,x) => a+x.late, 0);
+  let r0 = Math.min(...xs.map(x=>x.start), td), r1 = Math.max(...xs.map(x=>x.end), td);
+  if(!xs.length){ r0 = td - 30*DAY; r1 = td + 180*DAY; }
+  r0 -= 7*DAY; r1 += 21*DAY; const pc = t => ((t-r0)/(r1-r0)*100).toFixed(3)+"%";
+  let ticks = ""; { const d = new Date(r0); let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1);
+    while(t < r1){ const m = new Date(t).getUTCMonth(); ticks += `<span class="rm-tick" style="left:${pc(t)}">${MON[m]}${m===0?" "+new Date(t).getUTCFullYear():""}</span>`; t = Date.UTC(new Date(t).getUTCFullYear(), m+1, 1); } }
+  const rowsFor = list => list.map(x => { const p = x.p; let segs = "", prev = x.start;
+    x.R.gates.forEach((g,i) => { const end = g.date + DAY, cls = x.killed ? "f" : (x.cur===-1 || i < x.cur) ? "p" : i===x.cur ? "c" : "f";
+      if(end > prev) segs += `<i class="rm-seg ${cls}" style="left:${pc(prev)};width:calc(${pc(end)} - ${pc(prev)})" title="S${i+1} ${esc(p.stages[i].name)} → G${i+1} ${fmt(g.date)}"></i>`;
+      segs += `<i class="rm-gate" style="left:${pc(end)}" title="G${i+1} ${esc(p.stages[i].gate)} · ${fmt(g.date)} · ${esc(p.stages[i].decision)}"></i>`; prev = Math.max(prev, end); });
+    const h = health(x);
+    return `<div class="rm-row" data-open="${p.id}"><div class="rm-lbl"><b>${esc(p.name)}</b><span class="mono muted">${esc(p.code||"—")} · ${x.prog}%</span></div>
+      <div class="rm-track">${segs}${isFinite(x.K.fpr)?`<i class="rm-fpr" style="left:${pc(x.K.fpr)}" title="FPR ${fmt(x.K.fpr)}"></i>`:""}${isFinite(x.K.launch)?`<i class="rm-launch" style="left:${pc(x.K.launch)}" title="Forecast launch ${fmt(x.K.launch)}"></i>`:""}${isFinite(x.tgt)?`<i class="rm-tgt" style="left:${pc(x.tgt+DAY)}" title="Target launch ${fmt(x.tgt)}"></i>`:""}</div>
+      <span class="chip c-${h.k}">${h.l}</span></div>`; }).join("");
+  const roadmap = brands.map(b => { const list = xs.filter(x => x.p.brand===b.name); if(!list.length) return "";
+    return `<div class="rm-brand"><span class="eyebrow">${esc(b.name)}</span><span class="muted" style="font-size:12px">${esc(b.category||"")}${b.manager?" · "+esc(b.manager):""}</span></div>${rowsFor(list)}`; }).join("");
+  const table = xs.sort((a,b) => a.p.brand.localeCompare(b.p.brand) || a.start-b.start).map(x => { const p = x.p, h = health(x);
+    const ng = x.cur>=0 ? x.R.gates[x.cur] : null;
+    return `<tr data-open="${p.id}"><td>${esc(p.brand)}</td><td class="mono">${esc(p.code||"")}</td><td><span class="tn">${esc(p.name)}</span></td>
+      <td>${x.killed?"—":x.cur===-1?"Launched":`S${x.cur+1} ${esc(p.stages[x.cur].name)}`}</td>
+      <td>${ng?`G${x.cur+1} <span class="mono">${fmt(ng.date)}</span>`:"—"}</td>
+      <td class="num">${fmt(x.K.fpr)}${x.fprB?` <span class="${x.fprB>0?"neg":"pos"}">${signed(x.fprB)}d</span>`:""}</td>
+      <td class="num">${fmt(x.K.launch)}</td><td class="num">${fmt(x.tgt)}</td>
+      <td class="num ${x.buf===null?"":x.buf<0?"neg":x.buf<7?"wrn":"pos"}">${x.buf===null?"—":signed(x.buf)+"d"}</td>
+      <td><span class="pbar"><i style="width:${x.prog}%"></i></span><span class="mono">${x.prog}%</span></td>
+      <td class="num ${x.late?"neg":""}">${x.late}</td><td><span class="chip c-${h.k}">${h.l}</span></td></tr>`; }).join("");
+  return `<div class="phead"><div style="display:grid;gap:4px"><div class="eyebrow">NPD portfolio</div><h1>${S.brand?esc(S.brand):"All brands"}</h1></div>
+    <div class="frow"><button class="btn" type="button" id="btnNew2">New project</button></div></div>
+  <section class="kpis">
+    <div class="kpi"><span class="eyebrow">Brands</span><span class="v">${brands.length}</span><span class="s">${xs.length} projects in view</span></div>
+    <div class="kpi"><span class="eyebrow">Active projects</span><span class="v">${active.length}</span><span class="s">${xs.length-active.length} launched or stopped</span></div>
+    <div class="kpi fpr"><span class="eyebrow">FPRs in next 60 days</span><span class="v">${fprSoon}</span><span class="s">First production runs due</span></div>
+    <div class="kpi"><span class="eyebrow">Launch past target</span><span class="v ${offT?"neg":""}">${offT}</span><span class="s">Forecast later than target date</span></div>
+    <div class="kpi"><span class="eyebrow">Delayed tasks</span><span class="v ${lateT?"neg":""}">${lateT}</span><span class="s">Across all projects in view</span></div>
+  </section>
+  <section class="panel"><div class="panel-head"><h2>Launch roadmap</h2>
+    <div class="legend"><span><i class="swatch" style="background:var(--accent)"></i>Stage passed</span><span><i class="swatch" style="background:var(--gate)"></i>Current stage</span><span><i class="swatch" style="background:var(--grid);outline:1px solid var(--line)"></i>Upcoming</span><span style="color:var(--gate)">◆ FPR</span><span>▲ Forecast launch</span><span style="color:var(--crit)">┆ Target</span></div></div>
+    <div class="rm"><div class="rm-row rm-axis"><div></div><div class="rm-track rm-scale">${ticks}<i class="rm-today" style="left:${pc(td+DAY/2)}"><b>Today</b></i></div><span></span></div>${roadmap || `<p class="muted">No projects for this brand yet. Use <b>New project</b> to add one.</p>`}</div></section>
+  <section class="panel"><div class="panel-head"><h2>Project register</h2><span class="muted">Click a project to open its dashboard</span></div>
+    <div class="tblwrap"><table><thead><tr><th>Brand</th><th>Code</th><th>Project</th><th>Current stage</th><th>Next gate</th><th class="num">FPR</th><th class="num">Forecast launch</th><th class="num">Target</th><th class="num">Buffer</th><th>Progress</th><th class="num">Delayed</th><th>Health</th></tr></thead><tbody>${table || `<tr><td colspan="12" class="muted">No projects yet.</td></tr>`}</tbody></table></div></section>
+  <section class="panel"><div class="panel-head"><h2>Brands</h2><button class="btn sm" type="button" id="addBrand">Add brand</button></div>
+    <div class="tblwrap"><table><thead><tr><th>Brand</th><th>Category</th><th>Brand manager</th><th>Manager email (L3)</th><th class="num">Projects</th><th></th></tr></thead><tbody>
+    ${S.brands.map((b,i) => `<tr style="cursor:default"><td><input type="text" data-bname="${i}" value="${esc(b.name)}" aria-label="Brand name"></td><td><input type="text" data-bcat="${i}" value="${esc(b.category||"")}" aria-label="Category"></td><td><input type="text" data-bmgr="${i}" value="${esc(b.manager||"")}" aria-label="Brand manager"></td><td><input type="text" data-bemail="${i}" value="${esc(b.email||"")}" placeholder="name@company.com" aria-label="Brand manager email"></td><td class="num">${S.projects.filter(p=>p.brand===b.name).length}</td><td><button class="btn sm danger" type="button" data-delbrand="${i}">Remove</button></td></tr>`).join("")}
+    </tbody></table></div></section>`;
+},
+overview(p){
+  const td = todayT(), K = keyDates(p, R);
+  const work = p.tasks.filter(t => t.kind!=="milestone");
+  const totD = work.reduce((a,t) => a + (+t.dur||0), 0) || 1;
+  const prog = Math.round(work.reduce((a,t) => a + (+t.dur||0)*(+t.progress||0), 0)/totD);
+  const st = p.tasks.map(t => ({t, r:R.tasks.get(t.id), s:status(t, R.tasks.get(t.id))}));
+  const late = st.filter(x => x.s.k==="late").length, risk = st.filter(x => x.s.k==="risk").length;
+  const crit = st.filter(x => x.r.crit && x.s.k!=="done").length;
+  const fprB = p.baseline && p.fprId && p.baseline.tasks[p.fprId] ? Math.round((K.fpr - parseD(p.baseline.tasks[p.fprId].f))/DAY) : null;
+  const tgt = parseD(p.target), buf = isFinite(tgt) && isFinite(K.launch) ? Math.round((tgt - K.launch)/DAY) : null;
+  const fprTasks = st.filter(x => x.t.fpr);
+  const fprDone = fprTasks.filter(x => x.s.k==="done").length;
+  const fprPct = fprTasks.length ? Math.round(fprTasks.reduce((a,x)=>a+(+x.t.progress||0),0)/fprTasks.length) : 0;
+  const days2fpr = isFinite(K.fpr) ? Math.round((K.fpr - td)/DAY) : null;
+  const attn = st.filter(x => x.s.k==="late" || x.s.k==="risk").sort((a,b) => a.r.finish-b.r.finish);
+  const C = 2*Math.PI*44;
+  const stageCells = p.stages.map((s,i) => { const k=i+1, ts = work.filter(t => t.stage===k), d = ts.reduce((a,t)=>a+(+t.dur||0),0)||1;
+    const pc = Math.round(ts.reduce((a,t)=>a+(+t.dur||0)*(+t.progress||0),0)/d), g = R.gates[i];
+    const bv = p.baseline && p.baseline.gates[k] ? Math.round((g.date - parseD(p.baseline.gates[k]))/DAY) : null;
+    return `<div class="stage"><div class="eyebrow">Stage ${k}</div><h3>${esc(s.name)}</h3>
+      <div class="bar"><i style="width:${pc}%"></i></div><div class="muted mono" style="font-size:12px">${pc}% · ${ts.length} tasks</div>
+      <div class="gate-tag"><span class="diamond"></span><div style="display:grid;gap:3px;min-width:0"><b style="font-size:13px">G${k} · ${esc(s.gate)}</b>
+      <span class="mono muted" style="font-size:12px">${fmt(g.date)}${bv!==null&&bv!==0?` <span class="${bv>0?"neg":"pos"}">${signed(bv)}d</span>`:""}</span>
+      <span><span class="chip c-${DEC_K[s.decision]||"pending"}">${esc(s.decision)}</span></span></div></div></div>`; }).join("");
+  const fnRows = p.functions.map(f => { const xs = st.filter(x => x.t.fn===f.name && x.t.kind!=="milestone"); if(!xs.length) return "";
+    const c = k => xs.filter(x => x.s.k===k).length, n = xs.length, seg = (k,col) => c(k) ? `<i style="width:${c(k)/n*100}%;background:${col}" title="${c(k)}"></i>` : "";
+    return `<div class="lrow"><span class="nm"><span class="swatch" style="background:${f.color}"></span>${esc(f.name)}</span>
+      <div class="stack">${seg("done","var(--good)")}${seg("prog","var(--accent)")}${seg("risk","var(--warn)")}${seg("late","var(--crit)")}</div><span class="mono muted" style="text-align:right">${c("done")}/${n}</span></div>`; }).join("");
+  return `${projectHeader(p)}
+  <section class="kpis" aria-label="Key figures">
+    <div class="kpi"><span class="eyebrow">Overall progress</span><span class="v">${prog}%</span><span class="s">Weighted by task duration</span></div>
+    <div class="kpi fpr"><span class="eyebrow">FPR – First Production Run</span><span class="v">${fmt(K.fpr)}</span>
+      <span class="s">${days2fpr!==null?(days2fpr>=0?`${days2fpr} days away`:`${-days2fpr} days ago`):""}${fprB!==null?` · <span class="${fprB>0?"neg":fprB<0?"pos":""}">${fprB===0?"on baseline":signed(fprB)+"d vs baseline"}</span>`:""}</span></div>
+    <div class="kpi"><span class="eyebrow">Forecast launch</span><span class="v">${fmt(K.launch)}</span>
+      <span class="s">${buf!==null?`<span class="${buf<0?"neg":buf<7?"wrn":"pos"}">${buf>=0?buf+" days buffer":(-buf)+" days past target"}</span> to target ${fmt(tgt)}`:"Set a target launch date"}</span></div>
+    <div class="kpi"><span class="eyebrow">Needs attention</span><span class="v"><span class="${late?"neg":""}">${late}</span> <span style="font-size:18px" class="muted">/</span> <span class="${risk?"wrn":""}">${risk}</span></span><span class="s">Delayed / at risk</span></div>
+    <div class="kpi"><span class="eyebrow">Critical path</span><span class="v">${crit}</span><span class="s">Open tasks with zero slack</span></div>
+  </section>
+  <section class="panel"><div class="panel-head"><h2>Stage-gate pipeline</h2><a class="btn sm" href="#gates">Review gates</a></div>
+    <div class="track" style="--n:${p.stages.length}">${stageCells}</div></section>
+  <div class="grid2">
+    <section class="panel"><div class="panel-head"><h2>FPR readiness</h2><span class="muted">${fprDone} of ${fprTasks.length} prerequisites done</span></div>
+      <div class="ring"><svg viewBox="0 0 110 110" role="img" aria-label="FPR readiness ${fprPct}%"><circle cx="55" cy="55" r="44" fill="none" stroke="var(--grid)" stroke-width="10"/>
+        <circle cx="55" cy="55" r="44" fill="none" stroke="var(--gate)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C*fprPct/100} ${C}" transform="rotate(-90 55 55)"/>
+        <text x="55" y="53" text-anchor="middle" font-size="22" font-weight="600" fill="var(--ink)" style="font-family:var(--f-display)">${fprPct}%</text><text x="55" y="70" text-anchor="middle" font-size="9" fill="var(--muted)">READY</text></svg>
+      <div class="list">${fprTasks.sort((a,b)=>a.r.finish-b.r.finish).map(x => li(p,x)).join("") || `<p class="muted">Mark tasks as FPR-critical in the task editor to track them here.</p>`}</div></div></section>
+    <section class="panel"><div class="panel-head"><h2>Function workload</h2>
+      <div class="legend"><span><i class="swatch" style="background:var(--good)"></i>Done</span><span><i class="swatch" style="background:var(--accent)"></i>In progress</span><span><i class="swatch" style="background:var(--warn)"></i>At risk</span><span><i class="swatch" style="background:var(--crit)"></i>Delayed</span></div></div>
+      <div class="load">${fnRows}</div>
+      <h3 style="margin-top:20px">Delayed & at-risk tasks</h3>
+      <div class="list">${attn.map(x => li(p,x)).join("") || `<p class="muted">Nothing delayed. All tasks are on plan.</p>`}</div></section>
+  </div>`;
+},
+gantt(p){
+  return `<section class="panel"><div class="panel-head"><h2>Timeline</h2>
+    <div class="gtools">
+      <div class="seg" role="group" aria-label="Zoom">${["day","week","month"].map(z => `<button type="button" data-zoom="${z}" aria-pressed="${ui.zoom===z}">${z[0].toUpperCase()+z.slice(1)}</button>`).join("")}</div>
+      <div class="seg" role="group" aria-label="Group by">${[["stage","By stage"],["fn","By function"]].map(([g,l]) => `<button type="button" data-group="${g}" aria-pressed="${ui.group===g}">${l}</button>`).join("")}</div>
+      <label class="chk"><input type="checkbox" id="gCrit" ${ui.crit?"checked":""}> Critical path</label>
+      <label class="chk"><input type="checkbox" id="gBase" ${ui.base?"checked":""}> Baseline</label>
+      <label class="chk"><input type="checkbox" id="gDeps" ${ui.deps?"checked":""}> Dependencies</label>
+      <button class="btn sm" type="button" data-add="1">Add task</button>
+    </div></div>
+    <div class="legend" style="margin-bottom:10px">${p.functions.filter(f => p.tasks.some(t=>t.fn===f.name)).map(f => `<span><i class="swatch" style="background:${f.color}"></i>${esc(f.name)}</span>`).join("")}
+      <span><i class="swatch" style="background:var(--gate);transform:rotate(45deg)"></i>Gate</span><span style="color:var(--gate)">┆ FPR</span><span style="color:var(--accent)">│ Today</span><span style="color:var(--crit)">┆ Target launch</span></div>
+    <div class="gscroll" id="gscroll"></div>
+    ${R.cyc.size?`<p class="err">Circular dependency between tasks ${[...R.cyc].map(i=>"#"+i).join(", ")}. Remove one link to fix the schedule.</p>`:""}
+  </section>`;
+},
+tasks(p){
+  const opt = (arr, v) => arr.map(([val,l]) => `<option value="${esc(val)}"${val===v?" selected":""}>${esc(l)}</option>`).join("");
+  return `<section class="panel"><div class="panel-head"><h2>Task register</h2>
+    <div class="filters">
+      <input type="text" id="fQ" placeholder="Search tasks or owners" value="${esc(ui.q)}" aria-label="Search">
+      <select id="fFn" aria-label="Function">${opt([["","All functions"],...p.functions.map(f=>[f.name,f.name])], ui.fFn)}</select>
+      <select id="fStage" aria-label="Stage">${opt([["","All stages"],...p.stages.map((s,i)=>[String(i+1),`S${i+1} ${s.name}`])], ui.fStage)}</select>
+      <select id="fStatus" aria-label="Status">${opt([["","All statuses"],["ns","Not started"],["prog","In progress"],["risk","At risk"],["late","Delayed"],["done","Done"]], ui.fStatus)}</select>
+      <button class="btn primary sm" type="button" data-add="1">Add task</button>
+    </div></div>
+    <div class="tblwrap" id="tbl"></div>
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0">Dependent tasks are scheduled from their predecessors (and the previous gate). Independent tasks run on a fixed start date. Durations are in working days. Links: <span class="mono">5</span> = finish-to-start, <span class="mono">5SS+2</span> = start 2 days after #5 starts, also FF and SF.</p>
+  </section>`;
+},
+functions(p){
+  return `${projectHeader(p)}<div class="board">${p.functions.map(f => {
+    const xs = ordered(p).filter(t => t.fn===f.name).map(t => ({t, r:R.tasks.get(t.id), s:status(t, R.tasks.get(t.id))}));
+    const w = xs.filter(x=>x.t.kind!=="milestone"), d = w.reduce((a,x)=>a+(+x.t.dur||0),0)||1, pc = Math.round(w.reduce((a,x)=>a+(+x.t.dur||0)*(+x.t.progress||0),0)/d);
+    const late = xs.filter(x=>x.s.k==="late").length;
+    return `<section class="fcol"><header><div class="row"><h3 style="display:flex;gap:8px;align-items:center"><span class="swatch" style="background:${f.color}"></span>${esc(f.name)}</h3><span class="mono muted">${xs.length}</span></div>
+      <div class="eyebrow">${esc(f.head||"")}</div>
+      <div class="row"><div class="stack" style="flex:1;height:6px"><i style="width:${pc}%;background:${f.color}"></i></div><span class="mono" style="font-size:12px">${pc}%</span></div>
+      ${late?`<span class="chip c-late">${late} delayed</span>`:""}</header>
+      <div class="cards list">${xs.map(x => li(p,x,true)).join("") || `<p class="muted" style="margin:8px 0">No tasks assigned yet.</p>`}</div></section>`; }).join("")}</div>`;
+},
+gates(p){
+  return `${projectHeader(p)}<div class="gates">${p.stages.map((s,i) => { const k=i+1, g=R.gates[i], ts=p.tasks.filter(t=>t.stage===k);
+    const done = ts.filter(t=>+t.progress>=100).length, cd = s.criteria.filter(c=>c.done).length;
+    const bv = p.baseline && p.baseline.gates[k] ? Math.round((g.date - parseD(p.baseline.gates[k]))/DAY) : null;
+    return `<section class="gcard"><div class="hd"><span class="diamond"></span><div style="display:grid;gap:2px;flex:1;min-width:0">
+      <span class="eyebrow">Gate ${k} · closes stage ${k} ${esc(s.name)}</span><h3>${esc(s.gate)}</h3></div><span class="chip c-${DEC_K[s.decision]||"pending"}">${esc(s.decision)}</span></div>
+      <div class="calc"><span class="muted">Planned gate</span><b>${fmt(g.date)}${bv!==null&&bv!==0?` <span class="${bv>0?"neg":"pos"}">${signed(bv)}d</span>`:""}</b>
+        <span class="muted">Stage tasks</span><b>${done} of ${ts.length} done</b><span class="muted">Criteria met</span><b>${cd} of ${s.criteria.length}</b></div>
+      <div class="crit-list">${s.criteria.map((c,j) => `<label><input type="checkbox" data-crit="${i}:${j}" ${c.done?"checked":""}><span>${esc(c.t)}</span></label>`).join("")}</div>
+      <div class="frow"><input type="text" id="newCrit${i}" placeholder="Add a criterion" style="flex:1"><button class="btn sm" type="button" data-addcrit="${i}">Add</button></div>
+      <div class="fld2"><label class="fld"><span>Decision</span><select data-dec="${i}">${DECISIONS.map(d=>`<option${d===s.decision?" selected":""}>${d}</option>`).join("")}</select></label>
+        <label class="fld"><span>Decision date</span><input type="date" data-decdate="${i}" value="${esc(s.decisionDate)}"></label></div>
+      <label class="fld"><span>Gate notes</span><textarea rows="2" data-gnotes="${i}" placeholder="Conditions, actions, attendees">${esc(s.notes)}</textarea></label>
+    </section>`; }).join("")}</div>`;
+},
+project(p){
+  return `<section class="panel"><div class="panel-head"><h2>Project details</h2></div>
+    <form id="projForm" style="display:grid;gap:14px;max-width:760px">
+      <div class="fld2"><label class="fld"><span>Brand</span><select id="pBrand">${S.brands.map(b=>`<option${b.name===p.brand?" selected":""}>${esc(b.name)}</option>`).join("")}</select><small>Add brands on the Portfolio page.</small></label>
+        <label class="fld"><span>Project code</span><input type="text" id="pCode" class="mono" value="${esc(p.code)}"><small>Links this project to its rows in the Excel master data.</small></label></div>
+      <div class="fld2"><label class="fld"><span>Product / project name</span><input type="text" id="pName" value="${esc(p.name)}" required></label>
+        <label class="fld"><span>Category</span><input type="text" id="pCat" value="${esc(p.category)}"></label></div>
+      <div class="fld2"><label class="fld"><span>SKU / code</span><input type="text" id="pSku" value="${esc(p.sku)}"></label>
+        <label class="fld"><span>Working days per week</span><select id="pWW">${[5,6,7].map(n=>`<option value="${n}"${+p.workweek===n?" selected":""}>${n} days${n===6?" (Mon–Sat)":n===5?" (Mon–Fri)":""}</option>`).join("")}</select></label></div>
+      <div class="fld2"><label class="fld"><span>Kick-off date</span><input type="date" id="pStart" value="${esc(p.start)}" required></label>
+        <label class="fld"><span>Target launch date</span><input type="date" id="pTarget" value="${esc(p.target)}"></label></div>
+      <div class="fld2"><label class="fld"><span>FPR milestone</span><select id="pFpr">${taskOpts(p, p.fprId)}</select></label>
+        <label class="fld"><span>Launch milestone</span><select id="pLaunch">${taskOpts(p, p.launchId)}</select></label></div>
+      <label class="fld"><span>Holidays (plant shutdowns)</span><input type="text" id="pHol" value="${esc((p.holidays||[]).join(", "))}" placeholder="2026-11-08, 2026-12-25"><small>Comma-separated dates. These are skipped as non-working days.</small></label>
+      <label class="chk"><input type="checkbox" id="pGB" ${p.gateBlocks?"checked":""}> Dependent tasks wait for the previous gate (strict stage-gate)</label>
+      <div><button class="btn primary" type="submit">Save project details</button></div>
+    </form></section>
+  <section class="panel"><div class="panel-head"><h2>Stages & gates</h2></div>
+    <div class="tblwrap"><table><thead><tr><th>#</th><th>Stage name</th><th>Gate name</th></tr></thead><tbody>
+    ${p.stages.map((s,i)=>`<tr style="cursor:default"><td class="mono">${i+1}</td><td><input type="text" data-sname="${i}" value="${esc(s.name)}" aria-label="Stage ${i+1} name"></td><td><input type="text" data-gname="${i}" value="${esc(s.gate)}" aria-label="Gate ${i+1} name"></td></tr>`).join("")}
+    </tbody></table></div></section>
+  <section class="panel"><div class="panel-head"><h2>Functions</h2><button class="btn sm" type="button" id="addFn">Add function</button></div>
+    <div class="tblwrap"><table><thead><tr><th>Colour</th><th>Function</th><th>Function head</th><th>Head email (L1 copy, L2 to)</th><th class="num">Tasks</th><th></th></tr></thead><tbody>
+    ${p.functions.map((f,i)=>`<tr style="cursor:default"><td><input type="color" data-fcol="${i}" value="${esc(f.color)}" aria-label="Colour"></td><td><input type="text" data-fname="${i}" value="${esc(f.name)}" aria-label="Function name"></td><td><input type="text" data-fhead="${i}" value="${esc(f.head||"")}" aria-label="Function head"></td><td><input type="text" data-femail="${i}" value="${esc(f.email||"")}" placeholder="name@company.com" aria-label="Function head email"></td><td class="num">${p.tasks.filter(t=>t.fn===f.name).length}</td><td><button class="btn sm danger" type="button" data-delfn="${i}">Remove</button></td></tr>`).join("")}
+    </tbody></table></div></section>
+  <section class="panel"><div class="panel-head"><h2>Baseline & data</h2></div>
+    <p class="muted" style="margin-top:0;max-width:70ch">A baseline freezes today's planned dates so the Gantt and dashboards show slippage against the approved plan. ${p.baseline?`Current baseline set on ${fmt(parseD(p.baseline.at))}.`:"No baseline set yet."}</p>
+    <div class="frow"><button class="btn" type="button" id="setBase">${p.baseline?"Reset baseline to current plan":"Set baseline"}</button>
+      ${p.baseline?`<button class="btn" type="button" id="clrBase">Clear baseline</button>`:""}
+      <button class="btn" type="button" id="dlTemplate">Download blank Excel template</button>
+      <button class="btn" type="button" id="dupProj">Duplicate project</button>
+      <button class="btn danger" type="button" id="delProj">Delete project</button></div></section>`;
+}
+};
+function taskOpts(p, sel){ return `<option value="">None</option>` + ordered(p).map(t => `<option value="${t.id}"${t.id===sel?" selected":""}>#${t.id} ${esc(t.name)}</option>`).join(""); }
+function li(p, x, compact){
+  const v = variance(p, x.t.id, x.r);
+  return `<div class="li" data-edit="${x.t.id}"><span class="t">${x.t.kind==="milestone"?"◆ ":""}${esc(x.t.name)}</span><span class="chip c-${x.s.k}">${x.s.l}</span>
+  <span class="sub">${compact?"":`<span><i class="swatch" style="background:${fnColor(p,x.t.fn)}"></i> ${esc(x.t.fn)}</span>`}<span class="mono">${fmtShort(x.r.start)} → ${fmtShort(x.r.finish)}</span>
+  <span>${esc(x.t.owner||"Unassigned")}</span>${x.t.kind!=="milestone"?`<span class="mono">${+x.t.progress||0}%</span>`:""}${v?`<span class="mono ${v>0?"neg":"pos"}">${signed(v)}d</span>`:""}${x.r.crit&&x.s.k!=="done"?`<span class="neg">Critical</span>`:""}</span></div>`;
+}
+
+const AFTER = {
+gantt(p){ drawGantt(p); },
+tasks(p){ drawTable(p); }
+};
+
+function drawTable(p){
+  const q = ui.q.toLowerCase();
+  const rows = ordered(p).map(t => ({t, r:R.tasks.get(t.id), s:status(t, R.tasks.get(t.id))})).filter(x =>
+    (!ui.fFn || x.t.fn===ui.fFn) && (!ui.fStage || x.t.stage===+ui.fStage) && (!ui.fStatus || x.s.k===ui.fStatus) &&
+    (!q || (x.t.name+" "+(x.t.owner||"")).toLowerCase().includes(q)));
+  let last = 0, html = "";
+  rows.forEach(x => {
+    if(x.t.stage !== last){ last = x.t.stage; const g = R.gates[last-1]; html += `<tr class="stg"><td colspan="13">Stage ${last} · ${esc(p.stages[last-1]?.name||"")} <span class="muted mono" style="font-weight:400;text-transform:none;letter-spacing:0">→ G${last} ${fmt(g?.date)}</span></td></tr>`; }
+    const v = variance(p, x.t.id, x.r), ms = x.t.kind==="milestone";
+    html += `<tr data-edit="${x.t.id}"><td class="mono muted">${x.t.id}</td><td><span class="tn" title="${esc(x.t.name)}">${ms?"◆ ":""}${esc(x.t.name)}</span>${x.t.fpr?` <span class="chip c-hold" title="FPR-critical">FPR</span>`:""}</td>
+      <td><span class="swatch" style="background:${fnColor(p,x.t.fn)}"></span> ${esc(x.t.fn)}</td><td>${esc(x.t.owner||"")}</td>
+      <td>${x.t.mode==="ind"?"Independent":"Dependent"}</td><td class="mono">${x.t.mode==="ind"?fmt(parseD(x.t.fixed)):esc((x.t.deps||[]).map(depStr).join(", "))}</td>
+      <td class="num">${ms?"0":x.t.dur}</td><td class="num">${fmt(x.r.start)}</td><td class="num">${fmt(x.r.finish)}</td>
+      <td class="num ${x.r.crit?"neg":""}">${x.r.slack}</td><td class="num ${v>0?"neg":v<0?"pos":""}">${v===null?"—":signed(v)}</td>
+      <td>${ms?"":`<span class="pbar"><i style="width:${+x.t.progress||0}%"></i></span><span class="mono">${+x.t.progress||0}%</span>`}</td><td><span class="chip c-${x.s.k}">${x.s.l}</span></td></tr>`;
+  });
+  $("#tbl").innerHTML = `<table><thead><tr><th>#</th><th>Task</th><th>Function</th><th>Owner</th><th>Scheduling</th><th>Predecessors / fixed start</th><th class="num">Days</th><th class="num">Start</th><th class="num">Finish</th><th class="num">Slack</th><th class="num">Var.</th><th>Progress</th><th>Status</th></tr></thead><tbody>${html || `<tr><td colspan="13" class="muted">No tasks match these filters.</td></tr>`}</tbody></table>`;
+}
+
+function drawGantt(p){
+  const px = {day:26, week:9, month:3}[ui.zoom], RH = 30, HH = 46;
+  const td = todayT(), K = keyDates(p, R);
+  const rows = [];
+  if(ui.group === "stage"){
+    p.stages.forEach((s,i) => { const k=i+1, ts = ordered(p).filter(t=>t.stage===k);
+      rows.push({grp:true, label:`S${k} · ${s.name}`, stage:k, ts});
+      ts.forEach(t => rows.push({t})); });
+  } else {
+    p.functions.forEach(f => { const ts = ordered(p).filter(t=>t.fn===f.name); if(!ts.length) return;
+      rows.push({grp:true, label:f.name, color:f.color, ts}); ts.forEach(t => rows.push({t})); });
+  }
+  let mn = parseD(p.start), mx = mn;
+  R.tasks.forEach(r => { if(r.start<mn) mn=r.start; if(r.finish>mx) mx=r.finish; });
+  if(p.baseline) Object.values(p.baseline.tasks).forEach(b => { const f = parseD(b.f); if(f>mx) mx=f; });
+  const tg = parseD(p.target); if(isFinite(tg) && tg>mx) mx = tg;
+  let v0 = mn - 3*DAY; v0 -= ((new Date(v0).getUTCDay()+6)%7)*DAY;
+  const v1 = mx + 21*DAY, W = Math.ceil((v1-v0)/DAY*px), H = rows.length*RH;
+  const X = t => (t - v0)/DAY*px;
+  // header
+  let hd = "", grid = "";
+  for(let t = v0; t <= v1; t += DAY){ const d = new Date(t), dom = d.getUTCDate(), dow = d.getUTCDay(), x = X(t);
+    if(dom===1 || t===v0){ hd += `<line x1="${x}" y1="0" x2="${x}" y2="${HH}" class="g-month"/><text x="${x+5}" y="15" class="g-mlbl">${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}</text>`; if(dom===1) grid += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="g-month"/>`; }
+    if(ui.zoom==="day"){ if(!R.cal.isW(t)) grid += `<rect x="${x}" y="0" width="${px}" height="${H}" class="g-week"/>`;
+      hd += `<text x="${x+px/2}" y="38" text-anchor="middle" class="g-lbl">${dom}</text>`; }
+    else if(dow===1){ grid += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="g-grid"/>`;
+      if(ui.zoom==="week") hd += `<text x="${x+3}" y="38" class="g-lbl">${dom}</text>`; }
+  }
+  rows.forEach((_,i) => grid += `<line x1="0" y1="${(i+1)*RH}" x2="${W}" y2="${(i+1)*RH}" class="g-grid"/>`);
+  // positions
+  const pos = new Map(); rows.forEach((r,i) => { if(r.t) pos.set(r.t.id, i); });
+  let bars = "", arrows = "", left = "";
+  rows.forEach((row,i) => {
+    const y = i*RH;
+    if(row.grp){
+      left += `<div class="grow grp">${row.color?`<span class="swatch" style="background:${row.color}"></span>`:`<span class="diamond" style="width:9px;height:9px"></span>`}<span class="nm">${esc(row.label)}</span><span class="du">${row.ts.length}</span></div>`;
+      if(row.ts.length){ const rs = row.ts.map(t=>R.tasks.get(t.id)); const a = Math.min(...rs.map(r=>r.start)), b = Math.max(...rs.map(r=>r.finish));
+        bars += `<rect x="${X(a)}" y="${y+12}" width="${Math.max(2,X(b+DAY)-X(a))}" height="5" rx="1" class="g-sum"/>`; }
+      if(row.stage){ const g = R.gates[row.stage-1], gx = X(g.date+DAY); const s = p.stages[row.stage-1];
+        bars += `<g><title>G${row.stage} ${esc(s.gate)} · ${fmt(g.date)} · ${esc(s.decision)}</title><rect x="${gx-6}" y="${y+9}" width="12" height="12" rx="2" transform="rotate(45 ${gx} ${y+15})" class="g-gate"/>
+          <text x="${gx+11}" y="${y+19}" class="g-flag" fill="var(--gate)">G${row.stage} ${esc(s.decision)}</text></g>`; }
+      return;
+    }
+    const t = row.t, r = R.tasks.get(t.id), s = status(t, r), col = fnColor(p, t.fn), crit = ui.crit && r.crit && s.k!=="done";
+    left += `<div class="grow${crit?" crit":""}" data-edit="${t.id}" title="${esc(t.name)}"><span class="id">${t.id}</span><span class="nm">${t.kind==="milestone"?"◆ ":""}${esc(t.name)}</span><span class="du">${t.kind==="milestone"?"":t.dur+"d"}</span></div>`;
+    const tip = `<title>#${t.id} ${esc(t.name)}\n${esc(t.fn)} · ${esc(t.owner||"")}\n${fmt(r.start)} → ${fmt(r.finish)} · ${r.dur}d · slack ${r.slack}\n${s.l} · ${+t.progress||0}%</title>`;
+    if(ui.base && p.baseline && p.baseline.tasks[t.id]){ const b = p.baseline.tasks[t.id], bs = parseD(b.s), bf = parseD(b.f);
+      bars += t.kind==="milestone" ? `<rect x="${X(bs)-3}" y="${y+21}" width="6" height="6" class="g-bl" transform="rotate(45 ${X(bs)} ${y+24})"/>` : `<rect x="${X(bs)}" y="${y+22}" width="${Math.max(2,X(bf+DAY)-X(bs))}" height="3" rx="1" class="g-bl"/>`; }
+    if(t.kind==="milestone"){ const mx2 = X(r.start), isF = t.id===p.fprId;
+      bars += `<g class="g-bar" data-edit="${t.id}">${tip}<rect x="${mx2-7}" y="${y+8}" width="14" height="14" rx="2" transform="rotate(45 ${mx2} ${y+15})" class="g-ms${isF?" fpr":""}"/><text x="${mx2+12}" y="${y+19}" class="g-flag" fill="${isF?"var(--gate)":"var(--ink)"}">${isF?"FPR ":""}${fmtShort(r.start)}</text></g>`;
+    } else { const x1 = X(r.start), w = Math.max(3, X(r.finish+DAY)-x1), pw = w*clamp(+t.progress||0,0,100)/100;
+      bars += `<g class="g-bar${crit?" crit":""}" data-edit="${t.id}">${tip}<rect class="base" x="${x1}" y="${y+7}" width="${w}" height="14" rx="3" fill="${col}"/>
+        <rect x="${x1}" y="${y+7}" width="${pw}" height="14" rx="3" fill="${col}"/><rect class="out" x="${x1}" y="${y+7}" width="${w}" height="14" rx="3" fill="none" stroke="${col}"/>
+        <text x="${x1+w+5}" y="${y+18}" class="g-pct">${+t.progress||0}%${t.mode==="ind"?" · fixed":""}</text></g>`; }
+  });
+  if(ui.deps){
+    p.tasks.forEach(t => { if(t.mode==="ind" || !pos.has(t.id)) return; const ri = pos.get(t.id), r = R.tasks.get(t.id);
+      (t.deps||[]).forEach(d => { if(!pos.has(d.id)) return; const pi = pos.get(d.id), pr = R.tasks.get(d.id);
+        const fromStart = d.type==="SS"||d.type==="SF", toEnd = d.type==="FF"||d.type==="SF";
+        const sx = fromStart ? X(pr.start) : (pr.dur ? X(pr.finish+DAY) : X(pr.start)+7), sy = pi*RH+15;
+        const tx = toEnd ? (r.dur ? X(r.finish+DAY) : X(r.start)+7) : (r.dur ? X(r.start) : X(r.start)-7), ty = ri*RH+15;
+        const out = fromStart ? sx-8 : sx+8, inn = toEnd ? tx+8 : tx-8, midY = ty > sy ? ty-RH/2 : ty+RH/2;
+        let path;
+        if(fromStart && !toEnd) path = `M${sx},${sy} H${Math.min(out,inn)} V${ty} H${tx}`;
+        else if(!fromStart && toEnd) path = `M${sx},${sy} H${Math.max(out,inn)} V${ty} H${tx}`;
+        else if(!fromStart && inn >= out) path = `M${sx},${sy} H${inn} V${ty} H${tx}`;
+        else path = `M${sx},${sy} H${out} V${midY} H${inn} V${ty} H${tx}`;
+        const c = ui.crit && r.crit && pr.crit && pr.slack<=0 ? " crit" : "";
+        arrows += `<path d="${path}" class="g-arrow${c}" marker-end="url(#ah)"/>`; }); });
+  }
+  let lines = "";
+  const vline = (t, cls, lbl, col) => { if(!isFinite(t) || t<v0 || t>v1) return; const x = X(t);
+    lines += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="${cls}"/>`; hd += `<line x1="${x}" y1="${HH-14}" x2="${x}" y2="${HH}" class="${cls}"/><text x="${x+3}" y="${HH-17}" class="g-flag" fill="${col}">${lbl}</text>`; };
+  vline(td + DAY/2, "g-today", "Today", "var(--accent)");
+  vline(K.fpr, "g-fprl", "FPR", "var(--gate)");
+  vline(tg + DAY, "g-tgt", "Target", "var(--crit)");
+  const box = $("#gscroll");
+  const sl = box.scrollLeft, st = box.scrollTop, first = !box.dataset.ready;
+  box.innerHTML = `<div class="ghead" style="width:calc(var(--left) + ${W}px)"><div class="gleft" style="height:${HH}px"><span style="width:28px">#</span><span style="flex:1">Task</span><span>Days</span></div>
+    <svg width="${W}" height="${HH}" style="display:block;flex:none">${hd}</svg></div>
+    <div class="gbody" style="width:calc(var(--left) + ${W}px)"><div class="gleft">${left}</div>
+    <svg width="${W}" height="${H}" style="display:block;flex:none"><defs><marker id="ah" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" class="g-ah"/></marker></defs>
+    ${grid}${lines}${arrows}${bars}</svg></div>`;
+  box.dataset.ready = "1";
+  if(first){ const tx = X(td) - box.clientWidth*0.35; box.scrollLeft = Math.max(0, tx); } else { box.scrollLeft = sl; box.scrollTop = st; }
+}
+
+/* ---------- task drawer ---------- */
+function openTask(id){
+  const p = P(), isNew = id==null;
+  const t = isNew ? {id:p.nextId, name:"", fn:p.functions[0]?.name||"", stage:1, owner:"", dur:5, mode:"dep", fixed:p.start, deps:[], progress:0, fpr:false, kind:"task", notes:""} : taskById(p, id);
+  const r = isNew ? null : R.tasks.get(t.id);
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="dh"><div><div class="eyebrow">${isNew?"New task":"Task #"+t.id}</div><h3 id="dTitle">${isNew?"Add a task":esc(t.name)}</h3></div><button class="btn sm" type="button" data-close="1">Close</button></div>
+    <form class="db" id="tForm">
+      <label class="fld"><span>Task name</span><input type="text" id="tName" value="${esc(t.name)}" required></label>
+      <div class="fld2"><label class="fld"><span>Function</span><select id="tFn">${p.functions.map(f=>`<option${f.name===t.fn?" selected":""}>${esc(f.name)}</option>`).join("")}</select></label>
+        <label class="fld"><span>Stage</span><select id="tStage">${p.stages.map((s,i)=>`<option value="${i+1}"${i+1===t.stage?" selected":""}>S${i+1} ${esc(s.name)}</option>`).join("")}</select></label></div>
+      <div class="fld2"><label class="fld"><span>Owner</span><input type="text" id="tOwner" value="${esc(t.owner)}"></label>
+        <label class="fld"><span>Owner email</span><input type="text" id="tOwnerE" value="${esc(t.ownerEmail||"")}" placeholder="for escalations"></label></div>
+      <div class="fld2"><label class="fld"><span>Type</span><select id="tKind"><option value="task"${t.kind!=="milestone"?" selected":""}>Task</option><option value="milestone"${t.kind==="milestone"?" selected":""}>Milestone</option></select></label><span></span></div>
+      <fieldset class="fld" style="border:0;padding:0;margin:0"><span>Scheduling</span>
+        <div class="seg" role="radiogroup"><button type="button" data-mode="dep" aria-pressed="${t.mode!=="ind"}">Dependent</button><button type="button" data-mode="ind" aria-pressed="${t.mode==="ind"}">Independent</button></div>
+        <small id="modeHelp"></small></fieldset>
+      <label class="fld" id="wrapDeps"><span>Predecessors</span><input type="text" id="tDeps" class="mono" value="${esc((t.deps||[]).map(depStr).join(", "))}" placeholder="e.g. 3, 5SS+2, 7FF-1"><small>Task numbers, optionally with link type (FS, SS, FF, SF) and lag in working days.</small></label>
+      <label class="fld" id="wrapFixed"><span>Fixed start date</span><input type="date" id="tFixed" value="${esc(t.fixed||p.start)}"></label>
+      <div class="fld2"><label class="fld" id="wrapDur"><span>Duration (working days)</span><input type="number" id="tDur" min="0" max="999" value="${t.dur}"></label>
+        <label class="fld" id="wrapProg"><span>Progress: <b id="pv">${+t.progress||0}%</b></span><input type="range" id="tProg" min="0" max="100" step="5" value="${+t.progress||0}"></label></div>
+      <label class="chk"><input type="checkbox" id="tFpr" ${t.fpr?"checked":""}> FPR-critical (must be complete before First Production Run)</label>
+      <label class="fld"><span>Notes</span><textarea id="tNotes" rows="3">${esc(t.notes)}</textarea></label>
+      ${r?`<div class="calc"><span class="muted">Planned start</span><b>${fmt(r.start)}</b><span class="muted">Planned finish</span><b>${fmt(r.finish)}</b><span class="muted">Total slack</span><b class="${r.crit?"neg":""}">${r.slack} days${r.crit?" · critical path":""}</b>
+        ${p.baseline&&p.baseline.tasks[t.id]?`<span class="muted">Baseline finish</span><b>${fmt(parseD(p.baseline.tasks[t.id].f))}</b>`:""}
+        <span class="muted">Successors</span><b>${p.tasks.filter(x=>(x.deps||[]).some(d=>d.id===t.id)&&x.mode!=="ind").map(x=>"#"+x.id).join(", ")||"None"}</b></div>`:""}
+      <p class="err" id="tErr" hidden></p>
+    </form>
+    <div class="df">${isNew?"<span></span>":`<button class="btn danger" type="button" id="tDel">Delete task</button>`}<div class="frow"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="submit" form="tForm">${isNew?"Add task":"Save changes"}</button></div></div>
+  </aside>`;
+  let mode = t.mode==="ind" ? "ind" : "dep";
+  const sync = () => { const ms = $("#tKind").value==="milestone";
+    $("#wrapDeps").hidden = mode==="ind"; $("#wrapFixed").hidden = mode!=="ind"; $("#wrapDur").hidden = ms; $("#wrapProg").hidden = false;
+    document.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode===mode));
+    $("#modeHelp").textContent = mode==="ind" ? "Runs on its own start date, like a licence filing or a parallel study. Other tasks can still depend on it." : "Starts when its predecessors allow" + (p.gateBlocks ? " and after the previous stage gate." : "."); };
+  sync();
+  document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; sync(); });
+  $("#tKind").onchange = sync;
+  $("#tProg").oninput = e => $("#pv").textContent = e.target.value + "%";
+  $("#tName").focus();
+  $("#tForm").onsubmit = e => { e.preventDefault();
+    const ids = new Set(p.tasks.map(x => x.id)); ids.add(t.id);
+    const pd = parseDeps($("#tDeps").value, t.id, ids);
+    if(mode==="dep" && pd.errs.length){ const er = $("#tErr"); er.textContent = pd.errs.join(". ") + "."; er.hidden = false; return; }
+    const before = keyDates(p, R);
+    const upd = {name:$("#tName").value.trim()||"Untitled task", fn:$("#tFn").value, stage:+$("#tStage").value, owner:$("#tOwner").value.trim(), ownerEmail:$("#tOwnerE").value.trim(),
+      kind:$("#tKind").value, mode, deps: mode==="dep" ? pd.deps : [], fixed: $("#tFixed").value || p.start,
+      dur: $("#tKind").value==="milestone" ? 0 : clamp(parseInt($("#tDur").value,10)||0, 0, 999), progress:+$("#tProg").value, fpr:$("#tFpr").checked, notes:$("#tNotes").value};
+    if(mode==="ind") upd.deps = t.deps || [];
+    if(isNew){ p.tasks.push({id:t.id, ...upd}); p.nextId = t.id+1; } else Object.assign(t, upd);
+    if(mode==="ind") { const tt = taskById(p, t.id); tt.deps = []; }
+    const R2 = schedule(p);
+    if(R2.cyc.size){ if(isNew) p.tasks.pop(); else Object.assign(t, {deps: (taskById(p,t.id).deps = [])}); const er = $("#tErr"); er.textContent = "These links create a circular dependency. Check the predecessor list."; er.hidden = false; if(!isNew) render(); return; }
+    const after = keyDates(p, R2);
+    closeLayer(); render();
+    const msg = [];
+    const dd = (a,b,l) => { if(isFinite(a)&&isFinite(b)){ const d = Math.round((b-a)/DAY); if(d) msg.push(`${l} ${d>0?"moved later by":"pulled in by"} ${Math.abs(d)} days (now ${fmt(b)})`); } };
+    dd(before.fpr, after.fpr, "FPR"); dd(before.launch, after.launch, "Launch");
+    toast((isNew?"Task added.":"Saved.") + (msg.length ? " " + msg.join("; ") + "." : ""));
+  };
+  const del = $("#tDel"); if(del) del.onclick = () => confirmBox(`Delete task #${t.id} "${t.name}"? Links to it from other tasks are removed too.`, "Delete task", () => {
+    p.tasks = p.tasks.filter(x => x.id!==t.id); p.tasks.forEach(x => x.deps = (x.deps||[]).filter(d => d.id!==t.id));
+    if(p.fprId===t.id) p.fprId = null; if(p.launchId===t.id) p.launchId = null; closeLayer(); render(); toast("Task deleted."); });
+}
+function closeLayer(){ $("#layer").innerHTML = ""; }
+function confirmBox(text, label, fn){
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><div class="modal" role="alertdialog" aria-modal="true"><h3>Please confirm</h3><p style="margin:0">${esc(text)}</p>
+    <div class="frow" style="justify-content:flex-end"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn danger" type="button" id="okBtn">${esc(label)}</button></div></div>`;
+  $("#okBtn").onclick = fn; $("#okBtn").focus();
+}
+let toastT;
+function toast(m){ let el = $(".toast"); if(!el){ el = document.createElement("div"); el.className = "toast"; el.setAttribute("role","status"); document.body.appendChild(el); }
+  el.textContent = m; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 4800); }
+
+/* ---------- escalation matrix ---------- */
+const ESC_DEFAULT = {l1:3, l2:7, l3:14, replyDays:2, npdHead:"NPD Head", npdHeadEmail:"", from:"NPD Gate Tracker"};
+const escCfg = () => Object.assign({}, ESC_DEFAULT, S.esc||{});
+const nm2 = s => String(s||"").trim();
+const person = n => { n = nm2(n).toLowerCase(); return n ? (S.people||[]).find(x => nm2(x.name).toLowerCase()===n) : null; };
+// SPOC = task owner; Boss = the SPOC's reporting manager from the People directory
+function chain(owner, ownerEmail){
+  const me = person(owner) || {}, boss = person(me.boss) || {};
+  return {spoc:{n:owner||"", e:ownerEmail || me.email || ""}, boss:{n:me.boss||"", e:me.bossEmail || boss.email || ""}};
+}
+function recips(lv, c, f, b, E){
+  const F = {n:f.head||(f.name?f.name+" head":""), e:f.email||""}, B = {n:b.manager||(b.name?b.name+" brand manager":""), e:b.email||""}, H = {n:E.npdHead, e:E.npdHeadEmail};
+  const boss = c && (c.boss.n || c.boss.e) ? c.boss : F;
+  let to, cc;
+  if(!c){ to = lv>=3 ? [B, H] : [B]; cc = lv>=3 ? [] : [H]; }
+  else if(lv===1){ to = [c.spoc]; cc = [boss]; }
+  else if(lv===2){ to = [boss]; cc = [c.spoc, F]; }
+  else { to = [B]; cc = [H, boss, c.spoc]; }
+  const ok = x => x && (x.e || x.n), key = x => (x.e||x.n).toLowerCase();
+  to = to.filter(ok); cc = cc.filter(ok); if(!to.some(x=>x.e) && cc.some(x=>x.e)){ const i = cc.findIndex(x=>x.e); to.push(cc[i]); cc.splice(i,1); }
+  const uniq = arr => arr.filter((x,i) => arr.findIndex(y => key(y)===key(x))===i);
+  to = uniq(to); cc = uniq(cc).filter(x => !to.some(y => key(y)===key(x)));
+  return {to, cc};
+}
+function escalations(list){
+  const E = escCfg(), td = todayT(), out = [];
+  list.forEach(p => { const Rr = schedule(p), K = keyDates(p, Rr), b = S.brands.find(x => x.name===p.brand) || {name:p.brand};
+    const fnOf = n => p.functions.find(f => f.name===n) || {name:n};
+    if(p.stages.some(x => x.decision==="Kill")) return;
+    p.tasks.forEach(t => { const r = Rr.tasks.get(t.id); if((+t.progress||0) >= 100) return;
+      const late = Math.round((td - r.finish)/DAY); if(late <= E.l1) return;
+      let lv = late > E.l3 ? 3 : (late > E.l2 || r.crit) ? 2 : 1;
+      if(t.id===p.fprId || t.id===p.launchId || (t.fpr && late > E.l2)) lv = 3;
+      const c = chain(t.owner, t.ownerEmail);
+      out.push({lv, kind:"Task", p, t, r, late, fn:t.fn, item:`#${t.id} ${t.name}`, owner:t.owner||"", spoc:c.spoc, boss:c.boss, due:r.finish, crit:r.crit, progress:+t.progress||0, K,
+        ...recips(lv, c, fnOf(t.fn), b, E)}); });
+    Rr.gates.forEach((g,i) => { const st = p.stages[i]; if(st.decision!=="Pending") return; const late = Math.round((td - g.date)/DAY); if(late <= E.l1) return;
+      const lv = late > E.l3 ? 3 : 2;
+      out.push({lv, kind:"Gate", p, late, fn:"Gate review", item:`G${i+1} ${st.gate}: decision overdue`, owner:b.manager||"", due:g.date, K, ...recips(lv, null, {}, b, E)}); });
+    const tgt = parseD(p.target);
+    if(isFinite(tgt) && isFinite(K.launch) && K.launch > tgt){ const late = Math.round((K.launch-tgt)/DAY);
+      out.push({lv:3, kind:"Launch", p, late, fn:"Programme", item:`Forecast launch ${fmt(K.launch)} is ${late} days past target`, owner:b.manager||"", due:tgt, K, ...recips(3, null, {}, b, E)}); }
+  });
+  return out.sort((a,b) => b.lv-a.lv || b.late-a.late);
+}
+const who = arr => arr.map(x => x.e ? (x.n ? `${x.n} <${x.e}>` : x.e) : x.n + " (no email)").join("; ");
+function emailFor(x){
+  const E = escCfg(), p = x.p, td = todayT();
+  const subject = `[NPD L${x.lv} escalation] ${p.code?p.code+" ":""}${p.name}: ${x.item}${x.kind==="Task"?` (${x.late} days late)`:""}`;
+  const L = [];
+  L.push(`Hello ${x.to.map(t=>t.n||t.e).join(", ")},`, "", `This is a Level ${x.lv} escalation from the NPD Gate Tracker.`, "");
+  L.push(`Brand / project: ${p.brand} / ${p.code?p.code+" ":""}${p.name}`, `Item: ${x.item}`);
+  if(x.kind==="Task"){ L.push(`Function: ${x.fn}   SPOC: ${x.owner||"Unassigned"}${x.boss&&x.boss.n?"   Reports to: "+x.boss.n:""}`, `Planned finish: ${fmt(x.due)}   Pending for: ${x.late} days past due   Progress: ${x.progress}%`);
+    if(x.crit) L.push("This task is on the critical path. Each day of delay moves the FPR and launch."); }
+  else if(x.kind==="Gate") L.push(`Planned gate date: ${fmt(x.due)}   Days overdue: ${x.late}`);
+  else L.push(`Target launch: ${fmt(x.due)}   Forecast launch: ${fmt(x.K.launch)}`);
+  L.push(`FPR (First Production Run): ${fmt(x.K.fpr)}   Forecast launch: ${fmt(x.K.launch)}   Target: ${fmt(parseD(p.target))}`, "");
+  L.push(`Please share a recovery plan or a revised date by ${fmt(td + E.replyDays*DAY)}.`, "", `Escalation matrix: L1 SPOC with boss in copy (pending more than ${E.l1} days), L2 boss (more than ${E.l2} days or critical path), L3 brand manager and ${E.npdHead} (more than ${E.l3} days, FPR-critical or launch at risk).`, "", E.from);
+  return {subject, body: L.join("\n"), to: x.to.filter(t=>t.e).map(t=>t.e).join(";"), cc: x.cc.filter(t=>t.e).map(t=>t.e).join(";")};
+}
+const mailto = m => `mailto:${encodeURIComponent(m.to).replace(/%3B/g,";").replace(/%40/g,"@")}?${m.cc?`cc=${encodeURIComponent(m.cc).replace(/%40/g,"@")}&`:""}subject=${encodeURIComponent(m.subject)}&body=${encodeURIComponent(m.body)}`;
+
+VIEWS.escalations = function(){
+  const list = S.projects.filter(inBrand), xs = escalations(list), E = escCfg();
+  const n = l => xs.filter(x => x.lv===l).length, avg = xs.length ? Math.round(xs.reduce((a,x)=>a+x.late,0)/xs.length) : 0;
+  const noMail = xs.filter(x => !x.to.some(t=>t.e)).length;
+  const byFn = {}; xs.forEach(x => { const k = x.fn; byFn[k] = byFn[k] || [0,0,0]; byFn[k][x.lv-1]++; });
+  const maxF = Math.max(1, ...Object.values(byFn).map(v => v[0]+v[1]+v[2]));
+  const colOf = k => { for(const p of list){ const f = p.functions.find(f=>f.name===k); if(f) return f.color; } return "var(--muted)"; };
+  const fnRows = Object.entries(byFn).sort((a,b) => (b[1][2]*100+b[1][1]*10+b[1][0]) - (a[1][2]*100+a[1][1]*10+a[1][0])).map(([k,v]) => `<div class="lrow"><span class="nm"><span class="swatch" style="background:${colOf(k)}"></span>${esc(k)}</span>
+    <div class="stack" style="background:transparent"><i style="width:${v[2]/maxF*100}%;background:var(--crit)"></i><i style="width:${v[1]/maxF*100}%;background:var(--warn)"></i><i style="width:${v[0]/maxF*100}%;background:var(--accent)"></i></div><span class="mono muted" style="text-align:right">${v[0]+v[1]+v[2]}</span></div>`).join("");
+  const byBrand = S.brands.filter(b => !S.brand || b.name===S.brand).map(b => { const ys = xs.filter(x => x.p.brand===b.name); return `<div class="lrow"><span class="nm">${esc(b.name)}</span><div class="stack" style="background:transparent">${[3,2,1].map(l => `<i style="width:${ys.filter(y=>y.lv===l).length/Math.max(1,xs.length)*100}%;background:${l===3?"var(--crit)":l===2?"var(--warn)":"var(--accent)"}"></i>`).join("")}</div><span class="mono muted" style="text-align:right">${ys.length}</span></div>`; }).join("");
+  window.__esc = xs;
+  const rows = xs.map((x,i) => `<tr style="cursor:default"><td><span class="chip ${x.lv===3?"c-late":x.lv===2?"c-risk":"c-prog"}">L${x.lv}</span></td><td>${esc(x.p.brand)}</td><td class="mono">${esc(x.p.code||"")}</td>
+    <td><span class="tn" title="${esc(x.item)}">${esc(x.item)}</span><div class="muted" style="font-size:12px">${esc(x.p.name)} · ${x.kind}</div></td><td>${esc(x.fn)}</td><td class="num neg">${x.late}</td>
+    <td style="white-space:normal;min-width:180px;font-size:12.5px"><b>To</b> ${esc(who(x.to))||"—"}${x.cc.length?`<br><span class="muted">Cc ${esc(who(x.cc))}</span>`:""}</td>
+    <td><div class="frow" style="flex-wrap:nowrap"><a class="btn sm" href="${esc(mailto(emailFor(x)))}" target="_blank" rel="noopener">Compose in Outlook</a><button class="btn sm" type="button" data-copymail="${i}">Copy</button>${x.t?`<button class="btn sm" type="button" data-edit-p="${x.p.id}:${x.t.id}">Open</button>`:""}</div></td></tr>`).join("");
+  return `<div class="phead"><div style="display:grid;gap:4px"><div class="eyebrow">Escalations · ${S.brand?esc(S.brand):"All brands"}</div><h1>Escalation matrix</h1></div>
+    <div class="frow"><button class="btn primary" type="button" id="btnExport3">Export for Outlook automailer</button></div></div>
+  <section class="kpis">
+    <div class="kpi"><span class="eyebrow">Open escalations</span><span class="v">${xs.length}</span><span class="s">Average ${avg} days late</span></div>
+    <div class="kpi"><span class="eyebrow">L3 · Brand & NPD head</span><span class="v ${n(3)?"neg":""}">${n(3)}</span><span class="s">Over ${E.l3} days, FPR-critical or launch at risk</span></div>
+    <div class="kpi"><span class="eyebrow">L2 · To boss</span><span class="v ${n(2)?"wrn":""}">${n(2)}</span><span class="s">Over ${E.l2} days, critical path or gate overdue</span></div>
+    <div class="kpi"><span class="eyebrow">L1 · SPOC, boss in copy</span><span class="v">${n(1)}</span><span class="s">Pending over ${E.l1} days past due</span></div>
+    <div class="kpi"><span class="eyebrow">Missing email</span><span class="v ${noMail?"wrn":""}">${noMail}</span><span class="s">Fill the People directory below or in Excel</span></div>
+  </section>
+  <div class="grid2">
+    <section class="panel"><div class="panel-head"><h2>By function</h2><div class="legend"><span><i class="swatch" style="background:var(--crit)"></i>L3</span><span><i class="swatch" style="background:var(--warn)"></i>L2</span><span><i class="swatch" style="background:var(--accent)"></i>L1</span></div></div><div class="load">${fnRows || `<p class="muted">No open escalations.</p>`}</div></section>
+    <section class="panel"><div class="panel-head"><h2>By brand</h2></div><div class="load">${byBrand}</div></section>
+  </div>
+  <section class="panel"><div class="panel-head"><h2>Open escalations</h2><span class="muted">"Compose in Outlook" opens a pre-filled email in your mail app</span></div>
+    <div class="tblwrap"><table><thead><tr><th>Level</th><th>Brand</th><th>Code</th><th>Item</th><th>Function</th><th class="num">Days late</th><th>Recipients</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="8" class="muted">Nothing to escalate. Every task is on plan.</td></tr>`}</tbody></table></div></section>
+  <section class="panel"><div class="panel-head"><h2>Matrix rules</h2></div>
+    <div class="tblwrap" style="margin-bottom:16px"><table><thead><tr><th>Level</th><th>Trigger</th><th>To</th><th>Cc</th></tr></thead><tbody style="cursor:default">
+      <tr style="cursor:default"><td><span class="chip c-prog">L1</span></td><td style="white-space:normal">Task pending more than ${E.l1} days after its planned finish</td><td>SPOC (task owner)</td><td>SPOC's boss</td></tr>
+      <tr style="cursor:default"><td><span class="chip c-risk">L2</span></td><td style="white-space:normal">Pending more than ${E.l2} days, a late critical-path task, or a gate decision overdue</td><td>SPOC's boss (gates: brand manager)</td><td>SPOC, function head</td></tr>
+      <tr style="cursor:default"><td><span class="chip c-late">L3</span></td><td style="white-space:normal">Pending more than ${E.l3} days, a late FPR-critical task (over ${E.l2} days), a late FPR or launch milestone, or forecast launch past target</td><td>Brand manager</td><td>${esc(E.npdHead)}, boss, SPOC</td></tr>
+    </tbody></table></div>
+    <form id="escForm" style="display:grid;gap:12px;max-width:760px">
+      <div class="fld2"><label class="fld"><span>L1 when pending more than (days)</span><input type="number" id="eL1" min="0" value="${E.l1}"></label><label class="fld"><span>L2 when pending more than (days)</span><input type="number" id="eL2" min="1" value="${E.l2}"></label></div>
+      <div class="fld2"><label class="fld"><span>L3 when pending more than (days)</span><input type="number" id="eL3" min="1" value="${E.l3}"></label><label class="fld"><span>Reply expected within (days)</span><input type="number" id="eRep" min="1" value="${E.replyDays}"></label></div>
+      <div class="fld2"><label class="fld"><span>NPD head (L3 copy)</span><input type="text" id="eHead" value="${esc(E.npdHead)}"></label><label class="fld"><span>NPD head email</span><input type="text" id="eHeadE" value="${esc(E.npdHeadEmail)}" placeholder="npd.head@company.com"></label></div>
+      <label class="fld"><span>Email signature</span><input type="text" id="eFrom" value="${esc(E.from)}"></label>
+      <div><button class="btn primary" type="submit">Save matrix</button></div></form></section>
+  <section class="panel"><div class="panel-head"><h2>People directory</h2><div class="frow"><span class="muted">SPOC names must match the task Owner field</span><button class="btn sm" type="button" id="addPerson">Add person</button></div></div>
+    <div class="tblwrap"><table><thead><tr><th>SPOC name</th><th>Email</th><th>Function</th><th>Reports to (boss)</th><th>Boss email</th><th class="num">Open tasks</th><th></th></tr></thead><tbody>
+    ${peopleRows()}</tbody></table></div></section>`;
+};
+
+function peopleRows(){
+  const open = {}; S.projects.forEach(p => p.tasks.forEach(t => { if((+t.progress||0) < 100 && t.owner) open[t.owner.toLowerCase()] = (open[t.owner.toLowerCase()]||0) + 1; }));
+  const known = new Set((S.people||[]).map(x => nm2(x.name).toLowerCase()));
+  const missing = Object.keys(open).filter(k => !known.has(k));
+  return (S.people||[]).map((x,i) => `<tr style="cursor:default"><td><input type="text" data-pp="${i}:name" value="${esc(x.name)}" aria-label="Name"></td><td><input type="text" data-pp="${i}:email" value="${esc(x.email||"")}" aria-label="Email"></td>
+    <td><input type="text" data-pp="${i}:fn" value="${esc(x.fn||"")}" aria-label="Function"></td><td><input type="text" data-pp="${i}:boss" value="${esc(x.boss||"")}" aria-label="Reports to"></td><td><input type="text" data-pp="${i}:bossEmail" value="${esc(x.bossEmail||"")}" aria-label="Boss email"></td>
+    <td class="num">${open[nm2(x.name).toLowerCase()]||0}</td><td><button class="btn sm danger" type="button" data-delperson="${i}">Remove</button></td></tr>`).join("")
+    + (missing.length ? `<tr style="cursor:default"><td colspan="7" class="muted" style="white-space:normal">Owners with open tasks but no directory entry: ${missing.map(esc).join(", ")}. <button class="btn sm" type="button" id="addMissing">Add them</button></td></tr>` : "");
+}
+function samplePeople(){
+  const d = "example.com";
+  return [["R. Kapoor","Marketing","A. Malhotra"],["S. Iyer","R&D","V. Krishnan"],["N. Shah","Packaging","V. Krishnan"],["A. Verma","Supply Chain","M. Gupta"],["P. Nair","Regulatory","M. Gupta"],
+    ["D. Menon","Quality","K. Singh"],["K. Singh","Manufacturing","M. Gupta"],["M. Rao","Finance","A. Malhotra"],["V. Joshi","Sales","A. Malhotra"],["Trade Marketing","Sales","V. Joshi"]]
+    .map(([n,fn,b]) => ({name:n, email:n.toLowerCase().replace(/[^a-z]+/g,".").replace(/^\.|\.$/g,"")+"@"+d, fn, boss:b, bossEmail:b.toLowerCase().replace(/[^a-z]+/g,".").replace(/^\.|\.$/g,"")+"@"+d}));
+}
+
+/* ---------- Excel master data (multi-brand, multi-project) ---------- */
+const XL_HELP = [
+  ["Brands","Brand, Category, Brand Manager, Manager Email."],
+  ["Projects","Project Code, Brand, Project Name, Category, SKU, Kick-off Date, Target Launch, Work Week (5/6/7), Strict Gates (Y/N), FPR Task ID, Launch Task ID, Holidays."],
+  ["Functions","Function, Colour (hex), Function Head, Head Email. Applies to every project in the file."],
+  ["People","SPOC Name, Email, Function, Reports To, Reports To Email. Used to mail the SPOC and escalate to their boss."],
+  ["Stages","Project Code, Stage No, Stage Name, Gate Name, Gate Decision, Decision Date, Gate Notes."],
+  ["Gate Criteria","Project Code, Stage No, Criterion, Met (Y/N)."],
+  ["Tasks","Project Code, ID, Task, Function, Stage No, Owner, Owner Email, Type (Task/Milestone), Scheduling (Dependent/Independent), Predecessors, Duration (days), Fixed Start, Progress %, FPR Critical (Y/N), Notes."],
+  ["Escalation Matrix","Setting, Value (L1/L2/L3 day thresholds, NPD head and email). Optional."],
+  ["Escalations","Written on export for the Outlook automailer. Ignored on import."]
+];
+const yn = v => /^(y|yes|true|1)$/i.test(String(v??"").trim());
+function xlDate(v){ if(v==null || v==="") return ""; if(v instanceof Date) return iso(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()));
+  if(typeof v==="number"){ return iso(Math.round((v - 25569)*DAY)); }
+  const s = String(v).trim(); let t = parseD(s); if(isFinite(t)) return iso(t);
+  const m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(s); if(m){ const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; t = Date.UTC(y, +m[2]-1, +m[1]); if(isFinite(t)) return iso(t); }
+  const d = new Date(s); return isNaN(d) ? "" : iso(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); }
+function toWorkbook(projects, blank){
+  const wb = XLSX.utils.book_new(), E = escCfg();
+  const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({wch:w})); XLSX.utils.book_append_sheet(wb, ws, name); };
+  const bset = [...new Set(projects.map(p => p.brand))].map(n => S.brands.find(b => b.name===n) || {name:n});
+  add("Brands", [["Brand","Category","Brand Manager","Manager Email"], ...bset.map(b => [b.name, b.category||"", b.manager||"", b.email||""])], [20,20,20,28]);
+  const ph = ["Project Code","Brand","Project Name","Category","SKU","Kick-off Date","Target Launch","Work Week","Strict Gates","FPR Task ID","Launch Task ID","Holidays"];
+  add("Projects", [blank ? ph : ph.concat(["FPR Date","Forecast Launch","Buffer (days)","Progress %","Current Stage","Health"]), ...projects.map(p => { const x = projSummary(p), h = health(x);
+    const row = [p.code, p.brand, p.name, p.category, p.sku, p.start, p.target, p.workweek, p.gateBlocks?"Y":"N", p.fprId??"", p.launchId??"", (p.holidays||[]).join(", ")];
+    return blank ? row : row.concat([isFinite(x.K.fpr)?iso(x.K.fpr):"", isFinite(x.K.launch)?iso(x.K.launch):"", x.buf??"", x.prog, x.killed?"Killed":x.cur===-1?"Launched":`S${x.cur+1} ${p.stages[x.cur].name}`, h.l]); })],
+    [13,16,30,16,14,13,13,10,11,11,13,24,13,15,12,11,26,11]);
+  const fns = []; projects.forEach(p => p.functions.forEach(f => { if(!fns.some(x => x.name===f.name)) fns.push(f); }));
+  add("Functions", [["Function","Colour","Function Head","Head Email"], ...fns.map(f => [f.name, f.color, f.head||"", f.email||""])], [18,10,24,28]);
+  add("Stages", [["Project Code","Stage No","Stage Name","Gate Name","Gate Decision","Decision Date","Gate Notes","Planned Gate Date"], ...projects.flatMap(p => { const Rr = schedule(p);
+    return p.stages.map((s,i) => [p.code, i+1, s.name, s.gate, s.decision, s.decisionDate, s.notes, blank?"":iso(Rr.gates[i].date)]); })], [13,9,24,26,14,14,30,16]);
+  add("Gate Criteria", [["Project Code","Stage No","Criterion","Met (Y/N)"], ...projects.flatMap(p => p.stages.flatMap((s,i) => s.criteria.map(c => [p.code, i+1, c.t, c.done?"Y":"N"])))], [13,9,40,10]);
+  const head = ["Project Code","ID","Task","Function","Stage No","Owner","Owner Email","Type","Scheduling","Predecessors","Duration (days)","Fixed Start","Progress %","FPR Critical","Notes"];
+  const calc = ["Planned Start","Planned Finish","Slack (days)","Critical","Status","Baseline Finish","Variance (days)"];
+  add("Tasks", [blank ? head : head.concat(calc), ...projects.flatMap(p => { const Rr = schedule(p); return ordered(p).map(t => { const r = Rr.tasks.get(t.id), b = p.baseline && p.baseline.tasks[t.id];
+    const row = [p.code, t.id, t.name, t.fn, t.stage, t.owner, t.ownerEmail||"", t.kind==="milestone"?"Milestone":"Task", t.mode==="ind"?"Independent":"Dependent",
+      t.mode==="ind"?"":(t.deps||[]).map(depStr).join(", "), t.kind==="milestone"?0:t.dur, t.mode==="ind"?t.fixed:"", +t.progress||0, t.fpr?"Y":"N", t.notes||""];
+    return blank ? row : row.concat([iso(r.start), iso(r.finish), r.slack, r.crit?"Y":"N", status(t,r).l, b?b.f:"", b?Math.round((r.finish-parseD(b.f))/DAY):""]); }); })],
+    [13,6,40,15,9,16,26,10,13,18,10,12,10,11,30,13,13,10,9,12,14,12]);
+  add("People", [["SPOC Name","Email","Function","Reports To","Reports To Email"], ...(blank ? [["A. Sharma","a.sharma@yourcompany.com","Marketing","B. Mehta","b.mehta@yourcompany.com"]] : (S.people||[]).map(x => [x.name, x.email||"", x.fn||"", x.boss||"", x.bossEmail||""]))], [20,30,16,20,30]);
+  add("Escalation Matrix", [["Setting","Value"],["L1 Days Late",E.l1],["L2 Days Late",E.l2],["L3 Days Late",E.l3],["Reply Days",E.replyDays],["NPD Head",E.npdHead],["NPD Head Email",E.npdHeadEmail],["Signature",E.from]], [18,36]);
+  if(!blank){ const xs = escalations(projects), today = iso(todayT());
+    add("Escalations", [["Escalation ID","Date","Level","Brand","Project Code","Project","Type","Item","Function","SPOC","Boss","Days Pending","To","CC","Subject","Body"], ...xs.map(x => { const m = emailFor(x);
+      return [`${x.p.code||x.p.id}|${x.kind}|${x.t?x.t.id:x.item}|L${x.lv}`, today, "L"+x.lv, x.p.brand, x.p.code, x.p.name, x.kind, x.item, x.fn, x.owner, x.boss?x.boss.n:"", x.late, m.to, m.cc, m.subject, m.body]; })],
+      [26,11,6,14,12,26,8,40,14,16,16,9,30,30,50,80]); }
+  add("Read Me", [["Sheet","What it holds"], ...XL_HELP, [], ["Project Code","Links every sheet to its project. One brand can hold many projects; give each project a unique code."],
+    ["Predecessors","Comma-separated task IDs within the same project. Add link type and lag: 5 (finish-to-start), 5SS+2, 7FF-1, 3SF."],
+    ["Dates","Use YYYY-MM-DD or real Excel dates."],["Calculated columns","Planned dates, slack, status, variance and the Escalations sheet are recalculated on every export and ignored on import."]], [18,110]);
+  return wb;
+}
+function fromWorkbook(wb){
+  const norm = x => String(x).toLowerCase().replace(/[^a-z0-9]/g,"");
+  const sh = n => { const k = wb.SheetNames.find(s => norm(s)===norm(n)); return k ? XLSX.utils.sheet_to_json(wb.Sheets[k], {defval:"", raw:true}) : null; };
+  const g = (row, ...names) => { for(const n of names){ const k = Object.keys(row).find(c => norm(c)===norm(n)); if(k!==undefined && row[k]!=="") return row[k]; } return ""; };
+  const tasksRows = sh("Tasks"); if(!tasksRows) throw new Error('The workbook has no "Tasks" sheet. Download the template to see the expected layout.');
+  const errs = [], brands = [];
+  (sh("Brands")||[]).forEach(r => { const n = nm2(g(r,"Brand")); if(n) brands.push({name:n, category:nm2(g(r,"Category")), manager:nm2(g(r,"Brand Manager","Manager")), email:nm2(g(r,"Manager Email","Email"))}); });
+  let pRows = (sh("Projects")||[]).filter(r => g(r,"Project Name","Project"));
+  if(!pRows.length){ const kv = {}; (sh("Project")||[]).forEach(r => { const f = g(r,"Field"); if(f) kv[norm(f)] = g(r,"Value"); });
+    pRows = [{"Project Code": kv.projectcode||"P-001", "Brand": kv.brand||"Unassigned", "Project Name": kv.projectname||"Imported project", "Category":kv.category||"", "SKU":kv.sku||"", "Kick-off Date":kv.kickoffdate||"", "Target Launch":kv.targetlaunch||"", "Work Week":kv.workweek||"", "Strict Gates":kv.strictgates||"", "FPR Task ID":kv.fprtaskid||"", "Launch Task ID":kv.launchtaskid||"", "Holidays":kv.holidays||""}]; }
+  const fRows = (sh("Functions")||[]).filter(r => g(r,"Function"));
+  const stRows = sh("Stages")||[], crRows = sh("Gate Criteria")||[];
+  const firstCode = nm2(g(pRows[0],"Project Code","Code")) || "P-001";
+  const projects = pRows.map((pr, pi) => {
+    const code = nm2(g(pr,"Project Code","Code")) || (pi ? `P-${String(pi+1).padStart(3,"0")}` : firstCode);
+    const start = xlDate(g(pr,"Kick-off Date","Start Date")) || iso(todayT());
+    const p = makeProject({name:nm2(g(pr,"Project Name","Project")), code, brand:nm2(g(pr,"Brand"))||"Unassigned", start, target:xlDate(g(pr,"Target Launch")), category:nm2(g(pr,"Category")), sku:nm2(g(pr,"SKU")), template:false});
+    p.tasks = []; const ww = +g(pr,"Work Week"); p.workweek = [5,6,7].includes(ww) ? ww : 6;
+    const sg = g(pr,"Strict Gates"); p.gateBlocks = sg==="" ? true : yn(sg);
+    p.holidays = String(g(pr,"Holidays")||"").split(/[,;]+/).map(x => xlDate(x.trim())).filter(Boolean);
+    if(fRows.length) p.functions = fRows.map((r,i) => { const c = nm2(g(r,"Colour","Color")); return {name:nm2(g(r,"Function")), color:/^#[0-9a-f]{6}$/i.test(c)?c:FN_DEFAULT[i%FN_DEFAULT.length].color, head:nm2(g(r,"Function Head","Head")), email:nm2(g(r,"Head Email","Email"))}; });
+    const mine = r => (nm2(g(r,"Project Code","Code")) || firstCode) === code;
+    const st = stRows.filter(r => mine(r) && g(r,"Stage Name"));
+    if(st.length){ p.stages = st.sort((a,b) => (+g(a,"Stage No")||0)-(+g(b,"Stage No")||0)).map(r => ({name:nm2(g(r,"Stage Name")), gate:nm2(g(r,"Gate Name"))||"Gate",
+        decision: DECISIONS.find(d => d.toLowerCase()===String(g(r,"Gate Decision","Decision")).toLowerCase().trim()) || "Pending", decisionDate:xlDate(g(r,"Decision Date")), notes:nm2(g(r,"Gate Notes","Notes")), criteria:[]}));
+      crRows.filter(mine).forEach(r => { const s = p.stages[(+g(r,"Stage No"))-1]; if(s && g(r,"Criterion")) s.criteria.push({t:nm2(g(r,"Criterion")), done:yn(g(r,"Met (Y/N)","Met"))}); }); }
+    const NS = p.stages.length;
+    const raw = tasksRows.filter(r => mine(r) && g(r,"Task","Task Name")).map(r => ({r, id: parseInt(g(r,"ID","Task ID"),10) || null}));
+    let next = Math.max(0, ...raw.map(x => x.id||0)) + 1; raw.forEach(x => { if(!x.id) x.id = next++; });
+    const ids = new Set(raw.map(x => x.id));
+    raw.forEach(({r,id}) => {
+      const fn = nm2(g(r,"Function")) || (p.functions[0]?.name || "General");
+      if(!p.functions.some(f => f.name===fn)) p.functions.push({name:fn, color:FN_DEFAULT[p.functions.length % FN_DEFAULT.length].color, head:"", email:""});
+      const ind = /^ind/i.test(String(g(r,"Scheduling","Mode"))), ms = /^mile/i.test(String(g(r,"Type")));
+      const pd = parseDeps(g(r,"Predecessors","Dependencies"), id, ids); pd.errs.forEach(e => errs.push(`${code} task ${id}: ${e}`));
+      const pv = String(g(r,"Progress %","Progress")); let pn = parseFloat(pv) || 0; if(!pv.includes("%") && pn > 0 && pn <= 1) pn *= 100;
+      p.tasks.push({id, name:nm2(g(r,"Task","Task Name")), fn, stage:clamp(parseInt(g(r,"Stage No","Stage"),10)||1, 1, NS), owner:nm2(g(r,"Owner")), ownerEmail:nm2(g(r,"Owner Email")),
+        kind:ms?"milestone":"task", mode:ind?"ind":"dep", deps:ind?[]:pd.deps, fixed:xlDate(g(r,"Fixed Start","Start Date")) || start,
+        dur: ms ? 0 : clamp(Math.round(+g(r,"Duration (days)","Duration")||0), 0, 999), progress:clamp(Math.round(pn), 0, 100), fpr:yn(g(r,"FPR Critical","FPR")), notes:nm2(g(r,"Notes"))});
+    });
+    p.nextId = Math.max(0, ...p.tasks.map(t => t.id)) + 1;
+    const fid = parseInt(g(pr,"FPR Task ID"),10), lid = parseInt(g(pr,"Launch Task ID"),10);
+    p.fprId = ids.has(fid) ? fid : ((p.tasks.find(t => /fpr|first production/i.test(t.name))||{}).id ?? null);
+    p.launchId = ids.has(lid) ? lid : ((p.tasks.find(t => t.kind==="milestone" && /launch/i.test(t.name))||{}).id ?? null);
+    if(schedule(p).cyc.size) errs.push(`${code}: some predecessor links form a loop.`);
+    if(!p.tasks.length) errs.push(`${code}: no tasks found.`);
+    return p;
+  });
+  const people = (sh("People")||[]).filter(r => g(r,"SPOC Name","Name")).map(r => ({name:nm2(g(r,"SPOC Name","Name")), email:nm2(g(r,"Email")), fn:nm2(g(r,"Function")), boss:nm2(g(r,"Reports To","Boss")), bossEmail:nm2(g(r,"Reports To Email","Boss Email"))}));
+  let esc2 = null; const em = sh("Escalation Matrix"); if(em && em.length){ esc2 = {}; em.forEach(r => { const k = norm(g(r,"Setting")), v = g(r,"Value");
+    if(k==="l1dayslate") esc2.l1 = +v; else if(k==="l2dayslate") esc2.l2 = +v; else if(k==="l3dayslate") esc2.l3 = +v; else if(k==="replydays") esc2.replyDays = +v;
+    else if(k==="npdhead") esc2.npdHead = nm2(v); else if(k==="npdheademail") esc2.npdHeadEmail = nm2(v); else if(k==="signature") esc2.from = nm2(v); }); }
+  return {projects, brands, people, errs, esc:esc2};
+}
+function exportExcel(projects, blank, label){
+  if(typeof XLSX==="undefined"){ toast("The Excel library did not load. Check your internet connection and reload."); return; }
+  const wb = toWorkbook(projects, blank), name = (blank ? "NPD_Master_Data_Template" : String(label).replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_") + "_NPD_" + iso(todayT())) + ".xlsx";
+  try { XLSX.writeFile(wb, name); toast(`Exported ${name}.`); } catch(e){ toast("Download was blocked here. Open the tracker from your own computer to save Excel files."); }
+}
+function templateProject(){ return makeProject({name:"New product", code:"BR-001", brand:"Your Brand", start:iso(todayT()), target:iso(todayT()+180*DAY), template:true}); }
+function exportDialog(){
+  const p = P(), inB = S.projects.filter(x => x.brand===p.brand);
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><div class="modal" role="dialog" aria-modal="true" aria-labelledby="exT"><h3 id="exT">Export master data to Excel</h3>
+    <p class="muted" style="margin:0">The workbook holds every sheet listed below, plus calculated dates and an <b>Escalations</b> sheet that the Outlook automailer reads.</p>
+    <div class="fld"><span>What to export</span>
+      <label class="chk"><input type="radio" name="exS" value="all" checked> Whole portfolio: ${S.brands.length} brands, ${S.projects.length} projects</label>
+      <label class="chk"><input type="radio" name="exS" value="brand"> Brand ${esc(p.brand)}: ${inB.length} projects</label>
+      <label class="chk"><input type="radio" name="exS" value="proj"> This project only: ${esc(p.name)}</label></div>
+    <div class="frow" style="justify-content:space-between"><button class="btn" type="button" id="xlTpl2">Download blank template</button><div class="frow"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="button" id="exGo">Export</button></div></div></div>`;
+  $("#xlTpl2").onclick = () => exportExcel([templateProject()], true);
+  $("#exGo").onclick = () => { const v = document.querySelector('input[name="exS"]:checked').value; closeLayer();
+    if(v==="all") exportExcel(S.projects, false, "Portfolio"); else if(v==="brand") exportExcel(inB, false, p.brand); else exportExcel([p], false, p.code||p.name); };
+}
+function importDialog(){
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><div class="modal" role="dialog" aria-modal="true" aria-labelledby="impT"><h3 id="impT">Import master data from Excel</h3>
+    <p class="muted" style="margin:0">One workbook can hold many brands and projects, linked by <b>Project Code</b>. A project whose code already exists here is updated (its baseline is kept); new codes are added. Only the <b>Tasks</b> sheet is required.</p>
+    <div class="xl-sheets">${XL_HELP.map(([a,b]) => `<div><b class="mono">${a}</b><span class="muted">${b}</span></div>`).join("")}</div>
+    <label class="fld"><span>Workbook</span><input type="file" id="xlFile" accept=".xlsx,.xls,.xlsm"></label>
+    <label class="chk"><input type="checkbox" id="xlSample" ${S.projects.some(x=>x.sample)?"checked":""}> Remove the sample projects</label>
+    <p class="err" id="xlErr" hidden></p>
+    <div class="frow" style="justify-content:space-between"><button class="btn" type="button" id="xlTpl">Download blank template</button><div class="frow"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="button" id="xlGo">Import</button></div></div></div>`;
+  $("#xlTpl").onclick = () => exportExcel([templateProject()], true);
+  $("#xlGo").onclick = () => { const f = $("#xlFile").files[0], er = $("#xlErr");
+    if(!f){ er.textContent = "Choose a workbook first."; er.hidden = false; return; }
+    if(typeof XLSX==="undefined"){ er.textContent = "The Excel library did not load. Check your internet connection and reload."; er.hidden = false; return; }
+    const rd = new FileReader();
+    rd.onload = () => { try {
+        const wb = XLSX.read(new Uint8Array(rd.result), {type:"array", cellDates:true}); const res = fromWorkbook(wb);
+        const ok = res.projects.filter(p => p.tasks.length); if(!ok.length) throw new Error("No project in this workbook has tasks. Check the Project Code and Task columns.");
+        if($("#xlSample").checked){ const had = S.projects.some(x => x.sample); S.projects = S.projects.filter(x => !x.sample); S.brands = S.brands.filter(b => S.projects.some(x => x.brand===b.name)); if(had) S.people = (S.people||[]).filter(x => !/@example\.com$/.test(x.email||"")); }
+        res.brands.forEach(b => ensureBrand(b.name, b)); let upd = 0, added = 0;
+        ok.forEach(p => { ensureBrand(p.brand); const i = p.code ? S.projects.findIndex(x => x.code===p.code) : -1;
+          if(i >= 0){ p.id = S.projects[i].id; p.baseline = S.projects[i].baseline; S.projects[i] = p; upd++; } else { S.projects.push(p); added++; } });
+        if(res.esc) S.esc = Object.assign(escCfg(), res.esc);
+        res.people.forEach(np => { const i = (S.people||[]).findIndex(x => nm2(x.name).toLowerCase()===np.name.toLowerCase()); if(i>=0) S.people[i] = np; else S.people.push(np); });
+        S.active = ok[0].id; S.brand = ""; closeLayer(); location.hash = "#portfolio"; render();
+        toast(`Imported ${ok.length} project(s): ${added} added, ${upd} updated.` + (res.errs.length ? ` ${res.errs.length} warning(s): ${res.errs.slice(0,2).join("; ")}` : ""));
+      } catch(e){ er.textContent = e.message || "This file could not be read as an Excel workbook."; er.hidden = false; } };
+    rd.readAsArrayBuffer(f); };
+}
+function newDialog(){
+  const td = todayT(), cur = S.brand || P().brand || "";
+  $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><form class="modal" id="npForm" role="dialog" aria-modal="true" aria-labelledby="npT"><h3 id="npT">New NPD project</h3>
+    <div class="fld2"><label class="fld"><span>Brand</span><select id="npBrand">${S.brands.map(b => `<option${b.name===cur?" selected":""}>${esc(b.name)}</option>`).join("")}<option value="__new">New brand…</option></select></label>
+      <label class="fld" id="npNBw" hidden><span>New brand name</span><input type="text" id="npNB"></label></div>
+    <label class="fld"><span>Product / project name</span><input type="text" id="npName" required placeholder="e.g. Ayurvedic Hair Oil 200ml"></label>
+    <div class="fld2"><label class="fld"><span>Project code</span><input type="text" id="npCode" class="mono"></label><label class="fld"><span>SKU</span><input type="text" id="npSku"></label></div>
+    <div class="fld2"><label class="fld"><span>Category</span><input type="text" id="npCat"></label><label class="fld"><span>Kick-off date</span><input type="date" id="npStart" value="${iso(td)}" required></label></div>
+    <div class="fld2"><label class="fld"><span>Target launch</span><input type="date" id="npTgt" value="${iso(td+180*DAY)}"></label>
+      <label class="fld"><span>Start from</span><select id="npTpl"><option value="1">Standard FMCG NPD plan (30 tasks, 5 gates)</option><option value="0">Empty plan with FPR and launch milestones</option></select></label></div>
+    <div class="frow" style="justify-content:flex-end"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="submit">Create project</button></div></form>`;
+  const sync = () => { const nb = $("#npBrand").value==="__new"; $("#npNBw").hidden = !nb; const bn = nb ? $("#npNB").value : $("#npBrand").value;
+    const b = S.brands.find(x => x.name===bn); if(!$("#npCode").dataset.touched) $("#npCode").value = nextCode(bn||"PR"); if(b && !$("#npCat").dataset.touched) $("#npCat").value = b.category||""; };
+  $("#npBrand").onchange = sync; $("#npNB").oninput = sync; $("#npCode").oninput = e => e.target.dataset.touched = "1"; $("#npCat").oninput = e => e.target.dataset.touched = "1"; sync();
+  $("#npName").focus();
+  $("#npForm").onsubmit = e => { e.preventDefault(); const brand = ($("#npBrand").value==="__new" ? $("#npNB").value.trim() : $("#npBrand").value) || "Unassigned";
+    const code = $("#npCode").value.trim(); if(code && S.projects.some(x => x.code===code)){ toast(`Project code ${code} is already in use.`); return; }
+    ensureBrand(brand, {category:$("#npCat").value.trim()});
+    const p = makeProject({name:$("#npName").value.trim(), brand, code, category:$("#npCat").value.trim(), sku:$("#npSku").value.trim(), start:$("#npStart").value, target:$("#npTgt").value, template:$("#npTpl").value==="1"});
+    S.projects.push(p); S.active = p.id; if(S.brand && S.brand!==brand) S.brand = brand; closeLayer(); location.hash = "#gantt"; render(); toast(`Created "${p.name}" under ${brand}.`); };
+}
+
+/* ---------- events ---------- */
+function openProject(id, view){ S.active = id; location.hash = "#"+(view||"overview"); render(); }
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-edit],[data-close],[data-add],[data-zoom],[data-group],[data-addcrit],[data-delfn],[data-open],[data-delbrand],[data-copymail],[data-edit-p],[data-delperson]"); if(!el) return;
+  const p = P(), d = el.dataset;
+  if(d.close){ closeLayer(); return; }
+  if(d.delperson){ S.people.splice(+d.delperson,1); render(); return; }
+  if(d.editP){ const [pid, tid] = d.editP.split(":"); S.active = pid; render(); openTask(+tid); return; }
+  if(d.edit){ openTask(+d.edit); return; }
+  if(d.add){ openTask(null); return; }
+  if(d.open){ openProject(d.open); return; }
+  if(d.zoom){ ui.zoom = d.zoom; delete $("#gscroll").dataset.ready; render(); return; }
+  if(d.group){ ui.group = d.group; render(); return; }
+  if(d.addcrit){ const i = +d.addcrit, v = $("#newCrit"+i).value.trim(); if(v){ p.stages[i].criteria.push({t:v, done:false}); render(); } return; }
+  if(d.delfn){ const i = +d.delfn, f = p.functions[i], n = p.tasks.filter(t=>t.fn===f.name).length;
+    if(n){ toast(`${f.name} still has ${n} task(s). Move them to another function first.`); return; } p.functions.splice(i,1); render(); return; }
+  if(d.delbrand){ const b = S.brands[+d.delbrand], n = S.projects.filter(x=>x.brand===b.name).length;
+    if(n){ toast(`${b.name} still has ${n} project(s). Move or delete them first.`); return; } S.brands.splice(+d.delbrand,1); render(); return; }
+  if(d.copymail){ const x = (window.__esc||[])[+d.copymail]; if(!x) return; const m = emailFor(x), txt = `To: ${m.to}\nCc: ${m.cc}\nSubject: ${m.subject}\n\n${m.body}`;
+    const fallback = () => { $("#layer").innerHTML = `<div class="scrim" data-close="1"></div><div class="modal"><h3>Escalation email</h3><textarea rows="14" id="mailTxt" readonly>${esc(txt)}</textarea><div class="frow" style="justify-content:flex-end"><button class="btn" type="button" data-close="1">Close</button></div></div>`; $("#mailTxt").select(); };
+    try { navigator.clipboard.writeText(txt).then(() => toast("Email copied. Paste it into Outlook."), fallback); } catch(_){ fallback(); } return; }
+});
+document.addEventListener("change", e => {
+  const el = e.target, p = P(), d = el.dataset;
+  if(el.id==="brandSel"){ S.brand = el.value; if(S.brand && P().brand!==S.brand){ const f = S.projects.find(inBrand); if(f) S.active = f.id; } render(); return; }
+  if(el.id==="projSel"){ if(el.value) S.active = el.value; const v = (location.hash||"").slice(1); if(!v || v==="portfolio" || v==="escalations") location.hash = "#overview"; render(); return; }
+  if(el.id==="gCrit"){ ui.crit = el.checked; render(); return; }
+  if(el.id==="gBase"){ ui.base = el.checked; render(); return; }
+  if(el.id==="gDeps"){ ui.deps = el.checked; render(); return; }
+  if(["fFn","fStage","fStatus"].includes(el.id)){ ui[el.id] = el.value; drawTable(p); save(); return; }
+  if(d.crit){ const [i,j] = d.crit.split(":").map(Number); p.stages[i].criteria[j].done = el.checked; render(); return; }
+  if(d.dec){ const s = p.stages[+d.dec]; s.decision = el.value; if(el.value!=="Pending" && !s.decisionDate) s.decisionDate = iso(todayT()); render(); toast(`Gate ${+d.dec+1} decision: ${el.value}.`); return; }
+  if(d.decdate){ p.stages[+d.decdate].decisionDate = el.value; save(); return; }
+  if(d.gnotes){ p.stages[+d.gnotes].notes = el.value; save(); return; }
+  if(d.sname){ p.stages[+d.sname].name = el.value; save(); return; }
+  if(d.gname){ p.stages[+d.gname].gate = el.value; save(); return; }
+  if(d.fname){ const f = p.functions[+d.fname], old = f.name, nv = el.value.trim(); if(!nv) return; p.tasks.forEach(t => { if(t.fn===old) t.fn = nv; }); f.name = nv; save(); return; }
+  if(d.fhead){ p.functions[+d.fhead].head = el.value; save(); return; }
+  if(d.femail){ p.functions[+d.femail].email = el.value.trim(); save(); return; }
+  if(d.fcol){ p.functions[+d.fcol].color = el.value; save(); return; }
+  if(d.bname){ const b = S.brands[+d.bname], old = b.name, nv = el.value.trim(); if(!nv) return; S.projects.forEach(x => { if(x.brand===old) x.brand = nv; }); if(S.brand===old) S.brand = nv; b.name = nv; render(); return; }
+  if(d.bcat){ S.brands[+d.bcat].category = el.value; save(); return; }
+  if(d.bmgr){ S.brands[+d.bmgr].manager = el.value; save(); return; }
+  if(d.bemail){ S.brands[+d.bemail].email = el.value.trim(); save(); return; }
+  if(d.pp){ const [i,k] = d.pp.split(":"); S.people[+i][k] = el.value.trim(); save(); if(k==="name") render(); return; }
+});
+document.addEventListener("input", e => { if(e.target.id==="fQ"){ ui.q = e.target.value; drawTable(P()); } });
+document.addEventListener("submit", e => {
+  if(e.target.id==="escForm"){ e.preventDefault(); const n = (id, min) => Math.max(min, parseInt($(id).value,10)||min);
+    let l1 = n("#eL1",0), l2 = Math.max(n("#eL2",1), l1), l3 = Math.max(n("#eL3",1), l2);
+    S.esc = {l1, l2, l3, replyDays:n("#eRep",1), npdHead:$("#eHead").value.trim()||"NPD Head", npdHeadEmail:$("#eHeadE").value.trim(), from:$("#eFrom").value.trim()||ESC_DEFAULT.from};
+    render(); toast("Escalation matrix saved."); return; }
+  if(e.target.id !== "projForm") return; e.preventDefault(); const p = P();
+  const before = keyDates(p, R), code = $("#pCode").value.trim();
+  if(code && S.projects.some(x => x.code===code && x.id!==p.id)){ toast(`Project code ${code} is already in use.`); return; }
+  const brand = $("#pBrand").value; ensureBrand(brand);
+  Object.assign(p, {name:$("#pName").value.trim()||p.name, code, brand, category:$("#pCat").value.trim(), sku:$("#pSku").value.trim(), workweek:+$("#pWW").value,
+    start:$("#pStart").value||p.start, target:$("#pTarget").value, gateBlocks:$("#pGB").checked, fprId: +$("#pFpr").value || null, launchId: +$("#pLaunch").value || null,
+    holidays: $("#pHol").value.split(/[,;]+/).map(s => xlDate(s.trim())).filter(Boolean)});
+  p.sample = false; if(S.brand && S.brand!==brand) S.brand = brand; render(); const a = keyDates(p, R), dd = Math.round((a.fpr-before.fpr)/DAY);
+  toast("Project details saved." + (dd ? ` FPR ${dd>0?"moved later by":"pulled in by"} ${Math.abs(dd)} days.` : ""));
+});
+document.addEventListener("click", e => {
+  const id = e.target.id, p = P();
+  if(id==="btnNew" || id==="btnNew2") newDialog();
+  else if(id==="btnImport") importDialog();
+  else if(id==="btnExport" || id==="btnExport3") exportDialog();
+  else if(id==="dlTemplate") exportExcel([templateProject()], true);
+  else if(id==="clearSamples") confirmBox("Remove all sample brands and projects? Your own projects stay.", "Remove samples", () => {
+    S.projects = S.projects.filter(x => !x.sample); S.brands = S.brands.filter(b => S.projects.some(x => x.brand===b.name)); S.people = (S.people||[]).filter(x => !/@example\.com$/.test(x.email||""));
+    if(!S.projects.length){ const np = makeProject({name:"My first product", brand:"My Brand", code:"MB-001", start:iso(todayT()), target:iso(todayT()+180*DAY), template:true}); ensureBrand("My Brand"); S.projects.push(np); }
+    S.active = S.projects[0].id; S.brand = ""; closeLayer(); render(); toast("Sample projects removed."); });
+  else if(id==="addPerson"){ S.people.push({name:"", email:"", fn:"", boss:"", bossEmail:""}); render(); }
+  else if(id==="addMissing"){ const known = new Set(S.people.map(x => nm2(x.name).toLowerCase())); const add = new Map();
+    S.projects.forEach(p => p.tasks.forEach(t => { const k = nm2(t.owner).toLowerCase(); if(k && (+t.progress||0)<100 && !known.has(k) && !add.has(k)) add.set(k, {name:nm2(t.owner), email:t.ownerEmail||"", fn:t.fn, boss:"", bossEmail:""}); }));
+    S.people.push(...add.values()); render(); toast(`Added ${add.size} people. Fill in their emails and bosses.`); }
+  else if(id==="addBrand"){ let n = 1; while(S.brands.some(b => b.name==="New brand "+n)) n++; S.brands.push({name:"New brand "+n, category:"", manager:"", email:""}); render(); }
+  else if(id==="addFn"){ p.functions.push({name:"New function "+(p.functions.length+1), color:FN_DEFAULT[p.functions.length % FN_DEFAULT.length].color, head:"", email:""}); render(); }
+  else if(id==="setBase"){ setBaseline(p); render(); toast("Baseline set to the current plan."); }
+  else if(id==="clrBase"){ p.baseline = null; render(); toast("Baseline cleared."); }
+  else if(id==="dupProj"){ const c = JSON.parse(JSON.stringify(p)); c.id = uid(); c.name = p.name + " (copy)"; c.code = nextCode(p.brand); c.sample = false; S.projects.push(c); S.active = c.id; render(); toast("Project duplicated."); }
+  else if(id==="delProj") confirmBox(`Delete "${p.name}" and all of its tasks? Export it to Excel first if you need a copy.`, "Delete project", () => {
+    S.projects = S.projects.filter(x => x.id!==p.id); if(!S.projects.length){ const b = buildPortfolio(); S.projects = b.projects; b.brands.forEach(x => ensureBrand(x.name, x)); }
+    S.active = (S.projects.find(inBrand) || S.projects[0]).id; closeLayer(); location.hash = "#portfolio"; render(); toast("Project deleted."); });
+});
+document.addEventListener("keydown", e => { if(e.key==="Escape" && $("#layer").innerHTML) closeLayer(); });
+window.addEventListener("hashchange", render);
+
+load(); render();
+</script>
+</body>
+</html>
